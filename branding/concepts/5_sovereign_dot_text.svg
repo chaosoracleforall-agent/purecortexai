@@ -1,0 +1,7 @@
+<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(40, 40)">
+    <rect x="0" y="0" width="120" height="120" stroke="#333" stroke-width="1" fill="none"/>
+    <circle cx="60" cy="60" r="12" fill="#007AFF"/>
+  </g>
+  <text x="200" y="110" font-family="Impact, sans-serif" font-size="72" fill="#FFFFFF">PURE<tspan font-weight="100">CORTEX</tspan></text>
+</svg>

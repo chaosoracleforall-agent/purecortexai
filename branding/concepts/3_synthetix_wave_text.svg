@@ -1,0 +1,8 @@
+<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(20, 50)">
+    <rect x="0" y="45" width="40" height="10" fill="#007AFF" opacity="0.2"/>
+    <rect x="45" y="45" width="20" height="10" fill="#007AFF" opacity="0.5"/>
+    <path d="M70 50 C100 0 130 100 160 50" stroke="#007AFF" stroke-width="8" fill="none" stroke-linecap="round"/>
+  </g>
+  <text x="200" y="115" font-family="Futura, sans-serif" font-weight="800" font-size="64" fill="#FFFFFF" text-transform="uppercase">PURECORTEX</text>
+</svg>
