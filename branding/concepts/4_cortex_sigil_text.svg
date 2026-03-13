@@ -1,0 +1,7 @@
+<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(40, 20)">
+    <path d="M50 130 L50 30 C50 10 110 10 110 50 C110 90 50 90 50 90" stroke="#007AFF" stroke-width="8" fill="none"/>
+    <path d="M80 90 C120 90 120 150 80 150 L50 150" stroke="#007AFF" stroke-width="4" fill="none"/>
+  </g>
+  <text x="200" y="115" font-family="Optima, sans-serif" font-weight="300" font-size="72" fill="#FFFFFF" letter-spacing="4">PURE CORTEX</text>
+</svg>

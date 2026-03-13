@@ -1,0 +1,9 @@
+<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(20, 20)">
+    <circle cx="80" cy="80" r="80" stroke="#007AFF" stroke-width="2" fill="none" opacity="0.3"/>
+    <circle cx="80" cy="80" r="40" stroke="#007AFF" stroke-width="4" fill="none"/>
+    <path d="M60 80 Q80 40 100 80 T140 80" stroke="#007AFF" stroke-width="3" fill="none"/>
+    <circle cx="80" cy="80" r="5" fill="#007AFF"/>
+  </g>
+  <text x="200" y="115" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="64" fill="#FFFFFF">Pure<tspan fill="#007AFF">Cortex</tspan></text>
+</svg>

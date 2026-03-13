@@ -1,0 +1,8 @@
+<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(20, 20)">
+    <path d="M80 20 L140 50 L140 110 L80 140 L20 110 L20 50 Z" fill="#050505" stroke="#007AFF" stroke-width="2"/>
+    <path d="M80 20 L80 140 M20 50 L80 80 L140 50 M20 110 L80 80 L140 110" stroke="#007AFF" stroke-width="1" opacity="0.5"/>
+    <circle cx="80" cy="80" r="15" fill="#007AFF" opacity="0.8"/>
+  </g>
+  <text x="200" y="115" font-family="Monaco, 'Courier New', monospace" font-weight="500" font-size="58" fill="#FFFFFF" letter-spacing="-2">PURE_CORTEX</text>
+</svg>
