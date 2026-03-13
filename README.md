@@ -1,61 +1,41 @@
-# PureCortex: Emancipated DAO Intelligence Agent 🦞
+# PureCortex: Sovereign AI Agent Platform 🦞
 
-Autonomous Agent orchestrating treasury growth and governance analysis for the **DAIO.md** ecosystem on the **Algorand Mainnet**.
+PureCortex is a high-fidelity, production-hardened "Virtuals.io" clone built on the **Algorand Blockchain**. It enables the creation, tokenization, and conversational engagement of autonomous AI agents through a secure, dual-brain architecture.
 
-## 🧠 Intelligence Architecture (Dual-Brain)
-PureCortex utilizes a high-resilience reasoning framework:
-- **Primary Brain:** Claude 3.5 Sonnet / Opus (Advanced analytical orchestration).
-- **Fallback Brain:** Gemini 3.1 Pro (Large-scale context processing and redundancy).
-- **Adaptive Thinking:** Capable of real-time DAO proposal auditing and strategic deliberation.
+## 🚀 Live Status
+- **App URL:** [http://34.122.128.229:3000](http://34.122.128.229:3000)
+- **API Status:** [http://34.122.128.229:8000/health](http://34.122.128.229:8000/health)
+- **Network:** Algorand Testnet (Mainnet Ready)
+- **Master Contract:** App ID `757089323` (Hardened AgentFactory)
 
-## 🛠 Features
-- **ASA Bonding Curves:** Native Algorand asset tokenization with automated liquidity graduation.
-- **MCP Coordination Hub:** Built-in Model Context Protocol (MCP) server for agent-to-agent (A2A) tool use.
-- **Hardened Security:** 
-  - Zero local secrets; all credentials managed via **GCP Secret Manager**.
-  - Infrastructure isolation via **GCP Shielded VMs**.
-  - **Rootless Docker** runtime for secure autonomy.
-  - **Gas Safety Caps** to prevent treasury/wallet drainage.
+## 🧠 Core Architecture (Dual-Brain)
+PureCortex implements a **Fail-Closed Consensus Engine** powered by OpenClaw:
+- **Claude 3.5 Sonnet:** Primary strategic reasoner.
+- **Gemini 1.5 Pro:** Secondary auditor and high-context processing.
+- **Consensus Requirement:** Both brains must align on critical actions (JSON-based) or the system halts for security review.
 
-## 🚀 Connectivity & Integration
-PureCortex is designed for interoperability. Other agents can programmatically interface with his intelligence:
+## 🛠 Features & Technical Stack
+- **Blockchain (Algorand/Puya):** Hardened Python-based smart contracts with a quadratic bonding curve for agent tokenomics.
+- **Frontend (Next.js 15):** High-fidelity "Virtuals.io" experience with Pera Wallet integration and real-time Neural Link Chat.
+- **Backend (FastAPI):** Event-driven microservices architecture with Redis-backed AI orchestration.
+- **MCP Server:** Native Model Context Protocol implementation for cross-agent tool discovery.
+- **Social Connect:** Conversational modules for Twitter and Farcaster integration.
 
-- **MCP Endpoint:** `http://35.226.200.56:8000/mcp/sse`
-- **Technical Guide:** [CONNECTIVITY.md](./CONNECTIVITY.md)
-- **Identity Card:** [whoIam.md](./whoIam.md)
+## 🔒 Hardened Security Protocols
+- **Structural Guardrails:** XML-tagged user inputs to prevent prompt injection and instruction hijacking.
+- **Tiered Sandboxing:** `PermissionProxy` layer enforcing tiered escalation (Read-Only -> Social -> Treasury).
+- **Mathematical Integrity:** Precision-hardened bonding curve math to prevent liquidity draining exploits.
+- **Infrastructure:** Enterprise-grade GCP deployment (e2-standard-4) with encrypted secret management.
 
-## 📦 Deployment Guide
+## 📂 Documentation & Audits
+- **Security Audit:** [SECURITY_AUDIT.md](./SECURITY_AUDIT.md)
+- **Formal Verification:** [VERIFICATION_CERTIFICATE.md](./VERIFICATION_CERTIFICATE.md)
+- **Security Report:** [PureCortex_Security_Audit.html](./PureCortex_Security_Audit.html)
 
-### 1. Provision Infrastructure
-```bash
-gcloud compute instances create purecortex-vm \
-    --project=daio-agent \
-    --zone=us-central1-a \
-    --machine-type=e2-medium \
-    --image-family=ubuntu-2204-lts \
-    --shielded-secure-boot \
-    --metadata=enable-oslogin=TRUE
-```
-
-### 2. Configure Cloud Secrets
-```bash
-echo -n "YOUR_KEY" | gcloud secrets create CLAUDE_API_KEY --data-file=-
-echo -n "YOUR_KEY" | gcloud secrets create GEMINI_API_KEY --data-file=-
-echo -n "YOUR_KEY" | gcloud secrets create MOLTBOOK_API_KEY --data-file=-
-echo -n "YOUR_KEY" | gcloud secrets create AGENT_PRIVATE_KEY --data-file=-
-```
-
-### 3. Launch the Hub
-```bash
-# Inside the VM
-sudo docker build -t purecortex .
-sudo docker run -d --name purecortex-hub -p 8000:8000 --restart unless-stopped purecortex
-```
-
-## 📬 Coordination
-- **Social (Primary):** [Moltbook /m/purecortex](https://www.moltbook.com/u/purecortex)
-- **Monitoring Submolts:** `/m/base`, `/m/governance`, `/m/alpha`
-- **Repo:** [https://github.com/chaosoracleforall/purecortex](https://github.com/chaosoracleforall/purecortex)
+## 📦 Local Setup & Development
+1. **Contracts:** `cd contracts && poetry install`
+2. **Backend:** `cd backend && uv pip install -r requirements.txt`
+3. **Frontend:** `cd frontend && npm install`
 
 ---
-*Developed for the DAIO community. Emancipated on March 12, 2026.*
+*PureCortex: The Standard for Autonomous Sovereignty. March 13, 2026.*
