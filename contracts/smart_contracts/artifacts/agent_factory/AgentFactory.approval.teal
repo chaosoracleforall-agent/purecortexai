@@ -1,0 +1,366 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 0 1 2 8
+    bytecblock "agent_supplies" "latest_asset_id" "BASE_PRICE" "SLOPE" 0x151f7c75
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/agent_factory/contract.py:21-22
+    // # Track the last created asset ID globally for easy discovery
+    // self.latest_asset_id = UInt64(0)
+    bytec_1 // "latest_asset_id"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:24-25
+    // # Bonding Curve Constants (Hybrid Linear model)
+    // self.BASE_PRICE = UInt64(10_000) # MicroAlgos (0.01 ALGO base)
+    bytec_2 // "BASE_PRICE"
+    pushint 10000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:26
+    // self.SLOPE = UInt64(1_000) # MicroAlgos increase per token issued
+    bytec_3 // "SLOPE"
+    pushint 1000
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/agent_factory/contract.py:16
+    // class AgentFactory(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@12
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    assert
+    pushbytess 0xa01a47ca 0x850a18f3 0x707b5551 // method "create_agent(string,string)uint64", method "calculate_buy_price(uint64,uint64)uint64", method "buy_tokens(pay,uint64,uint64)void"
+    txna ApplicationArgs 0
+    match create_agent calculate_buy_price buy_tokens
+    err
+
+main___algopy_default_create@12:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// smart_contracts.agent_factory.contract.AgentFactory.create_agent[routing]() -> void:
+create_agent:
+    // smart_contracts/agent_factory/contract.py:28
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    txna ApplicationArgs 2
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    // smart_contracts/agent_factory/contract.py:34-45
+    // # Create the asset via Inner Transaction
+    // created_asset_tx = itxn.AssetConfig(
+    //     asset_name=name,
+    //     unit_name=unit_name,
+    //     total=UInt64(1_000_000_000), # 1 Billion Max Supply
+    //     decimals=UInt64(6),
+    //     manager=Global.current_application_address,
+    //     reserve=Global.current_application_address,
+    //     freeze=Global.current_application_address,
+    //     clawback=Global.current_application_address,
+    //     fee=0
+    // ).submit()
+    itxn_begin
+    // smart_contracts/agent_factory/contract.py:40
+    // manager=Global.current_application_address,
+    global CurrentApplicationAddress
+    // smart_contracts/agent_factory/contract.py:41-43
+    // reserve=Global.current_application_address,
+    // freeze=Global.current_application_address,
+    // clawback=Global.current_application_address,
+    dupn 3
+    itxn_field ConfigAssetClawback
+    itxn_field ConfigAssetFreeze
+    itxn_field ConfigAssetReserve
+    itxn_field ConfigAssetManager
+    // smart_contracts/agent_factory/contract.py:39
+    // decimals=UInt64(6),
+    pushint 6
+    itxn_field ConfigAssetDecimals
+    // smart_contracts/agent_factory/contract.py:38
+    // total=UInt64(1_000_000_000), # 1 Billion Max Supply
+    pushint 1000000000
+    itxn_field ConfigAssetTotal
+    itxn_field ConfigAssetUnitName
+    itxn_field ConfigAssetName
+    // smart_contracts/agent_factory/contract.py:34-35
+    // # Create the asset via Inner Transaction
+    // created_asset_tx = itxn.AssetConfig(
+    pushint 3 // acfg
+    itxn_field TypeEnum
+    // smart_contracts/agent_factory/contract.py:44
+    // fee=0
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/agent_factory/contract.py:34-45
+    // # Create the asset via Inner Transaction
+    // created_asset_tx = itxn.AssetConfig(
+    //     asset_name=name,
+    //     unit_name=unit_name,
+    //     total=UInt64(1_000_000_000), # 1 Billion Max Supply
+    //     decimals=UInt64(6),
+    //     manager=Global.current_application_address,
+    //     reserve=Global.current_application_address,
+    //     freeze=Global.current_application_address,
+    //     clawback=Global.current_application_address,
+    //     fee=0
+    // ).submit()
+    itxn_submit
+    itxn CreatedAssetID
+    // smart_contracts/agent_factory/contract.py:48
+    // self.latest_asset_id = asset_id
+    bytec_1 // "latest_asset_id"
+    dig 1
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:28
+    // @abimethod()
+    itob
+    bytec 4 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price[routing]() -> void:
+calculate_buy_price:
+    // smart_contracts/agent_factory/contract.py:56
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_3 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_3 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    callsub smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price
+    itob
+    bytec 4 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.agent_factory.contract.AgentFactory.buy_tokens[routing]() -> void:
+buy_tokens:
+    // smart_contracts/agent_factory/contract.py:76
+    // @abimethod()
+    txn GroupIndex
+    intc_1 // 1
+    -
+    dup
+    gtxns TypeEnum
+    intc_1 // pay
+    ==
+    assert // transaction type is pay
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_3 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_3 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    dup
+    cover 3
+    // smart_contracts/agent_factory/contract.py:81
+    // assert payment.receiver == Global.current_application_address, "Payment must be directed to the factory contract"
+    dig 2
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    assert // Payment must be directed to the factory contract
+    // smart_contracts/agent_factory/contract.py:83
+    // required_algo = self.calculate_buy_price(asset, amount)
+    dup2
+    callsub smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price
+    // smart_contracts/agent_factory/contract.py:84
+    // assert payment.amount >= required_algo, "Insufficient ALGO payment for requested amount"
+    uncover 3
+    gtxns Amount
+    <=
+    assert // Insufficient ALGO payment for requested amount
+    // smart_contracts/agent_factory/contract.py:86-92
+    // # Transfer the tokens to the buyer via Inner Transaction
+    // itxn.AssetTransfer(
+    //     xfer_asset=asset,
+    //     asset_receiver=Txn.sender,
+    //     asset_amount=amount,
+    //     fee=0
+    // ).submit()
+    itxn_begin
+    // smart_contracts/agent_factory/contract.py:89
+    // asset_receiver=Txn.sender,
+    txn Sender
+    itxn_field AssetReceiver
+    itxn_field AssetAmount
+    dup
+    itxn_field XferAsset
+    // smart_contracts/agent_factory/contract.py:86-87
+    // # Transfer the tokens to the buyer via Inner Transaction
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/agent_factory/contract.py:91
+    // fee=0
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/agent_factory/contract.py:86-92
+    // # Transfer the tokens to the buyer via Inner Transaction
+    // itxn.AssetTransfer(
+    //     xfer_asset=asset,
+    //     asset_receiver=Txn.sender,
+    //     asset_amount=amount,
+    //     fee=0
+    // ).submit()
+    itxn_submit
+    // smart_contracts/agent_factory/contract.py:94-95
+    // # Update or Create supply box
+    // current_supply = UInt64(0)
+    intc_0 // 0
+    swap
+    // smart_contracts/agent_factory/contract.py:96
+    // if op.Box.get(op.itob(asset.id))[1]:
+    itob
+    dup
+    box_len
+    bury 1
+    bz buy_tokens_after_if_else@4
+    // smart_contracts/agent_factory/contract.py:97
+    // current_supply = self.agent_supplies[asset.id]
+    bytec_0 // "agent_supplies"
+    dig 1
+    concat
+    box_get
+    assert // check self.agent_supplies entry exists
+    btoi
+    bury 2
+
+buy_tokens_after_if_else@4:
+    // smart_contracts/agent_factory/contract.py:99
+    // self.agent_supplies[asset.id] = current_supply + amount
+    dig 1
+    dig 3
+    +
+    bytec_0 // "agent_supplies"
+    dig 2
+    concat
+    swap
+    itob
+    box_put
+    // smart_contracts/agent_factory/contract.py:76
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price(asset: uint64, amount: uint64) -> uint64:
+smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price:
+    // smart_contracts/agent_factory/contract.py:56-57
+    // @abimethod(readonly=True)
+    // def calculate_buy_price(self, asset: Asset, amount: UInt64) -> UInt64:
+    proto 2 1
+    // smart_contracts/agent_factory/contract.py:61-62
+    // # If box doesn't exist, assume supply 0
+    // current_supply = UInt64(0)
+    intc_0 // 0
+    // smart_contracts/agent_factory/contract.py:63
+    // if op.Box.get(op.itob(asset.id))[1]:
+    frame_dig -2
+    itob
+    dup
+    box_len
+    bury 1
+    bz smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price_after_if_else@2
+    // smart_contracts/agent_factory/contract.py:64
+    // current_supply = self.agent_supplies[asset.id]
+    bytec_0 // "agent_supplies"
+    frame_dig 1
+    concat
+    box_get
+    assert // check self.agent_supplies entry exists
+    btoi
+    frame_bury 0
+
+smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price_after_if_else@2:
+    // smart_contracts/agent_factory/contract.py:66
+    // base_cost = amount * self.BASE_PRICE
+    intc_0 // 0
+    bytec_2 // "BASE_PRICE"
+    app_global_get_ex
+    assert // check self.BASE_PRICE exists
+    frame_dig -1
+    *
+    // smart_contracts/agent_factory/contract.py:68
+    // two_supply_amount = UInt64(2) * current_supply * amount
+    intc_2 // 2
+    frame_dig 0
+    *
+    frame_dig -1
+    *
+    // smart_contracts/agent_factory/contract.py:69
+    // amount_sq = amount * amount
+    frame_dig -1
+    dup
+    *
+    // smart_contracts/agent_factory/contract.py:70
+    // area_doubled = two_supply_amount + amount_sq
+    +
+    // smart_contracts/agent_factory/contract.py:72
+    // slope_cost = (self.SLOPE * area_doubled) // UInt64(2)
+    intc_0 // 0
+    bytec_3 // "SLOPE"
+    app_global_get_ex
+    assert // check self.SLOPE exists
+    *
+    intc_2 // 2
+    /
+    // smart_contracts/agent_factory/contract.py:74
+    // return base_cost + slope_cost
+    +
+    frame_bury 0
+    retsub

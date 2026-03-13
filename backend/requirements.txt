@@ -1,0 +1,9 @@
+fastapi[all]
+redis
+google-genai
+anthropic
+mcp
+tweepy
+farcaster
+python-dotenv
+pytest
