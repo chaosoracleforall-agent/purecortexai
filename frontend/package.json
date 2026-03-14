@@ -9,15 +9,24 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@agoralabs-sh/avm-web-provider": "^1.7.0",
+    "@blockshake/defly-connect": "^1.2.1",
     "@perawallet/connect": "^1.5.1",
+    "@txnlab/use-wallet-react": "^4.6.0",
+    "@walletconnect/modal": "^2.7.0",
+    "@walletconnect/sign-client": "^2.23.8",
     "algosdk": "^3.5.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.36.0",
+    "gray-matter": "^4.0.3",
     "lucide-react": "^0.577.0",
+    "lute-connect": "^1.7.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.8.0",
+    "remark": "^15.0.1",
+    "remark-html": "^16.0.1",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {

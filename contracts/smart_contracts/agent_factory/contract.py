@@ -15,22 +15,42 @@ from algopy.arc4 import abimethod
 
 class AgentFactory(ARC4Contract):
     def __init__(self) -> None:
-        # Maps Asset ID to its current circulating supply
         self.agent_supplies = BoxMap(UInt64, UInt64)
-        
-        # Track the last created asset ID globally for easy discovery
         self.latest_asset_id = UInt64(0)
-        
-        # Bonding Curve Constants (Hybrid Linear model)
-        self.BASE_PRICE = UInt64(10_000) # MicroAlgos (0.01 ALGO base)
-        self.SLOPE = UInt64(1_000) # MicroAlgos increase per token issued
+        self.cortex_token = UInt64(0)
+        self.BASE_PRICE = UInt64(10_000)
+        self.SLOPE = UInt64(1_000)
 
     @abimethod()
-    def create_agent(self, name: String, unit_name: String) -> UInt64:
+    def bootstrap_protocol(self) -> UInt64:
         """
-        Creates a new Agent Token and initializes its bonding curve state.
-        Returns the ID of the newly created Asset.
+        Creates the master $CORTEX utility token.
         """
+        assert self.cortex_token == UInt64(0), "Already bootstrapped"
+        
+        created_asset_tx = itxn.AssetConfig(
+            asset_name="PureCortex",
+            unit_name="CORTEX",
+            total=UInt64(10_000_000_000_000_000),
+            decimals=UInt64(6),
+            manager=Global.current_application_address,
+            url="https://purecortex.ai",
+            fee=0
+        ).submit()
+        
+        self.cortex_token = created_asset_tx.created_asset.id
+        return self.cortex_token
+
+    @abimethod()
+    def create_agent(self, cortex_payment: gtxn.AssetTransferTransaction, name: String, unit_name: String) -> UInt64:
+        """
+        Creates a new Agent Token. Requires a 100 $CORTEX fee.
+        """
+        assert self.cortex_token != UInt64(0), "Protocol not bootstrapped"
+        assert cortex_payment.xfer_asset.id == self.cortex_token, "Invalid fee asset"
+        assert cortex_payment.asset_amount >= UInt64(100_000_000), "Fee must be 100 $CORTEX"
+        assert cortex_payment.asset_receiver == Global.current_application_address, "Fee must go to factory"
+        
         # Create the asset via Inner Transaction
         created_asset_tx = itxn.AssetConfig(
             asset_name=name,
@@ -46,10 +66,6 @@ class AgentFactory(ARC4Contract):
         
         asset_id = created_asset_tx.created_asset.id
         self.latest_asset_id = asset_id
-        
-        # We don't initialize the box here to avoid required box references 
-        # in the same transaction as creation. 
-        # The first buy_tokens call will create the box.
         
         return asset_id
 
