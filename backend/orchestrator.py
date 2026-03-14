@@ -14,13 +14,19 @@ class ConsensusOrchestrator:
 
     def __init__(self, project_id: str = "purecortexai"):
         self.project_id = project_id
-        self.client = secretmanager.SecretManagerServiceClient()
-        
+        try:
+            self.client = secretmanager.SecretManagerServiceClient()
+        except Exception:
+            self.client = None
+
         # Initialize Brains
         self._initialize_brains()
 
     def _get_secret(self, secret_id: str, version_id: str = "latest") -> str:
-        """Retrieves a secret from GCP Secret Manager."""
+        """Retrieves a secret from env vars first, then GCP Secret Manager."""
+        env_val = os.environ.get(secret_id)
+        if env_val:
+            return env_val
         name = f"projects/{self.project_id}/secrets/{secret_id}/versions/{version_id}"
         response = self.client.access_secret_version(request={"name": name})
         return response.payload.data.decode("UTF-8")
