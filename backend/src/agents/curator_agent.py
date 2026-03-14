@@ -30,16 +30,12 @@ from .memory import AgentMemory
 
 logger = logging.getLogger("purecortex.agents.curator")
 
-# Path to constitution documents relative to the project root
-_CONSTITUTION_DIR = os.path.join(
-    os.path.dirname(__file__),  # backend/src/agents/
-    "..",                       # backend/src/
-    "..",                       # backend/
-    "..",                       # PureCortex/
-    "docs",
-    "tokenomics",
-    "constitution",
-)
+# Path to constitution documents — Docker mount first, then local fallback
+_AGENTS_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.dirname(os.path.dirname(_AGENTS_DIR))  # backend/ or /app
+_DOCKER_DOCS = os.path.join(_BACKEND_DIR, "docs", "tokenomics", "constitution")
+_LOCAL_DOCS = os.path.join(os.path.dirname(_BACKEND_DIR), "docs", "tokenomics", "constitution")
+_CONSTITUTION_DIR = _DOCKER_DOCS if os.path.isdir(_DOCKER_DOCS) else _LOCAL_DOCS
 
 
 class CuratorAgent(BaseAgent):
@@ -84,7 +80,7 @@ class CuratorAgent(BaseAgent):
             orchestrator=orchestrator,
             memory=memory,
             algorand_address=algorand_address,
-            permission_tier=PermissionTier.READ_ONLY,
+            permission_tier=PermissionTier.ASSET_MANAGEMENT,
         )
 
         # Load constitution at init — both are required for the agent to function

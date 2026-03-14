@@ -19,10 +19,11 @@ router = APIRouter(prefix="/api/governance", tags=["governance"])
 # ──────────────────────────────────────────────
 # Constants
 # ──────────────────────────────────────────────
-# Constitution files live at project root / docs / tokenomics / constitution
+# Constitution files: in Docker mounted at /app/docs, locally at ../docs relative to backend/
 _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_PROJECT_ROOT = os.path.dirname(_BACKEND_DIR)
-_CONSTITUTION_DIR = os.path.join(_PROJECT_ROOT, "docs", "tokenomics", "constitution")
+_DOCKER_DOCS = os.path.join(_BACKEND_DIR, "docs", "tokenomics", "constitution")
+_LOCAL_DOCS = os.path.join(os.path.dirname(_BACKEND_DIR), "docs", "tokenomics", "constitution")
+_CONSTITUTION_DIR = _DOCKER_DOCS if os.path.isdir(_DOCKER_DOCS) else _LOCAL_DOCS
 
 PREAMBLE_PATH = os.path.join(_CONSTITUTION_DIR, "PREAMBLE.md")
 ARTICLES_PATH = os.path.join(_CONSTITUTION_DIR, "ARTICLES.md")

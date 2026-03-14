@@ -1,5 +1,11 @@
 import asyncio
+import logging
+import os
 from contextlib import asynccontextmanager
+
+# Configure logging for all PureCortex modules
+logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
+logging.getLogger("purecortex").setLevel(logging.INFO)
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,18 +23,65 @@ from src.api.agents_api import router as agents_router
 from src.services.cache import get_cache_service
 from src.services.algorand import get_algorand_service
 
+# Agents
+from src.agents.memory import AgentMemory
+from src.agents.senator_agent import SenatorAgent
+from src.agents.curator_agent import CuratorAgent
+from src.agents.social_agent import SocialAgent
+from src.agents.orchestrator_loop import AgentOrchestrationLoop
+
+logger = logging.getLogger("purecortex")
+
+# Global reference so agent APIs can access it
+_agent_loop: AgentOrchestrationLoop | None = None
+
+
+def get_agent_loop() -> AgentOrchestrationLoop | None:
+    return _agent_loop
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle for the application."""
+    global _agent_loop
+
     # ── Startup ──
     cache = get_cache_service()
     await cache.connect()
     print("Redis cache: connected" if cache.available else "Redis cache: unavailable (running without cache)")
 
+    # ── Start Agent Orchestration Loop ──
+    if orchestrator and os.getenv("ENABLE_AGENTS", "1") == "1":
+        try:
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            senator_memory = AgentMemory("senator", redis_url=redis_url)
+            curator_memory = AgentMemory("curator", redis_url=redis_url)
+            social_memory = AgentMemory("social", redis_url=redis_url)
+
+            senator = SenatorAgent(orchestrator=orchestrator, memory=senator_memory)
+            curator = CuratorAgent(orchestrator=orchestrator, memory=curator_memory)
+            social = SocialAgent(orchestrator=orchestrator, memory=social_memory)
+
+            _agent_loop = AgentOrchestrationLoop(
+                senator=senator,
+                curator=curator,
+                social=social,
+            )
+            await _agent_loop.start()
+            logger.info("Agent orchestration loop started.")
+        except Exception as e:
+            logger.error("Failed to start agent orchestration loop: %s", e)
+            _agent_loop = None
+    else:
+        logger.info("Agent orchestration loop disabled (no orchestrator or ENABLE_AGENTS=0).")
+
     yield
 
     # ── Shutdown ──
+    if _agent_loop:
+        await _agent_loop.stop()
+        logger.info("Agent orchestration loop stopped.")
+
     await cache.disconnect()
     algo = get_algorand_service()
     await algo.close()
