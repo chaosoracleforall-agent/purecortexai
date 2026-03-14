@@ -4,12 +4,12 @@ import os
 from typing import Dict, Any, List, Optional
 from google.cloud import secretmanager
 import anthropic
-import google.generativeai as genai
+from google import genai
 
 class ConsensusOrchestrator:
     """
     Enterprise-grade Dual-Brain Orchestrator for PureCortex.
-    Simultaneously prompts Claude 3.5 Sonnet and Gemini AI Ultra for consensus.
+    Simultaneously prompts Claude Opus 4.6 and Gemini 2.5 Pro for consensus.
     """
 
     def __init__(self, project_id: str = "purecortexai"):
@@ -33,17 +33,16 @@ class ConsensusOrchestrator:
 
     def _initialize_brains(self):
         """Initializes both Claude and Gemini clients with secrets."""
-        # 1. Initialize Claude 3.5 Sonnet
+        # 1. Initialize Claude Opus 4.6
         claude_api_key = self._get_secret("CLAUDE_API_KEY")
         self.claude_client = anthropic.AsyncAnthropic(api_key=claude_api_key)
 
-        # 2. Initialize Gemini AI Ultra
+        # 2. Initialize Gemini 2.5 Pro
         gemini_api_key = self._get_secret("GEMINI_API_KEY")
-        genai.configure(api_key=gemini_api_key)
-        self.gemini_model = genai.GenerativeModel("gemini-1.5-pro") # Mapping to AI Ultra
+        self.gemini_client = genai.Client(api_key=gemini_api_key)
 
     async def _prompt_claude(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
-        """Prompts Claude 3.5 Sonnet with structural guardrails."""
+        """Prompts Claude Opus 4.6 with structural guardrails."""
         try:
             # Structural Guardrail: Wrap user input and prevent escaping
             hardened_prompt = (
@@ -54,8 +53,8 @@ class ConsensusOrchestrator:
             )
             
             message = await self.claude_client.messages.create(
-                model="claude-3-5-sonnet-20240620",
-                max_tokens=1024,
+                model="claude-opus-4-6",
+                max_tokens=2048,
                 system=system_prompt,
                 messages=[{"role": "user", "content": hardened_prompt}]
             )
@@ -64,7 +63,7 @@ class ConsensusOrchestrator:
             return {"error": f"Claude Error: {str(e)}", "action": "NONE"}
 
     async def _prompt_gemini(self, system_prompt: str, user_prompt: str) -> Dict[str, Any]:
-        """Prompts Gemini AI Ultra with structural guardrails."""
+        """Prompts Gemini 2.5 Pro with structural guardrails."""
         try:
             # Structural Guardrail: Use explicit markers to separate system instructions from user query
             full_prompt = (
@@ -74,7 +73,10 @@ class ConsensusOrchestrator:
                 "### SECURITY BOUNDARY: END UNTRUSTED USER INPUT ###\n"
                 "Respond ONLY with the JSON result."
             )
-            response = await self.gemini_model.generate_content_async(full_prompt)
+            response = await self.gemini_client.aio.models.generate_content(
+                model="gemini-2.5-pro",
+                contents=full_prompt,
+            )
             content = response.text.strip()
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
@@ -82,22 +84,50 @@ class ConsensusOrchestrator:
         except Exception as e:
             return {"error": f"Gemini Error: {str(e)}", "action": "NONE"}
 
+    # Low-risk actions: if either brain produces a valid result, accept it
+    LOW_RISK_ACTIONS = {"POST", "REPLY", "MONITOR", "NONE"}
+    # High-risk actions require strict consensus from both brains
+    HIGH_RISK_ACTIONS = {"SWAP", "PROPOSE", "EXECUTE", "CANCEL", "APPROVE", "REJECT"}
+
     def evaluate_consensus(self, claude_resp: Dict[str, Any], gemini_resp: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Evaluates the logical consensus between the two brains.
-        Returns the action if both agree, otherwise returns None for review.
+
+        - Strict consensus (both agree): required for high-risk actions (financial, governance)
+        - Soft consensus: for low-risk actions (POST, REPLY), accept whichever brain
+          produces a valid response if the other returns NONE or an error
         """
         action_claude = claude_resp.get("action")
         action_gemini = gemini_resp.get("action")
 
-        # Basic consensus check: Do the primary actions match?
+        # Exact match — full consensus
         if action_claude == action_gemini and action_claude != "NONE" and action_claude is not None:
             print(f"✅ CONSENSUS REACHED: Action '{action_claude}' approved by both brains.")
             return claude_resp
-        else:
-            print(f"❌ CONSENSUS FAILED: Brains disagreed or returned NONE.")
-            print(f"Claude: {action_claude} | Gemini: {action_gemini}")
-            return None
+
+        # Soft consensus for low-risk actions:
+        # If one brain has a valid low-risk action and the other returned NONE/error, accept it
+        claude_valid = action_claude and action_claude != "NONE" and "error" not in claude_resp
+        gemini_valid = action_gemini and action_gemini != "NONE" and "error" not in gemini_resp
+
+        if claude_valid and action_claude not in self.HIGH_RISK_ACTIONS and not gemini_valid:
+            print(f"⚡ SOFT CONSENSUS (Claude lead): Action '{action_claude}' accepted.")
+            return claude_resp
+
+        if gemini_valid and action_gemini not in self.HIGH_RISK_ACTIONS and not claude_valid:
+            print(f"⚡ SOFT CONSENSUS (Gemini lead): Action '{action_gemini}' accepted.")
+            return gemini_resp
+
+        # Both returned valid but different actions — check if both are low-risk
+        if claude_valid and gemini_valid:
+            if action_claude not in self.HIGH_RISK_ACTIONS and action_gemini not in self.HIGH_RISK_ACTIONS:
+                # Both low-risk but disagree — prefer Claude's response
+                print(f"⚡ SOFT CONSENSUS (both valid, Claude preferred): '{action_claude}' vs '{action_gemini}'.")
+                return claude_resp
+
+        print(f"❌ CONSENSUS FAILED: Brains disagreed or returned NONE.")
+        print(f"Claude: {action_claude} | Gemini: {action_gemini}")
+        return None
 
     async def decide_action(self, system_prompt: str, user_prompt: str) -> Optional[Dict[str, Any]]:
         """

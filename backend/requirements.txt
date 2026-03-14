@@ -1,6 +1,6 @@
 fastapi[all]
 redis
-google-generativeai
+google-genai
 google-cloud-secret-manager
 anthropic
 mcp
@@ -9,4 +9,4 @@ farcaster
 python-dotenv
 pytest
 httpx
-algosdk
+py-algorand-sdk

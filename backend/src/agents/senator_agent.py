@@ -70,7 +70,7 @@ class SenatorAgent(BaseAgent):
             orchestrator=orchestrator,
             memory=memory,
             algorand_address=algorand_address,
-            permission_tier=PermissionTier.READ_ONLY,
+            permission_tier=PermissionTier.ASSET_MANAGEMENT,
         )
         self._last_analysis_ts: float = 0.0
 

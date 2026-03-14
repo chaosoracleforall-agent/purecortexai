@@ -20,9 +20,15 @@ class PermissionProxy:
         self.action_requirements = {
             "REPLY": PermissionTier.READ_ONLY,
             "RESPOND": PermissionTier.READ_ONLY,
+            "MONITOR": PermissionTier.READ_ONLY,
+            "ANALYZE": PermissionTier.READ_ONLY,
             "POST": PermissionTier.SOCIAL_POST,
+            "PROPOSE": PermissionTier.ASSET_MANAGEMENT,
+            "APPROVE": PermissionTier.ASSET_MANAGEMENT,
+            "REJECT": PermissionTier.ASSET_MANAGEMENT,
             "CREATE_AGENT": PermissionTier.ASSET_MANAGEMENT,
             "SWAP": PermissionTier.TREASURY_SWAP,
+            "EXECUTE": PermissionTier.TREASURY_SWAP,
         }
 
     def validate_action(self, decision: Dict[str, Any]) -> bool:
