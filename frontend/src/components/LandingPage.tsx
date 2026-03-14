@@ -82,7 +82,7 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
             <button onClick={onEnter} className="bg-white text-black px-10 py-5 rounded-2xl font-black uppercase tracking-tighter text-sm flex items-center gap-3 hover:bg-gray-200 transition-all">
               Join the Vanguard <ArrowRight className="w-5 h-5" />
             </button>
-            <a href="https://twitter.com/purecortexat" target="_blank" className="px-10 py-5 rounded-2xl border border-white/10 font-black uppercase tracking-tighter text-sm hover:bg-white/5 transition-all">
+            <a href="https://x.com/purecortexai" target="_blank" className="px-10 py-5 rounded-2xl border border-white/10 font-black uppercase tracking-tighter text-sm hover:bg-white/5 transition-all">
               Follow Node Intelligence
             </a>
           </motion.div>

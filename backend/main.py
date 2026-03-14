@@ -1,10 +1,45 @@
 import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+
 from orchestrator import ConsensusOrchestrator
 from sandboxing import PermissionProxy, PermissionTier
 
-app = FastAPI(title="PureCortex API Gateway", version="0.6.0")
+# API Routers
+from src.api.health import router as health_router
+from src.api.transparency import router as transparency_router
+from src.api.governance import router as governance_router
+from src.api.agents_api import router as agents_router
+
+# Services
+from src.services.cache import get_cache_service
+from src.services.algorand import get_algorand_service
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup / shutdown lifecycle for the application."""
+    # ── Startup ──
+    cache = get_cache_service()
+    await cache.connect()
+    print("Redis cache: connected" if cache.available else "Redis cache: unavailable (running without cache)")
+
+    yield
+
+    # ── Shutdown ──
+    await cache.disconnect()
+    algo = get_algorand_service()
+    await algo.close()
+    print("Services shut down cleanly.")
+
+
+app = FastAPI(
+    title="PureCortex API Gateway",
+    version="0.7.0",
+    lifespan=lifespan,
+)
 
 # CORS configuration
 app.add_middleware(
@@ -18,10 +53,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security Proxy Initialization
+# ── Register Routers ──
+app.include_router(health_router)
+app.include_router(transparency_router)
+app.include_router(governance_router)
+app.include_router(agents_router)
+
+# ── Security Proxy ──
 proxy = PermissionProxy(PermissionTier.READ_ONLY)
 
-# Initialize Orchestrator
+# ── Initialize Orchestrator ──
 try:
     orchestrator = ConsensusOrchestrator()
 except Exception as e:
@@ -29,6 +70,7 @@ except Exception as e:
     orchestrator = None
 
 
+# ── WebSocket Connection Manager ──
 class ConnectionManager:
     """Manages active WebSocket connections."""
 
@@ -51,15 +93,6 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
-
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "ok",
-        "orchestrator_active": orchestrator is not None,
-        "version": "0.6.0",
-    }
 
 
 @app.websocket("/ws/chat")

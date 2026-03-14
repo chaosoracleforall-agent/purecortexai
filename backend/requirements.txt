@@ -8,3 +8,5 @@ tweepy
 farcaster
 python-dotenv
 pytest
+httpx
+algosdk
