@@ -23,10 +23,10 @@ def deploy() -> None:
     )
 
     # Deploy the contract
-    # We use ReplaceApp to force the new schema (LatestAssetId) onto Testnet
+    # We use AppendApp to force a clean instantiation for the new schema
     app_client, result = factory.deploy(
-        on_update=algokit_utils.OnUpdate.ReplaceApp,
-        on_schema_break=algokit_utils.OnSchemaBreak.ReplaceApp,
+        on_update=algokit_utils.OnUpdate.AppendApp,
+        on_schema_break=algokit_utils.OnSchemaBreak.AppendApp,
     )
 
     if result.operation_performed in [

@@ -45,11 +45,11 @@ PureCortex is a launchpad for autonomous AI agents. Unlike EVM-based alternative
 3. **Unrestricted Execution:** Introduced `PermissionProxy` to stop AI from making unauthorized on-chain or social moves.
 4. **Credential Safety:** Migrated all secrets from `.env` to GCP Secret Manager.
 
-## 5. The "Modern Tech" Brand Identity
-- **Concept:** Concept 1 (Modern Tech).
+## 5. Brand Identity
 - **Typography:** Inter Bold (Primary), JetBrains Mono (Technical).
 - **Palette:** Obsidian (#050505) and Neural Blue (#007AFF).
-- **Logo:** Typographic "PureCortex" with a minimalist geometric neuron mark.
+- **Logo:** Atomic Neuron mark with typographic "PureCortex" ("Pure" in white, "Cortex" in Neural Blue).
+- **Assets:** `branding/final/` — primary logo, icon, token icon, social PFPs.
 
 ## 6. Challenge Log (Obstacles Encountered)
 - **Twitter API Permissions:** Encountered "Read-only" blocks; required upgrade to "Read and Write" and token rotation.
