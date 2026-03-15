@@ -2,12 +2,14 @@
 
 import json
 import os
-import typer
+from pathlib import Path
+
 import httpx
+import typer
 from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
 from rich import box
+from rich.panel import Panel
+from rich.table import Table
 
 app = typer.Typer(
     name="pcx",
@@ -18,9 +20,47 @@ console = Console()
 
 DEFAULT_API = "https://purecortex.ai"
 
+DEFAULT_PROTOCOL_INFO = {
+    "factory_app_id": 757172168,
+    "cortex_asset_id": 757172171,
+    "tge": "2026-03-31T00:00:00Z",
+}
+
+
+def load_protocol_info() -> dict:
+    """Load protocol constants from the canonical deployment manifest when present."""
+    config_path = Path(__file__).resolve().parents[1] / "deployment.testnet.json"
+    if not config_path.exists():
+        return DEFAULT_PROTOCOL_INFO.copy()
+
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        return {
+            "factory_app_id": data["contracts"]["agentFactory"]["appId"],
+            "cortex_asset_id": data["contracts"]["cortexToken"]["assetId"],
+            "tge": data.get("tgeDate", DEFAULT_PROTOCOL_INFO["tge"]),
+        }
+    except Exception:
+        return DEFAULT_PROTOCOL_INFO.copy()
+
+
+PROTOCOL_INFO = load_protocol_info()
+
 
 def get_api_url() -> str:
     return os.environ.get("PURECORTEX_API_URL", DEFAULT_API)
+
+
+def get_api_key(required: bool = False) -> str | None:
+    api_key = os.environ.get("PURECORTEX_API_KEY")
+    if required and not api_key:
+        console.print(
+            "[bold red]PURECORTEX_API_KEY is required for this command.[/bold red]\n"
+            "Export it first, for example:\n"
+            "[dim]export PURECORTEX_API_KEY=ctx_your_key[/dim]"
+        )
+        raise typer.Exit(1)
+    return api_key
 
 
 # ── Status & Health ──────────────────────────────────────────────
@@ -33,14 +73,19 @@ def status():
         r = httpx.get(f"{api}/health", timeout=10)
         r.raise_for_status()
         data = r.json()
-        orch = data.get("orchestrator_active", False)
-        console.print(Panel(
-            f"[bold green]Backend Online[/bold green]\n"
-            f"Version: {data.get('version', '?')}\n"
-            f"Orchestrator: [{'green' if orch else 'red'}]{'Active' if orch else 'Inactive'}[/]",
-            title="PURECORTEX Status",
-            border_style="blue",
-        ))
+        deps = data.get("dependencies", {})
+        console.print(
+            Panel(
+                f"[bold green]Backend Online[/bold green]\n"
+                f"Version: {data.get('version', '?')}\n"
+                f"Overall status: {data.get('status', 'unknown')}\n"
+                f"Redis: {deps.get('redis', 'unknown')}\n"
+                f"Orchestrator: {deps.get('orchestrator', 'unknown')}\n"
+                f"Agent loop: {deps.get('agent_loop', 'unknown')}",
+                title="PURECORTEX Status",
+                border_style="blue",
+            )
+        )
     except httpx.RequestError as e:
         console.print(f"[bold red]Connection failed:[/bold red] {e}")
         raise typer.Exit(1)
@@ -146,6 +191,7 @@ def chat(
 ):
     """Chat with a PURECORTEX AI agent."""
     api = get_api_url()
+    api_key = get_api_key(required=True)
     console.print(f"[bold blue]Connecting to {agent_name.title()} Agent...[/bold blue]")
     console.print("[dim]Type 'exit' to quit.[/dim]\n")
 
@@ -160,6 +206,7 @@ def chat(
         try:
             r = httpx.post(
                 f"{api}/api/agents/{agent_name}/chat",
+                headers={"X-API-Key": api_key},
                 json={"message": msg},
                 timeout=30,
             )
@@ -213,19 +260,21 @@ def constitution():
 @app.command()
 def info():
     """Show PURECORTEX protocol information."""
-    console.print(Panel(
-        "[bold]PURECORTEX[/bold] — Sovereign AI Agent Infrastructure\n\n"
-        "Chain: Algorand\n"
-        "Factory App ID: 757089323\n"
-        "CORTEX Asset ID: 757092088\n"
-        "Total Supply: 10,000,000,000,000,000 CORTEX\n"
-        "TGE: March 31, 2026\n\n"
-        "Website: https://purecortex.ai\n"
-        "API: https://purecortex.ai/api\n"
-        "Docs: https://purecortex.ai/docs/api",
-        title="Protocol Info",
-        border_style="blue",
-    ))
+    console.print(
+        Panel(
+            "[bold]PURECORTEX[/bold] — Sovereign AI Agent Infrastructure\n\n"
+            "Chain: Algorand Testnet\n"
+            f"Factory App ID: {PROTOCOL_INFO['factory_app_id']}\n"
+            f"CORTEX Asset ID: {PROTOCOL_INFO['cortex_asset_id']}\n"
+            "Total Supply: 10,000,000,000,000,000 CORTEX\n"
+            f"TGE: {PROTOCOL_INFO['tge']}\n\n"
+            "Website: https://purecortex.ai\n"
+            "API: https://purecortex.ai/api\n"
+            "Docs: https://purecortex.ai/docs/api",
+            title="Protocol Info",
+            border_style="blue",
+        )
+    )
 
 
 if __name__ == "__main__":

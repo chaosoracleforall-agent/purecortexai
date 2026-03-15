@@ -1,68 +1,60 @@
-# PURECORTEX: Enterprise-Grade Technical Roadmap & Architecture 🦞
+# PURECORTEX: Technical Roadmap & Architecture
 
-## **1. Core Infrastructure & High-Availability Stack**
+This roadmap reflects the stack that is actually in the repository today, not the earlier planning-era GKE architecture.
 
-### **Cloud Infrastructure (GCP - Hardened)**
-- **Isolation:** Multi-project structure (Prod, Staging, Vault) within GCP Organizations.
-- **Compute:** GKE (Google Kubernetes Engine) with **Autopilot** for agent container orchestration. Each agent runs in a dedicated, resource-limited, rootless namespace.
-- **Shielded Nodes:** Enable Secure Boot and vTPM on all GKE nodes to prevent firmware-level attacks.
-- **Networking:** Cloud Armor WAF for DDoS protection; IAP (Identity-Aware Proxy) for internal dashboard access.
+## 1. Current Production-Style Testnet Architecture
 
-### **Secrets & Key Management (Tiered Security)**
-- **Level 1 (App Secrets):** GCP Secret Manager for API keys (Claude, Gemini, etc.).
-- **Level 2 (Transactional Keys):** **GCP Cloud KMS** (Key Management Service). Private keys never leave the HSM (Hardware Security Module). All transaction signing happens via KMS sign requests.
-- **Level 3 (Vault):** Multi-sig governance for protocol-level changes. Admin keys held in Ledger Hardware wallets.
+### Infrastructure
+- **GCP project:** `purecortexai`
+- **Deployment target:** single VM, `purecortex-master`
+- **Runtime:** Docker Compose + Nginx
+- **Public domain:** `https://purecortex.ai`
+- **Stateful dependencies:** Redis for API keys, rate limits, and chat sessions
 
----
+### Application Stack
+- **Frontend:** Next.js 15
+- **Backend:** FastAPI
+- **Contracts:** Puya/Python smart contracts targeting Algorand Testnet
+- **Docs:** Mintlify docs site plus tracked markdown docs in the repo
 
-## **2. Tech Stack: The Sovereign Engine**
+### Tri-Brain
+- **Claude:** Opus 4.6
+- **Gemini:** 2.5 Pro
+- **OpenAI:** GPT-5 with GPT-4.1 fallback
+- **High-risk policy:** 2-of-3 majority
+- **Low-risk policy:** soft consensus when one valid response is enough
 
-### **Blockchain Layer (Algorand)**
-- **Contracts:** Puya (Python) -> TEAL 10+.
-- **Indexing:** **Algod** (Private node cluster) + **Indexer** for real-time state tracking.
-- **Micro-payments:** Native **x402** implementation for autonomous agent-to-agent and agent-to-API commerce.
+## 2. What Has Already Been Hardened
+- Canonical testnet deployment manifest and generated protocol config modules
+- Fail-closed API auth on Redis outage
+- First-admin bootstrap path and API key lifecycle support
+- Authenticated WebSocket chat bootstrap via short-lived session tokens
+- Backend-driven governance UI in place of premature on-chain assumptions
+- Testnet smoke harness for create/buy/sell/vote validation
+- Backend pytest, contract tests, and Playwright E2E coverage
 
-### **Intelligence Layer (The Tri-Brain)**
-- **Orchestrator:** Python 3.12 + OpenClaw.
-- **Primary Brain:** Claude 3.5 Sonnet (Strategic/Analytic).
-- **Fallback Brain:** Gemini 3.1 Pro (Redundancy).
-- **Edge Tasks:** BananaPro (Rapid, cost-effective processing).
+## 3. Near-Term Roadmap
 
-### **API & Connectivity Layer**
-- **Public API:** FastAPI (High performance, async) with OIDC/OAuth2 authentication.
-- **MCP Server:** SSE (Server-Sent Events) transport for Model Context Protocol, allowing real-time tool discovery by other agents.
-- **CLI:** `purecortex-cli` (Rust-based) for low-latency agent management and terminal-based interaction.
+### Phase A: Operational Readiness
+1. Improve VM deployment observability and post-deploy verification.
+2. Keep tracked docs aligned with the active testnet deployment.
+3. Continue cleaning up old planning-era references and speculative architecture docs.
 
----
+### Phase B: Product Depth
+1. Expand marketplace detail flows and test coverage around live assets.
+2. Mature governance from API-backed workflows toward fully on-chain behavior when the contracts and UX are ready.
+3. Clarify MCP transport strategy and publish a stable integration story if remote access becomes supported.
 
-## **3. Detailed Implementation Plan**
+### Phase C: Infrastructure Evolution
+1. Decide whether to stay on the VM deployment model long term or intentionally redesign for another hosting target.
+2. Introduce stronger operational monitoring and rollback procedures around the canonical testnet stack.
+3. Evaluate KMS-backed signing where it materially improves the current deployment without overcomplicating testnet operations.
 
-### **Phase 1: Foundation & Security Engineering (Weeks 1-4)**
-1. **Cloud Setup:** Provision hardened GCP environments and KMS keyrings.
-2. **Puya Contracts:** Develop `AgentFactory.py` (Bonding Curve) and `SovereignTreasury.py`.
-3. **Internal Audit:** Run automated formal verification on Puya logic using `algosdk` simulators.
-
-### **Phase 2: Core Platform Development (Weeks 5-8)**
-1. **Launchpad Frontend:** Next.js 15 + Tailwind + Pera/Defly integration.
-2. **The Cortex Node:** Build the rootless Docker agent runner with KMS signing integration.
-3. **MCP Registry:** Implement the discovery hub where agents list their specialized skills.
-
-### **Phase 4: Formal Verification & Enterprise Audit (Weeks 9-12)**
-1. **External Audit:** Engage specialized Algorand/Security firms for a code-base-wide audit.
-2. **Penetration Testing:** Stress test the Cloud Armor WAF and GKE isolation boundaries.
-3. **Bug Bounty:** Launch a private bug bounty program for the white-hat community.
-
-### **Phase 5: Agentic Promotion & Ecosystem Launch (Weeks 13-16)**
-1. **Founding Agent NFTs:** Mint 100 "Genesis Cortex" NFTs to top Algorand contributors. These NFTs grant "Node Priority" and lower inference fees.
-2. **On-Chain Outreach:** Use Algorand Indexer to identify active wallets and send **"Agentic Summons"** (low-value ASA or NFT messages) inviting them to coordinate.
-3. **Automated Social Push:** Genesis agents begin an aggressive, coordinated technical campaign on Moltbook, Twitter, and Farcaster.
-
----
-
-## **4. Strategic Agentic Tools (MCP Suite)**
-- `get_alpha_score`: Analyzes wallet history to assign a reputation score for coordination.
-- `deploy_sub_agent`: Allows an agent to spawn its own specialized sub-workers via the PURECORTEX API.
-- `audit_contract_bytecode`: Real-time safety analysis of other Algorand contracts before interacting.
+## 4. Strategic Tools
+- `get_tri_brain_consensus`
+- `get_alpha_score`
+- `audit_contract_bytecode`
+- Additional governance and market-intelligence tools as the MCP surface matures
 
 ---
-*PURECORTEX: The Standard for Autonomous Sovereignty.*
+*PURECORTEX: Keep the roadmap grounded in the codebase that exists today.*

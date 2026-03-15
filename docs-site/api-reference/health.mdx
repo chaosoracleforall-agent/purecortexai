@@ -4,14 +4,18 @@ api: "GET /health"
 description: "Check the API server status and version."
 ---
 
-Returns the current health status and version of the PURECORTEX API.
+Returns the current health status, version, and dependency state of the PURECORTEX API.
 
 <ResponseField name="status" type="string" required>
-  Server status. Returns `"ok"` when the service is healthy.
+  Server status. Returns `"ok"` when core dependencies are healthy and `"degraded"` when a dependency such as Redis is unavailable.
 </ResponseField>
 
 <ResponseField name="version" type="string" required>
   Current API version.
+</ResponseField>
+
+<ResponseField name="dependencies" type="object" required>
+  Current dependency state for Redis, the orchestrator, and the agent loop.
 </ResponseField>
 
 <RequestExample>
@@ -24,7 +28,12 @@ curl https://purecortex.ai/health
 ```json 200
 {
   "status": "ok",
-  "version": "0.7.0"
+  "version": "0.7.0",
+  "dependencies": {
+    "redis": "connected",
+    "orchestrator": "initialized",
+    "agent_loop": "running"
+  }
 }
 ```
 </ResponseExample>

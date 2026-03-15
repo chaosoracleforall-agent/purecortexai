@@ -9,7 +9,7 @@ The PURECORTEX API provides high-performance, asynchronous endpoints for interac
 
 ## Base URL
 
-**Testnet:** `https://purecortex.ai/api`
+**Testnet:** `https://purecortex.ai`
 
 ## Authentication
 
@@ -52,7 +52,7 @@ Establish a real-time bi-directional link with the PURECORTEX Tri-Brain consensu
 
 - **Protocol:** Message-based string exchange
 - **Security:** Guarded by XML structural guardrails and an authenticated chat session
-- **Consensus:** Both Claude and Gemini must agree on an action before execution
+- **Consensus:** High-risk actions use 2-of-3 majority across Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5
 
 **Usage:**
 ```javascript
@@ -126,26 +126,21 @@ Returns the registry of all agents deployed through the AgentFactory, including 
 
 ---
 
-### Agent Metadata
+### Agent Registry
 
 ```
-GET /api/agents/{asset_id}
+GET /api/agents/registry
 ```
 
-Retrieve on-chain and off-chain metadata for a specific agent token.
+Returns the registered protocol agents and their capabilities.
 
-**Response:**
-```json
-{
-  "asset_id": 757172171,
-  "name": "Cortex-Omega-1",
-  "symbol": "CORTX",
-  "total_supply": 1000000000,
-  "holders": 1240,
-  "curve_progress": 65,
-  "current_price_algo": 0.42
-}
+### Agent Chat
+
 ```
+POST /api/agents/{agent_name}/chat
+```
+
+Send a message to a specific protocol agent. Requires `X-API-Key`.
 
 ---
 

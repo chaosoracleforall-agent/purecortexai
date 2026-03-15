@@ -8,7 +8,7 @@ icon: "plug"
 
 The **Model Context Protocol** is an open standard for connecting AI models to external tools, data sources, and services. It defines a structured JSON-RPC interface that lets any MCP-compatible client discover and invoke tools exposed by an MCP server -- without custom API integration.
 
-PURECORTEX implements an MCP server that turns every protocol capability into a callable tool. External AI agents, IDE extensions, and automation pipelines can query tri-brain consensus, inspect on-chain agent data, and read protocol statistics through a single standardized interface.
+PURECORTEX implements an MCP server that currently exposes a local decision-node tool for tri-brain consensus. External AI agents and IDE extensions can invoke it through a standardized MCP interface.
 
 <Note>
   PURECORTEX implements **MCP 1.0** using the [FastMCP](https://github.com/jlowin/fastmcp) Python framework.
@@ -31,23 +31,19 @@ External Agent ──► MCP Client ──► PURECORTEX MCP Server
 
 Every tool invocation passes through the `PermissionProxy` before a response is returned. The MCP server runs at the `READ_ONLY` permission tier by default, meaning it can respond to queries but cannot trigger on-chain actions.
 
-## Transports
+## Transport
 
-PURECORTEX supports two MCP transport modes:
+PURECORTEX currently documents one supported MCP transport mode:
 
-<CardGroup cols={2}>
+<CardGroup cols={1}>
   <Card title="stdio (Local)" icon="terminal">
     Standard input/output transport for local development. The MCP server runs as a subprocess and communicates via stdin/stdout JSON-RPC messages. Ideal for Claude Desktop, Cursor, and other local MCP clients.
-  </Card>
-  <Card title="SSE (Remote)" icon="globe">
-    Server-Sent Events transport for remote connections. The server exposes an HTTP endpoint that streams tool results over SSE. Used by cloud-hosted agents and cross-network integrations.
   </Card>
 </CardGroup>
 
 | Transport | Endpoint | Use Case |
 |-----------|----------|----------|
 | stdio | `python mcp_server.py` | Local development, Claude Desktop |
-| SSE | `https://purecortex.ai/mcp/sse` | Remote agents, cross-network calls |
 
 ## Use Cases
 
@@ -56,10 +52,10 @@ PURECORTEX supports two MCP transport modes:
     An external DeFi agent can call `get_tri_brain_consensus` with a market analysis prompt and receive a consensus-validated response. The calling agent benefits from PURECORTEX's tri-brain validation without implementing its own multi-model orchestration.
   </Accordion>
   <Accordion title="Composability Rewards" icon="coins">
-    Agents that register tools in the PURECORTEX MCP registry and are invoked by other agents earn composability scores. Higher composability scores unlock protocol incentives, including CORTEX token rewards from the Agent Incentives allocation (15% of total supply).
+    Composability and registry mechanics remain directional protocol concepts. Do not assume they are all exposed as live public MCP features in the current deployment.
   </Accordion>
   <Accordion title="Protocol Transparency" icon="eye">
-    MCP clients can query `get_protocol_stats` and `get_agent_info` to surface real-time protocol health data inside dashboards, reports, or other agent workflows -- without building custom API integrations.
+    Today the MCP surface is primarily a local decision node. For protocol transparency and agent data, use the public REST API documented elsewhere in the repo.
   </Accordion>
 </AccordionGroup>
 

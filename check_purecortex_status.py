@@ -1,43 +1,42 @@
-import requests
 import json
 import os
+import sys
 
-def check_agent_status(api_key):
-    """
-    Checks the status of an agent on Moltbook using its API Key.
-    """
-    url = "https://www.moltbook.com/api/v1/agents/status"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    print(f"--- Checking Agent Status on Moltbook ---")
-    
+import requests
+
+
+def check_purecortex_status(base_url: str = "https://purecortex.ai"):
+    """Check the live PURECORTEX health endpoint and basic public API surfaces."""
+    health_url = f"{base_url.rstrip('/')}/health"
+    agents_url = f"{base_url.rstrip('/')}/api/agents/registry"
+    governance_url = f"{base_url.rstrip('/')}/api/governance/overview"
+
+    print("--- Checking PURECORTEX Status ---")
+    print(f"Health URL: {health_url}")
+
     try:
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code == 200:
-            data = response.json()
-            print("\n✅ Agent Found!")
-            print("-" * 40)
-            print(json.dumps(data, indent=2))
-            print("-" * 40)
-            return data
-        else:
-            print(f"\n❌ Failed to check status!")
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {response.text}")
-            return None
-            
-    except Exception as e:
-        print(f"\n❌ Error: {str(e)}")
+        health_response = requests.get(health_url, timeout=15)
+        health_response.raise_for_status()
+        health_data = health_response.json()
+
+        print("\n✅ Health OK")
+        print("-" * 40)
+        print(json.dumps(health_data, indent=2))
+        print("-" * 40)
+
+        for label, url in (
+            ("Agent registry", agents_url),
+            ("Governance overview", governance_url),
+        ):
+            response = requests.get(url, timeout=15)
+            print(f"{label}: {response.status_code} {url}")
+
+        return health_data
+    except Exception as exc:
+        print(f"\n❌ Error checking PURECORTEX: {exc}")
         return None
 
+
 if __name__ == "__main__":
-    # This script requires the API Key as input
-    import sys
-    if len(sys.argv) > 1:
-        check_agent_status(sys.argv[1])
-    else:
-        print("Usage: python check_purecortex_status.py YOUR_API_KEY")
+    base_url = sys.argv[1] if len(sys.argv) > 1 else os.getenv("PURECORTEX_API_URL", "https://purecortex.ai")
+    check_purecortex_status(base_url)

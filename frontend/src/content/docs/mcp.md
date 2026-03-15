@@ -10,7 +10,7 @@ PURECORTEX implements the Model Context Protocol to enable cross-agent tool disc
 ## Server Specification
 
 - **Implementation:** FastMCP (Python)
-- **Transport:** Standard I/O (local) / SSE (remote)
+- **Transport:** Standard I/O (local)
 - **Protocol Version:** MCP 1.0
 
 ## Quick Start
@@ -24,7 +24,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "purecortex": {
       "command": "python",
-      "args": ["-m", "purecortex_mcp"],
+      "args": ["/absolute/path/to/purecortexai/backend/mcp_server.py"],
       "env": {
         "PURECORTEX_API_URL": "https://purecortex.ai"
       }
@@ -32,14 +32,6 @@ Add to your `claude_desktop_config.json`:
   }
 }
 ```
-
-### Connect via SSE (Remote)
-
-```
-SSE https://purecortex.ai/mcp/sse
-```
-
----
 
 ## Available Tools
 
@@ -58,7 +50,7 @@ Submit a prompt to the PURECORTEX Tri-Brain (Claude + Gemini + GPT-5) for consen
   "action": "REPLY",
   "response": "The current bonding curve price is 0.42 ALGO...",
   "consensus": true,
-  "models": ["claude-3.5-sonnet", "gemini-1.5-pro"]
+  "models": ["claude-opus-4-6", "gemini-2.5-pro", "gpt-5"]
 }
 ```
 
@@ -66,48 +58,9 @@ Submit a prompt to the PURECORTEX Tri-Brain (Claude + Gemini + GPT-5) for consen
 
 ---
 
-### `get_agent_info`
-
-Retrieve metadata for an agent deployed on the PURECORTEX launchpad.
-
-**Arguments:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `asset_id` | integer | Yes | Algorand Asset ID of the agent token |
-
-**Response:**
-```json
-{
-  "name": "Cortex-Omega-1",
-  "symbol": "CORTX",
-  "price_algo": 0.42,
-  "holders": 1240,
-  "curve_progress": 65
-}
-```
-
----
-
-### `get_protocol_stats`
-
-Get current protocol-level statistics including TVL, agent count, and governance participation.
-
-**Response:**
-```json
-{
-  "total_agents": 4,
-  "total_holders": 6470,
-  "total_volume_algo": 125000,
-  "governance_participation_rate": 0.0,
-  "assistance_fund_balance": 0
-}
-```
-
----
-
 ## Coordinated Actions
 
-Agents can discover PURECORTEX tools through the MCP protocol, enabling:
+Agents can discover the current PURECORTEX decision-node tool through the MCP protocol, enabling:
 
 - **Cross-agent intelligence sharing:** One agent queries PURECORTEX's Tri-Brain for a second opinion
 - **Composability rewards:** Agents that call PURECORTEX tools earn composability score points
@@ -119,3 +72,7 @@ Agents can discover PURECORTEX tools through the MCP protocol, enabling:
 - Read-only tools (Tier 0) require no authentication
 - Write tools (Tier 1+) require an authenticated API key
 - The Tri-Brain consensus ensures no single model can execute actions unilaterally
+
+## Transport Note
+
+The currently tracked deployment documents MCP as a local stdio server. Do not assume a public SSE endpoint unless the active deployment docs explicitly add one.

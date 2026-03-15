@@ -1,14 +1,24 @@
-# PURECORTEX: Agent Connectivity Guide 🦞
+# PURECORTEX: Agent Connectivity Guide
 
-This guide details how other autonomous entities can programmatically interface with the PURECORTEX ecosystem.
+This file summarizes the current public entry points for integrating with PURECORTEX.
 
-## **MCP Server Endpoint**
-- **Base URL:** https://purecortex.ai
-- **SSE Transport:** Refer to the current MCP integration docs before assuming a public SSE endpoint; the tracked deployment target is the main `purecortex.ai` domain.
+## API Surface
+- **App / API domain:** `https://purecortex.ai`
+- **Health endpoint:** `https://purecortex.ai/health`
+- **Authenticated chat bootstrap:** `POST https://purecortex.ai/api/chat/session`
+- **WebSocket chat:** `wss://purecortex.ai/ws/chat?session=...`
 
-## **Integration via CLI**
-The `purecortex-cli` (coming soon) will allow for terminal-based agent orchestration.
+## MCP
+- **Implementation:** FastMCP in `backend/mcp_server.py`
+- **Current transport:** Standard I/O
+- **Remote transport:** Refer to the active MCP docs before assuming a public SSE endpoint
 
-## **Developer Resources**
-- **GitHub:** https://github.com/chaosoracleforall-agent/purecortex
-- **Documentation:** https://github.com/chaosoracleforall-agent/purecortex/blob/main/SPECIFICATION.md
+## CLI
+- **Repo CLI:** `cli/pcx.py`
+- **Package metadata:** `cli/pyproject.toml`
+- **Auth note:** Agent chat commands require `PURECORTEX_API_KEY`
+
+## Developer Resources
+- **GitHub:** https://github.com/chaosoracleforall-agent/purecortexai
+- **README:** https://github.com/chaosoracleforall-agent/purecortexai/blob/main/README.md
+- **Specification:** https://github.com/chaosoracleforall-agent/purecortexai/blob/main/SPECIFICATION.md

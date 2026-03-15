@@ -27,11 +27,14 @@ $ pcx status
 **Sample output:**
 
 ```
-  PURECORTEX API Status
- ──────────────────────
-  Status:   healthy
-  Latency:  42ms
-  Version:  1.2.0
+╭──────────────────── PURECORTEX Status ────────────────────╮
+│ Backend Online                                            │
+│ Version: 0.7.0                                            │
+│ Overall status: ok                                        │
+│ Redis: connected                                          │
+│ Orchestrator: initialized                                 │
+│ Agent loop: running                                       │
+╰───────────────────────────────────────────────────────────╯
 ```
 
 Returns a non-zero exit code if the API is unreachable, making it suitable for
@@ -52,13 +55,12 @@ $ pcx info
 
 ```
 ╭──────────────────── PURECORTEX Protocol ────────────────────╮
-│                                                             │
-│  Chain:          Solana                                      │
-│  Program ID:     PCX...abc                                  │
-│  Token Mint:     PCTX...xyz                                 │
-│  Total Supply:   1,000,000,000 PCTX                         │
-│  TGE Date:       2026-Q2                                    │
-│                                                             │
+│ Chain:          Algorand Testnet                            │
+│ Factory App ID: 757172168                                   │
+│ CORTEX Asset ID: 757172171                                  │
+│ Total Supply:   10,000,000,000,000,000 CORTEX              │
+│ TGE Date:       2026-03-31T00:00:00Z                        │
+│ Website:        https://purecortex.ai                       │
 ╰─────────────────────────────────────────────────────────────╯
 ```
 
@@ -69,7 +71,7 @@ is working and can reach the API.
 
 ## `pcx supply`
 
-Display a detailed breakdown of the PCTX token supply allocation.
+Display a detailed breakdown of the CORTEX token supply allocation.
 
 ```bash
 $ pcx supply
@@ -78,18 +80,18 @@ $ pcx supply
 **Sample output:**
 
 ```
-                    PCTX Token Supply
+                    CORTEX Token Supply
 ┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┓
 ┃ Category              ┃ Amount        ┃ Share   ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ Community & Ecosystem │ 400,000,000   │ 40.0%   │
-│ Treasury              │ 200,000,000   │ 20.0%   │
-│ Team & Advisors       │ 150,000,000   │ 15.0%   │
-│ Liquidity             │ 100,000,000   │ 10.0%   │
-│ Strategic Partners    │ 100,000,000   │ 10.0%   │
-│ Buyback & Burn        │  50,000,000   │  5.0%   │
+│ Genesis Airdrop       │ 3,100,000,000,000,000 │ 31.0% │
+│ Staking Rewards       │ 2,400,000,000,000,000 │ 24.0% │
+│ Liquidity             │ 1,500,000,000,000,000 │ 15.0% │
+│ Agent Incentives      │ 1,500,000,000,000,000 │ 15.0% │
+│ Creator               │ 1,000,000,000,000,000 │ 10.0% │
+│ Assistance Fund       │   500,000,000,000,000 │  5.0% │
 ┗━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━━┛
-  Total: 1,000,000,000 PCTX
+  Total: 10,000,000,000,000,000 CORTEX
 ```
 
 ---
@@ -105,15 +107,23 @@ $ pcx treasury
 **Sample output:**
 
 ```
-                  Treasury Balances
-┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
-┃ Fund                   ┃ Balance            ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━┩
-│ Operations             │ 12,500,000 PCTX    │
-│ Development            │ 18,200,000 PCTX    │
-│ Insurance              │  5,000,000 PCTX    │
-│ Grants                 │  8,750,000 PCTX    │
-┗━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━┛
+{
+  "assistance_fund": {
+    "address": "Assistance Fund not assigned on testnet yet",
+    "balance_algo": 0,
+    "balance_cortex": 0
+  },
+  "operations": {
+    "address": "Operations not assigned on testnet yet",
+    "balance_algo": 0,
+    "balance_cortex": 0
+  },
+  "total_revenue_collected": 0,
+  "revenue_split": {
+    "buyback_burn_pct": 90,
+    "operations_pct": 10
+  }
+}
 ```
 
 ---
@@ -130,15 +140,8 @@ $ pcx burns
 **Sample output:**
 
 ```
-               Buyback & Burn History
-┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
-┃ Date        ┃ Amount Burned   ┃ Tx Signature   ┃
-┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
-│ 2026-03-01  │ 1,250,000 PCTX  │ 5xK9...mF2     │
-│ 2026-02-01  │   980,000 PCTX  │ 3aB7...pQ8     │
-│ 2026-01-01  │   750,000 PCTX  │ 7cD2...wR4     │
-┗━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┛
-  Total burned: 2,980,000 PCTX
+Total Burned: 0 CORTEX
+No burns yet. Burns begin after TGE.
 ```
 
 ---
@@ -201,9 +204,9 @@ $ pcx chat senator
 You: What is the current governance process for proposals?
 
 Senator: Governance proposals in PURECORTEX follow a structured
-lifecycle: Draft → Discussion → Voting → Execution. Any PCTX
-holder can submit a draft proposal, which enters a 7-day
-discussion period before moving to an on-chain vote...
+lifecycle managed by the governance API and frontend. Proposals
+move through review and voting states, and the current public
+source of truth is the backend governance service...
 
 You: exit
 
