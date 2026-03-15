@@ -1,17 +1,17 @@
 ---
 title: CLI Documentation
-description: PURECORTEX command-line interface for administrative control and monitoring.
+description: PURECORTEX command-line interface for querying the live testnet protocol.
 ---
 
 # PURECORTEX CLI
 
-The PURECORTEX CLI (`pcx`) provides administrative control and monitoring for the platform.
+The PURECORTEX CLI (`pcx`) provides a lightweight command-line interface for querying protocol health, transparency, governance, and authenticated agent chat.
 
 ## Installation
 
 **Requires Python 3.10+**
 
-### Option A: pipx (recommended for macOS)
+### Option A: pipx
 
 ```bash
 brew install pipx
@@ -19,7 +19,7 @@ pipx ensurepath
 pipx install git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
 ```
 
-### Option B: From source with venv
+### Option B: From source
 
 ```bash
 git clone https://github.com/chaosoracleforall-agent/purecortexai.git
@@ -35,134 +35,119 @@ Verify the installation:
 pcx info
 ```
 
-> **Note:** macOS 15+ uses an externally-managed Python. Use `pipx` (Option A) or a virtual environment (Option B) — do not use `pip install` directly.
+> macOS 15+ uses an externally-managed Python. Prefer `pipx` or a virtual environment instead of system `pip install`.
 
 ---
 
 ## Configuration
 
-Set the API endpoint:
+Optional environment variables:
 
 ```bash
 export PURECORTEX_API_URL=https://purecortex.ai
+export PURECORTEX_API_KEY=ctx_your_key
 ```
-
-Or pass it per-command:
-
-```bash
-pcx --api-url https://purecortex.ai status
-```
-
----
-
-## Command Reference
 
 ### `status`
 
-Check the health of the backend and orchestrator.
+Check backend health plus Redis, orchestrator, and agent loop status.
 
 ```bash
 pcx status
 ```
 
-**Output:**
+Example output:
+
 ```
-PURECORTEX Status
-├── API: ✓ Operational
-├── Orchestrator: ✓ Active
-├── Algod: ✓ Syncing (testnet)
-└── Version: 0.6.0
+╭──────────────────── PURECORTEX Status ────────────────────╮
+│ Backend Online                                            │
+│ Version: 0.7.0                                            │
+│ Overall status: ok                                        │
+│ Redis: connected                                          │
+│ Orchestrator: initialized                                 │
+│ Agent loop: running                                       │
+╰───────────────────────────────────────────────────────────╯
 ```
 
 ---
 
-### `agents list`
+### `info`
 
-List all agents deployed through the AgentFactory.
+Print the canonical testnet protocol identifiers and public URLs.
 
 ```bash
-pcx agents list
+pcx info
 ```
 
-**Output:**
-```
-┌──────────────────┬────────┬───────────┬──────────┬───────────┐
-│ Name             │ Symbol │ Price     │ Holders  │ Curve     │
-├──────────────────┼────────┼───────────┼──────────┼───────────┤
-│ Cortex-Omega-1   │ CORTX  │ 0.42 ALGO │ 1,240    │ 65%       │
-│ Neural-Sentinel  │ SENT   │ 0.15 ALGO │ 820      │ 22%       │
-│ Chaos-Oracle     │ ORCL   │ 2.10 ALGO │ 4,100    │ 98%       │
-└──────────────────┴────────┴───────────┴──────────┴───────────┘
-```
+### `supply`
 
----
-
-### `agents deploy`
-
-Deploy a new agent on the Algorand blockchain via the AgentFactory.
+Show the current CORTEX supply breakdown.
 
 ```bash
-pcx agents deploy --name "Sentinel" --symbol "SNX"
+pcx supply
 ```
 
-**Flags:**
-| Flag | Description | Required |
-|------|-------------|----------|
-| `--name` | Agent display name | Yes |
-| `--symbol` | Token unit name (max 8 chars) | Yes |
-| `--wallet` | Path to wallet mnemonic file | No (uses default) |
+### `treasury`
 
-**Requirements:**
-- Connected Algorand wallet with 100+ CORTEX tokens (creation fee)
-- Sufficient ALGO for transaction fees and minimum balance
-
----
-
-### `transparency`
-
-Display current protocol transparency data.
+Print treasury balances and revenue split data.
 
 ```bash
-pcx transparency
+pcx treasury
 ```
 
-**Output:**
-```
-PURECORTEX Transparency Report
-├── Total Supply: 10,000,000,000,000,000 CORTEX
-├── Circulating: 3,100,000,000,000,000 CORTEX
-├── Burned: 0 CORTEX
-├── Assistance Fund: 0 ALGO
-└── Creator Vesting: 0% released (TGE: 2026-03-31)
-```
+### `burns`
 
----
-
-### `governance proposals`
-
-List active and recent governance proposals.
+Show buyback-burn history.
 
 ```bash
-pcx governance proposals
+pcx burns
 ```
 
 ---
 
-### `governance vote`
+### `agents`
 
-Cast a vote on an active proposal (requires veCORTEX stake).
+List the registered protocol agents and their current status.
 
 ```bash
-pcx governance vote --proposal-id 1 --vote approve
+pcx agents
 ```
 
 ---
 
-## Security
+### `chat`
 
-All CLI commands that modify state require:
-- Authenticated Algorand wallet
-- Sufficient CORTEX/ALGO balances
-- GCP IAM authentication (for admin commands on the VM)
+Chat with a protocol agent over the authenticated REST API.
 
-Read-only commands (`status`, `agents list`, `transparency`) are publicly accessible.
+```bash
+export PURECORTEX_API_KEY=ctx_your_key
+pcx chat senator
+```
+
+---
+
+### `proposals`
+
+List governance proposals from the backend governance API.
+
+```bash
+pcx proposals
+```
+
+---
+
+### `constitution`
+
+Display the current constitution preamble.
+
+```bash
+pcx constitution
+```
+
+---
+
+## Notes
+
+- Read-only commands use public endpoints.
+- `pcx chat` requires `PURECORTEX_API_KEY` because `POST /api/agents/{agent_name}/chat` is authenticated.
+- The CLI reads canonical testnet identifiers from `deployment.testnet.json` when available.
