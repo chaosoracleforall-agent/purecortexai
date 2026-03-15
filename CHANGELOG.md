@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.2 - 2026-03-15
+
+### Updated
+- Brought the embedded frontend CLI documentation page in line with the current `pcx` command set, `ctx_` API key examples, and live testnet API behavior.
+
+### Root Cause
+- The public `/docs/cli` page is sourced from `frontend/src/content/docs/cli.md`, which still reflected an older CLI surface after the broader repository docs refresh.
+
+### User Action
+- Use `pcx status`, `pcx info`, `pcx supply`, `pcx treasury`, `pcx burns`, `pcx agents`, `pcx proposals`, `pcx constitution`, and `pcx chat senator` as the current documented command surface.
+
 ## 0.7.1 - 2026-03-15
 
 ### Updated
