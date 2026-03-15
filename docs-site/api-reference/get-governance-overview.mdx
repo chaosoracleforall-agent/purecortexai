@@ -1,0 +1,45 @@
+---
+title: "Governance Overview"
+api: "GET /api/governance/overview"
+description: "Retrieve governance summary statistics including proposals, participation, and veCORTEX totals."
+---
+
+Returns high-level governance metrics. This endpoint is under the governance API group and provides the same core statistics as the transparency governance endpoint.
+
+<ResponseField name="total_proposals" type="integer" required>
+  Total number of governance proposals ever created.
+</ResponseField>
+
+<ResponseField name="active_proposals" type="integer" required>
+  Number of proposals currently in discussion or voting.
+</ResponseField>
+
+<ResponseField name="participation_rate" type="number" required>
+  Average voter participation rate as a decimal (e.g., `0.42` for 42%).
+</ResponseField>
+
+<ResponseField name="total_vecortex" type="number" required>
+  Total veCORTEX tokens currently locked for governance voting power.
+</ResponseField>
+
+<ResponseField name="note" type="string">
+  Optional note about the current governance period or system status.
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl https://purecortex.ai/api/governance/overview
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "total_proposals": 12,
+  "active_proposals": 2,
+  "participation_rate": 0.42,
+  "total_vecortex": 850000000000000,
+  "note": "Governance is currently in the initial bootstrap phase."
+}
+```
+</ResponseExample>

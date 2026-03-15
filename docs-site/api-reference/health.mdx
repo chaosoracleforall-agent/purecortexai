@@ -1,0 +1,30 @@
+---
+title: "Health Check"
+api: "GET /health"
+description: "Check the API server status and version."
+---
+
+Returns the current health status and version of the PureCortex API.
+
+<ResponseField name="status" type="string" required>
+  Server status. Returns `"ok"` when the service is healthy.
+</ResponseField>
+
+<ResponseField name="version" type="string" required>
+  Current API version.
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl https://purecortex.ai/health
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "status": "ok",
+  "version": "0.7.0"
+}
+```
+</ResponseExample>

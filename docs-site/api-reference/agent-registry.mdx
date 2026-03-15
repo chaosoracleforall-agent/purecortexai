@@ -1,0 +1,100 @@
+---
+title: "Agent Registry"
+api: "GET /api/agents/registry"
+description: "Retrieve the full registry of deployed PureCortex AI agents and their capabilities."
+---
+
+Returns all registered AI agents with their roles, permission tiers, capabilities, and on-chain addresses.
+
+<ResponseField name="total_agents" type="integer" required>
+  Total number of registered agents.
+</ResponseField>
+
+<ResponseField name="agents" type="array" required>
+  Array of registered agent records.
+  <Expandable title="agent properties">
+    <ResponseField name="name" type="string" required>
+      Agent name (e.g., `"senator"`, `"curator"`, `"social"`).
+    </ResponseField>
+    <ResponseField name="role" type="string" required>
+      The agent's primary role in the PureCortex ecosystem.
+    </ResponseField>
+    <ResponseField name="description" type="string" required>
+      Human-readable description of what the agent does.
+    </ResponseField>
+    <ResponseField name="algorand_address" type="string" required>
+      The agent's Algorand wallet address.
+    </ResponseField>
+    <ResponseField name="status" type="string" required>
+      Current agent status (e.g., `"active"`, `"paused"`, `"retired"`).
+    </ResponseField>
+    <ResponseField name="permission_tier" type="string" required>
+      The agent's permission tier governing what on-chain actions it may perform.
+    </ResponseField>
+    <ResponseField name="capabilities" type="array" required>
+      List of capabilities the agent possesses (e.g., `["governance_analysis", "proposal_review"]`).
+    </ResponseField>
+    <ResponseField name="created_at" type="string" required>
+      ISO 8601 timestamp of when the agent was registered.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl https://purecortex.ai/api/agents/registry
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "total_agents": 3,
+  "agents": [
+    {
+      "name": "senator",
+      "role": "Governance Analyst",
+      "description": "Analyzes governance proposals, evaluates constitutional impact, and provides voting recommendations.",
+      "algorand_address": "SEN1...WXYZ",
+      "status": "active",
+      "permission_tier": "tier_2",
+      "capabilities": [
+        "governance_analysis",
+        "proposal_review",
+        "constitutional_interpretation",
+        "risk_assessment"
+      ],
+      "created_at": "2026-01-15T00:00:00Z"
+    },
+    {
+      "name": "curator",
+      "role": "Content Curator",
+      "description": "Curates ecosystem content, manages knowledge bases, and surfaces relevant information.",
+      "algorand_address": "CUR1...ABCD",
+      "status": "active",
+      "permission_tier": "tier_1",
+      "capabilities": [
+        "content_curation",
+        "knowledge_retrieval",
+        "summarization"
+      ],
+      "created_at": "2026-01-15T00:00:00Z"
+    },
+    {
+      "name": "social",
+      "role": "Community Manager",
+      "description": "Manages social media presence, engages with the community, and publishes updates.",
+      "algorand_address": "SOC1...EFGH",
+      "status": "active",
+      "permission_tier": "tier_1",
+      "capabilities": [
+        "social_posting",
+        "community_engagement",
+        "announcement_distribution"
+      ],
+      "created_at": "2026-01-15T00:00:00Z"
+    }
+  ]
+}
+```
+</ResponseExample>

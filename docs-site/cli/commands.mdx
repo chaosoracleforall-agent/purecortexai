@@ -1,0 +1,294 @@
+---
+title: "Command Reference"
+icon: "terminal"
+description: "Complete reference for every `pcx` command with examples and sample output."
+---
+
+All commands follow the pattern `pcx <command> [arguments] [options]`. The CLI
+uses [Rich](https://rich.readthedocs.io/) for formatted terminal output
+including tables, panels, and colored text.
+
+<Info>
+  Every command contacts the PureCortex API at `https://purecortex.ai` by
+  default. You can override this with the `PURECORTEX_API_URL` environment
+  variable (see [Configuration](/cli/configuration)).
+</Info>
+
+---
+
+## `pcx status`
+
+Check the health of the PureCortex backend services.
+
+```bash
+$ pcx status
+```
+
+**Sample output:**
+
+```
+  PureCortex API Status
+ ──────────────────────
+  Status:   healthy
+  Latency:  42ms
+  Version:  1.2.0
+```
+
+Returns a non-zero exit code if the API is unreachable, making it suitable for
+use in scripts and health checks.
+
+---
+
+## `pcx info`
+
+Display core protocol information including the blockchain network, application
+identifiers, token supply, and Token Generation Event date.
+
+```bash
+$ pcx info
+```
+
+**Sample output:**
+
+```
+╭──────────────────── PureCortex Protocol ────────────────────╮
+│                                                             │
+│  Chain:          Solana                                      │
+│  Program ID:     PCX...abc                                  │
+│  Token Mint:     PCTX...xyz                                 │
+│  Total Supply:   1,000,000,000 PCTX                         │
+│  TGE Date:       2026-Q2                                    │
+│                                                             │
+╰─────────────────────────────────────────────────────────────╯
+```
+
+This is a good first command to run after installation to verify that the CLI
+is working and can reach the API.
+
+---
+
+## `pcx supply`
+
+Display a detailed breakdown of the PCTX token supply allocation.
+
+```bash
+$ pcx supply
+```
+
+**Sample output:**
+
+```
+                    PCTX Token Supply
+┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Category              ┃ Amount        ┃ Share   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ Community & Ecosystem │ 400,000,000   │ 40.0%   │
+│ Treasury              │ 200,000,000   │ 20.0%   │
+│ Team & Advisors       │ 150,000,000   │ 15.0%   │
+│ Liquidity             │ 100,000,000   │ 10.0%   │
+│ Strategic Partners    │ 100,000,000   │ 10.0%   │
+│ Buyback & Burn        │  50,000,000   │  5.0%   │
+┗━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━━┛
+  Total: 1,000,000,000 PCTX
+```
+
+---
+
+## `pcx treasury`
+
+Show current balances of the PureCortex treasury funds.
+
+```bash
+$ pcx treasury
+```
+
+**Sample output:**
+
+```
+                  Treasury Balances
+┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
+┃ Fund                   ┃ Balance            ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━┩
+│ Operations             │ 12,500,000 PCTX    │
+│ Development            │ 18,200,000 PCTX    │
+│ Insurance              │  5,000,000 PCTX    │
+│ Grants                 │  8,750,000 PCTX    │
+┗━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━┛
+```
+
+---
+
+## `pcx burns`
+
+Display the history of buyback-and-burn events, showing when tokens were
+removed from circulation.
+
+```bash
+$ pcx burns
+```
+
+**Sample output:**
+
+```
+               Buyback & Burn History
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Date        ┃ Amount Burned   ┃ Tx Signature   ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ 2026-03-01  │ 1,250,000 PCTX  │ 5xK9...mF2     │
+│ 2026-02-01  │   980,000 PCTX  │ 3aB7...pQ8     │
+│ 2026-01-01  │   750,000 PCTX  │ 7cD2...wR4     │
+┗━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┛
+  Total burned: 2,980,000 PCTX
+```
+
+---
+
+## `pcx agents`
+
+List all protocol AI agents registered in the PureCortex agent framework,
+along with their roles and current status.
+
+```bash
+$ pcx agents
+```
+
+**Sample output:**
+
+```
+                  PureCortex Agents
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Agent      ┃ Role                        ┃ Status  ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│ Senator    │ Governance & constitutional  │ active  │
+│            │ oversight                    │         │
+│ Curator    │ Content curation &           │ active  │
+│            │ quality assurance            │         │
+│ Social     │ Community engagement &       │ active  │
+│            │ communications               │         │
+┗━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━┛
+```
+
+---
+
+## `pcx chat [agent]`
+
+Start an interactive chat session with one of the protocol's AI agents.
+
+```bash
+pcx chat senator
+pcx chat curator
+pcx chat social
+```
+
+**Arguments:**
+
+| Argument | Description | Values |
+|----------|-------------|--------|
+| `agent`  | The agent to chat with | `senator`, `curator`, `social` |
+
+**Example session:**
+
+```bash
+$ pcx chat senator
+```
+
+```
+╭─ Chat with Senator ─────────────────────────────────────────╮
+│  Connected. Type your message and press Enter.              │
+│  Type "exit" or press Ctrl+C to end the session.            │
+╰─────────────────────────────────────────────────────────────╯
+
+You: What is the current governance process for proposals?
+
+Senator: Governance proposals in PureCortex follow a structured
+lifecycle: Draft → Discussion → Voting → Execution. Any PCTX
+holder can submit a draft proposal, which enters a 7-day
+discussion period before moving to an on-chain vote...
+
+You: exit
+
+  Session ended.
+```
+
+<Note>
+  The chat session uses the PureCortex agent chat API endpoint. Conversations
+  are not persisted between sessions.
+</Note>
+
+---
+
+## `pcx proposals`
+
+List current and recent governance proposals with their status.
+
+```bash
+$ pcx proposals
+```
+
+**Sample output:**
+
+```
+              Governance Proposals
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ ID   ┃ Title                        ┃ Status     ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ #3   │ Increase staking rewards     │ voting     │
+│      │ for long-term holders        │            │
+│ #2   │ Fund developer grants        │ passed     │
+│      │ program Q2 2026              │            │
+│ #1   │ Ratify the PureCortex        │ executed   │
+│      │ Constitution v1              │            │
+┗━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━┛
+```
+
+---
+
+## `pcx constitution`
+
+Display the Preamble of the PureCortex Constitution, the foundational document
+governing protocol operations and agent behavior.
+
+```bash
+$ pcx constitution
+```
+
+**Sample output:**
+
+```
+╭──────────────── The PureCortex Constitution ────────────────╮
+│                                                             │
+│                        PREAMBLE                             │
+│                                                             │
+│  We, the stakeholders of PureCortex, establish this         │
+│  Constitution to ensure transparent, fair, and              │
+│  decentralized governance of the protocol. The following    │
+│  principles guide all operations, agent behavior, and       │
+│  community interactions...                                  │
+│                                                             │
+╰─────────────────────────────────────────────────────────────╯
+```
+
+---
+
+## Global Options
+
+These options are available on all commands:
+
+| Option | Description |
+|--------|-------------|
+| `--help` | Show help text for any command |
+
+```bash
+$ pcx --help
+$ pcx supply --help
+```
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0`  | Success |
+| `1`  | API error or network failure |
+| `2`  | Invalid command or arguments |

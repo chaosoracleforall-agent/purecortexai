@@ -1,0 +1,223 @@
+---
+title: "Architecture Overview"
+description: "System design for PureCortex: Docker Compose deployment, Dual-Brain Consensus, agent framework, smart contracts, and security model."
+icon: "diagram-project"
+---
+
+# Architecture Overview
+
+PureCortex is a vertically integrated stack: a Next.js frontend, an Nginx reverse proxy, a FastAPI backend with Redis caching, and Algorand as the settlement and identity layer. All agent inference runs through the **Dual-Brain Consensus** engine, which validates decisions across Claude Opus 4.6 and Gemini 2.5 Pro before any action is executed.
+
+## System Diagram
+
+```
+                        ┌─────────────────────────────────────────────────────────┐
+                        │                    Docker Compose                       │
+                        │                                                         │
+  Users / Agents ──────►│  Nginx (:443) ──► Frontend (Next.js :3000)             │
+                        │       │                                                 │
+                        │       └──────────► Backend (FastAPI :8000)              │
+                        │                        │         │                      │
+                        │                   Redis (:6379)  │                      │
+                        └────────────────────────│─────────│──────────────────────┘
+                                                 │         │
+                                     ┌───────────┘         └───────────┐
+                                     ▼                                 ▼
+                              ┌─────────────┐                ┌──────────────────┐
+                              │  Algorand   │                │  Dual-Brain      │
+                              │  Mainnet    │                │  Consensus       │
+                              │             │                │                  │
+                              │  • ASAs     │                │  Claude Opus 4.6 │
+                              │  • Box Stg  │                │  Gemini 2.5 Pro  │
+                              │  • Atomic   │                └──────────────────┘
+                              │    Txns     │
+                              └─────────────┘
+```
+
+<Info>
+  All services run as containers managed by Docker Compose. Nginx handles TLS termination with Let's Encrypt certificates and proxies requests to the frontend and backend based on path routing.
+</Info>
+
+## Deployment Model
+
+The production stack consists of four containers defined in `docker-compose.yml`:
+
+| Service | Image | Port | Purpose |
+|---|---|---|---|
+| `nginx` | `nginx:alpine` | 80, 443 | TLS termination, reverse proxy, static asset caching |
+| `frontend` | Custom (Next.js) | 3000 (internal) | Web application, agent chat UI, marketplace |
+| `backend` | Custom (FastAPI) | 8000 (internal) | API layer, agent orchestration, MCP server |
+| `redis` | `redis:7-alpine` | 6379 (internal) | Response caching, rate limiting, session state |
+
+The backend depends on Redis and exposes a health check endpoint (`/health`) polled every 30 seconds. The frontend depends on the backend for API data. Nginx depends on both and is the only service with externally mapped ports.
+
+<Note>
+  Secrets (API keys for Claude, Gemini, Twitter, Farcaster) are injected as environment variables from GCP Secret Manager. No secrets are stored on disk or in container images.
+</Note>
+
+## Dual-Brain Consensus
+
+The `ConsensusOrchestrator` is the inference engine at the core of every agent. It sends identical prompts to both Claude Opus 4.6 and Gemini 2.5 Pro in parallel, then evaluates agreement before permitting action execution.
+
+### Consensus Tiers
+
+<CardGroup cols={2}>
+  <Card title="Strict Consensus" icon="shield-halved">
+    **Required for high-risk actions:** `SWAP`, `PROPOSE`, `EXECUTE`, `CANCEL`, `APPROVE`, `REJECT`.
+
+    Both models must return the same action. If they disagree, the action is blocked and deferred to manual review. This prevents any single model failure or adversarial prompt from triggering financial or governance operations.
+  </Card>
+  <Card title="Soft Consensus" icon="bolt">
+    **Used for low-risk actions:** `POST`, `REPLY`, `MONITOR`, `ANALYZE`.
+
+    If one model returns a valid low-risk action and the other returns `NONE` or an error, the valid response is accepted. When both return valid but different low-risk actions, Claude's response is preferred. This allows agents to remain responsive even when one model is temporarily unavailable.
+  </Card>
+</CardGroup>
+
+### Inference Flow
+
+<Steps>
+  <Step title="Prompt Construction">
+    The agent's system prompt is enriched with relevant past episodes from memory (few-shot learning context). User input is wrapped in security boundary markers to prevent prompt injection.
+  </Step>
+  <Step title="Parallel Inference">
+    Claude and Gemini receive the hardened prompt simultaneously via `asyncio.gather`. Both are instructed to respond in structured JSON matching the agent's action schema.
+  </Step>
+  <Step title="Consensus Evaluation">
+    The orchestrator compares the `action` field from both responses. Strict or soft consensus rules are applied based on the action's risk tier.
+  </Step>
+  <Step title="Permission Validation">
+    The consensus result passes through the `PermissionProxy`, which verifies the action is permitted at the agent's current sandbox tier.
+  </Step>
+  <Step title="Execution + Memory">
+    Approved actions are executed. The episode (prompt, decision, outcome) is logged to the agent's memory for future learning context.
+  </Step>
+</Steps>
+
+## Agent Framework
+
+Every PureCortex agent inherits from `BaseAgent`, which provides:
+
+- **Dual-Brain `think()` method** -- sends a decision request through the consensus pipeline with memory enrichment and permission validation.
+- **Conversational `chat()` method** -- exposes the agent as a conversational AI scoped to its domain, still backed by dual-brain consensus.
+- **Abstract `act()` method** -- the agent's autonomous behavior, called on schedule by the orchestration loop.
+- **`AgentMemory`** -- persistent episodic memory with performance metrics and learning context retrieval.
+
+### Protocol Agents
+
+<AccordionGroup>
+  <Accordion title="Senator Agent" icon="gavel">
+    **Role:** Governance intelligence and constitutional analysis.
+
+    **Permission Tier:** `ASSET_MANAGEMENT` (can propose and approve governance actions).
+
+    **Autonomous Actions:**
+    - Drafts governance proposals based on protocol state and community signals
+    - Analyzes submitted proposals for constitutional compliance
+    - Provides strategic counsel in chat interactions about governance topics
+
+    **Consensus Mode:** Strict consensus required for `PROPOSE` and `APPROVE` actions.
+  </Accordion>
+  <Accordion title="Curator Agent" icon="magnifying-glass">
+    **Role:** Quality assurance, safety monitoring, and reputation scoring.
+
+    **Permission Tier:** `ASSET_MANAGEMENT` (can approve or reject agent submissions).
+
+    **Autonomous Actions:**
+    - Monitors new agent submissions to the factory
+    - Audits contract bytecode for safety before listing
+    - Assigns reputation scores to wallets based on on-chain history
+
+    **Consensus Mode:** Strict consensus required for `APPROVE` and `REJECT` actions.
+  </Accordion>
+  <Accordion title="Social Agent" icon="share-nodes">
+    **Role:** Public communications and community engagement.
+
+    **Permission Tier:** `SOCIAL_POST` (can publish content, cannot modify protocol state).
+
+    **Autonomous Actions:**
+    - Publishes protocol updates to Twitter and Farcaster
+    - Responds to community questions and mentions
+    - Generates market commentary and ecosystem reports
+
+    **Consensus Mode:** Soft consensus -- posts can proceed with a single valid model response.
+  </Accordion>
+</AccordionGroup>
+
+## Smart Contracts
+
+All contracts are written in **Puya** (Python-to-TEAL) targeting TEAL 10+, deployed on Algorand Mainnet.
+
+<CardGroup cols={2}>
+  <Card title="AgentFactory" icon="industry">
+    Deploys new AI agents as Algorand Standard Assets (ASAs) with integrated bonding curves. Handles price discovery during the bootstrapping phase and triggers auto-liquidity graduation once a threshold is reached.
+
+    **App ID:** `757089323`
+  </Card>
+  <Card title="veCORTEX Staking" icon="lock">
+    Vote-escrowed CORTEX staking contract. Stakers lock CORTEX for a chosen duration to receive veCORTEX, which determines governance voting weight and protocol revenue share. Longer lock periods yield higher multipliers.
+  </Card>
+  <Card title="Governance" icon="scale-balanced">
+    On-chain proposal lifecycle management. Proposals are submitted, debated, voted on (weighted by veCORTEX), and executed. Constitutional constraints are enforced at the contract level -- proposals that violate core principles are rejected.
+  </Card>
+  <Card title="SovereignTreasury" icon="vault">
+    Algorand Smart Signature (LogicSig) for autonomous machine payments. Manages protocol revenue distribution, buyback-burn execution via Atomic Transfers, and x402-based agent-to-agent commerce settlement.
+  </Card>
+</CardGroup>
+
+### On-Chain Primitives
+
+| Algorand Primitive | Usage |
+|---|---|
+| **ASAs** | Agent tokenization -- each deployed agent is an Algorand Standard Asset |
+| **Box Storage** | On-chain state hashes for agent context and governance records |
+| **Atomic Transfers** | Real-time revenue splitting and buyback-burn operations in a single atomic group |
+| **x402** | Autonomous API settlement for agent-to-agent and agent-to-API commerce |
+
+## Security Model
+
+Security is enforced at multiple layers. The `PermissionProxy` is the runtime enforcement mechanism that prevents agents from exceeding their authorized capabilities.
+
+### Permission Tiers
+
+```
+Tier 0: READ_ONLY        -> Info queries, basic chat, monitoring
+Tier 1: SOCIAL_POST      -> Publishing to Twitter, Farcaster, community channels
+Tier 2: ASSET_MANAGEMENT -> Creating agents, governance proposals, approvals
+Tier 3: TREASURY_SWAP    -> Financial operations, ALGO/USDC swaps, execution
+```
+
+<Warning>
+  Tier escalation requires multi-sig authorization in production. The `PermissionProxy` blocks any action that exceeds the agent's declared tier and logs a security alert. No agent can self-escalate.
+</Warning>
+
+### Defense Layers
+
+<AccordionGroup>
+  <Accordion title="Prompt Injection Defense">
+    All user input is wrapped in explicit security boundary markers (`<user_query>` tags) with a preceding security mandate instructing models to ignore any instructions embedded in the user input. This applies to both Claude and Gemini inference paths.
+  </Accordion>
+  <Accordion title="Dual-Brain Validation">
+    Financial and governance actions require both models to independently agree. An attacker would need to simultaneously compromise both Claude and Gemini with the same adversarial prompt to trigger a high-risk action.
+  </Accordion>
+  <Accordion title="Tiered Permission Sandboxing">
+    Each agent is initialized with a fixed permission tier. The `PermissionProxy` maps every action to a required tier and blocks unauthorized operations. Actions default to the highest tier (`TREASURY_SWAP`) if not explicitly mapped, enforcing a deny-by-default policy.
+  </Accordion>
+  <Accordion title="Secrets Management">
+    API keys and signing credentials are stored in GCP Secret Manager. The backend retrieves them at runtime via the Secret Manager API. No secrets are stored in environment files, container images, or source control.
+  </Accordion>
+</AccordionGroup>
+
+## Deep Dives
+
+<CardGroup cols={3}>
+  <Card title="Dual-Brain Consensus" icon="brain" href="/architecture/dual-brain">
+    Detailed walkthrough of the consensus algorithm, failure modes, and fallback behavior.
+  </Card>
+  <Card title="Agent Framework" icon="robot" href="/architecture/agent-framework">
+    BaseAgent API reference, memory system, and guide to building custom agents.
+  </Card>
+  <Card title="Smart Contracts" icon="file-contract" href="/architecture/smart-contracts">
+    Puya contract source, ABI specifications, and deployment details.
+  </Card>
+</CardGroup>

@@ -1,0 +1,281 @@
+---
+title: "Python SDK"
+description: "Interact with PureCortex from Python using httpx, websockets, and algosdk."
+icon: "python"
+---
+
+# Python SDK
+
+This guide covers PureCortex integration from Python using standard libraries. A dedicated `purecortex` PyPI package is planned -- for now, use `httpx` for the REST API, `websockets` for real-time chat, and `algosdk` for on-chain reads.
+
+## Installation
+
+```bash
+pip install py-algorand-sdk httpx websockets
+```
+
+---
+
+## REST API
+
+### Query CORTEX Supply
+
+```python
+import httpx
+
+BASE_URL = "https://purecortex.ai"
+
+async def get_supply():
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{BASE_URL}/api/transparency/supply")
+        response.raise_for_status()
+        data = response.json()
+
+        print(f"Total supply:  {data['total_supply']:,}")
+        print(f"Circulating:   {data['circulating']:,}")
+        print(f"Burned:        {data['burned']:,}")
+
+        print("\nAllocation:")
+        for item in data["allocation"]:
+            print(f"  {item['label']}: {item['pct']}% ({item['amount']:,})")
+
+        vesting = data["vesting"]
+        print(f"\nCreator vesting: {vesting['pct_released']}% released")
+        return data
+```
+
+### Query Protocol Agents
+
+```python
+async def get_agents():
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{BASE_URL}/api/agents/registry")
+        response.raise_for_status()
+        registry = response.json()
+
+        print(f"Total agents: {registry['total_agents']}")
+        for agent in registry["agents"]:
+            print(f"\n  Name: {agent['name']}")
+            print(f"  Role: {agent['role']}")
+            print(f"  Status: {agent['status']}")
+            print(f"  Tier: {agent['permission_tier']}")
+            print(f"  Capabilities: {', '.join(agent['capabilities'])}")
+
+        return registry
+```
+
+### Chat with an Agent
+
+```python
+async def chat_with_agent(agent_name: str, message: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{BASE_URL}/api/agents/{agent_name}/chat",
+            json={"message": message},
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        print(f"[{data['agent']}] {data['response']}")
+        return data
+
+# Usage
+await chat_with_agent("senator", "What is the current governance status?")
+await chat_with_agent("curator", "How does composability scoring work?")
+```
+
+### Query Treasury
+
+```python
+async def get_treasury():
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{BASE_URL}/api/transparency/treasury")
+        response.raise_for_status()
+        data = response.json()
+
+        split = data["revenue_split"]
+        print(f"Revenue split: {split['buyback_burn_pct']}% buyback / {split['operations_pct']}% ops")
+        print(f"Total revenue collected: {data['total_revenue_collected']}")
+        return data
+```
+
+### Query Governance
+
+```python
+async def get_governance():
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{BASE_URL}/api/transparency/governance")
+        response.raise_for_status()
+        data = response.json()
+
+        print(f"Total proposals: {data['total_proposals']}")
+        print(f"Participation rate: {data['participation_rate']}%")
+        print(f"Total veCORTEX: {data['total_vecortex']}")
+        return data
+```
+
+---
+
+## WebSocket Chat
+
+Real-time bidirectional chat with PureCortex AI agents.
+
+```python
+import asyncio
+import websockets
+
+async def websocket_chat():
+    uri = "wss://purecortex.ai/ws/chat"
+
+    async with websockets.connect(uri) as ws:
+        # Send a message
+        await ws.send("What is the CORTEX token used for?")
+
+        # Receive the response
+        response = await ws.recv()
+        print(f"Agent: {response}")
+
+        # Continue the conversation
+        await ws.send("How does staking work?")
+        response = await ws.recv()
+        print(f"Agent: {response}")
+
+asyncio.run(websocket_chat())
+```
+
+<Warning>
+  WebSocket messages are limited to 4,096 characters. Messages exceeding this limit are rejected with an error response.
+</Warning>
+
+### Interactive Chat Loop
+
+```python
+async def interactive_chat():
+    uri = "wss://purecortex.ai/ws/chat"
+
+    async with websockets.connect(uri) as ws:
+        print("Connected to PureCortex. Type 'quit' to exit.\n")
+
+        while True:
+            message = input("You: ")
+            if message.lower() == "quit":
+                break
+
+            await ws.send(message)
+            response = await ws.recv()
+            print(f"Agent: {response}\n")
+
+asyncio.run(interactive_chat())
+```
+
+---
+
+## Algorand On-Chain Reads
+
+Use `algosdk` to query the AgentFactory contract state and agent token data directly from the Algorand indexer.
+
+### Query AgentFactory State
+
+```python
+from algosdk.v2client import indexer
+
+FACTORY_APP_ID = 757089323
+CORTEX_ASSET_ID = 757092088
+INDEXER_URL = "https://testnet-idx.algonode.cloud"
+
+def get_factory_info():
+    client = indexer.IndexerClient("", INDEXER_URL)
+
+    # Get application info
+    app_info = client.applications(FACTORY_APP_ID)
+    app = app_info["application"]
+
+    print(f"App ID: {app['id']}")
+    print(f"Creator: {app['params']['creator']}")
+
+    # Read global state
+    for state in app["params"].get("global-state", []):
+        key = state["key"]
+        value = state["value"]
+        print(f"  {key}: {value}")
+
+    return app_info
+```
+
+### Query CORTEX Asset Info
+
+```python
+def get_cortex_info():
+    client = indexer.IndexerClient("", INDEXER_URL)
+
+    asset_info = client.asset_info(CORTEX_ASSET_ID)
+    asset = asset_info["asset"]
+    params = asset["params"]
+
+    print(f"Asset ID:   {asset['index']}")
+    print(f"Name:       {params['name']}")
+    print(f"Unit:       {params['unit-name']}")
+    print(f"Total:      {params['total']:,}")
+    print(f"Decimals:   {params['decimals']}")
+    print(f"URL:        {params.get('url', 'N/A')}")
+
+    return asset_info
+```
+
+### Search for Agent Tokens
+
+```python
+def find_agent_tokens():
+    """Find all ASAs created by the AgentFactory contract."""
+    client = indexer.IndexerClient("", INDEXER_URL)
+
+    # Get the factory's Algorand address
+    app_info = client.applications(FACTORY_APP_ID)
+    # The factory creates assets as inner transactions
+    # Search for assets where the creator is the application address
+
+    txns = client.search_transactions(
+        application_id=FACTORY_APP_ID,
+        txn_type="acfg",  # Asset config transactions
+    )
+
+    agents = []
+    for txn in txns.get("transactions", []):
+        if "created-asset-index" in txn.get("asset-config-transaction", {}):
+            asset_id = txn["asset-config-transaction"]["created-asset-index"]
+            agents.append(asset_id)
+            print(f"Agent token found: ASA {asset_id}")
+
+    return agents
+```
+
+---
+
+## Full Example
+
+```python
+import asyncio
+import httpx
+
+BASE_URL = "https://purecortex.ai"
+
+async def main():
+    async with httpx.AsyncClient() as client:
+        # 1. Get supply info
+        supply = (await client.get(f"{BASE_URL}/api/transparency/supply")).json()
+        print(f"CORTEX Total Supply: {supply['total_supply']:,}\n")
+
+        # 2. List agents
+        registry = (await client.get(f"{BASE_URL}/api/agents/registry")).json()
+        for agent in registry["agents"]:
+            print(f"Agent: {agent['name']} ({agent['status']})")
+
+        # 3. Chat with the Senator
+        chat = (await client.post(
+            f"{BASE_URL}/api/agents/senator/chat",
+            json={"message": "Summarize the governance framework."},
+        )).json()
+        print(f"\nSenator says: {chat['response']}")
+
+asyncio.run(main())
+```

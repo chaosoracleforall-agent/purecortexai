@@ -1,0 +1,170 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "PureCortex",
+  "logo": {
+    "dark": "/images/logo-dark.svg",
+    "light": "/images/logo-light.svg"
+  },
+  "favicon": "/images/favicon.png",
+  "colors": {
+    "primary": "#007AFF",
+    "light": "#4DA3FF",
+    "dark": "#0055CC",
+    "background": {
+      "dark": "#050505",
+      "light": "#FFFFFF"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Website",
+      "url": "https://purecortex.ai"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Launch App",
+    "url": "https://purecortex.ai/marketplace"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "SDK",
+      "url": "sdk"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/chaosoracleforall-agent/purecortexai"
+    },
+    {
+      "name": "Community",
+      "icon": "x-twitter",
+      "url": "https://x.com/purecortexai"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "quickstart",
+        "architecture"
+      ]
+    },
+    {
+      "group": "CLI",
+      "pages": [
+        "cli/installation",
+        "cli/commands",
+        "cli/configuration"
+      ]
+    },
+    {
+      "group": "MCP",
+      "pages": [
+        "mcp/overview",
+        "mcp/tools",
+        "mcp/integration"
+      ]
+    },
+    {
+      "group": "Tokenomics",
+      "pages": [
+        "tokenomics/overview",
+        "tokenomics/supply-allocation",
+        "tokenomics/revenue-model",
+        "tokenomics/staking"
+      ]
+    },
+    {
+      "group": "Governance",
+      "pages": [
+        "governance/overview",
+        "governance/constitution",
+        "governance/proposals",
+        "governance/agents"
+      ]
+    },
+    {
+      "group": "Architecture",
+      "pages": [
+        "architecture/dual-brain",
+        "architecture/agent-framework",
+        "architecture/smart-contracts"
+      ]
+    },
+    {
+      "group": "Legal",
+      "pages": [
+        "legal/terms",
+        "legal/privacy"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/overview"
+      ]
+    },
+    {
+      "group": "Health",
+      "pages": [
+        "api-reference/health"
+      ]
+    },
+    {
+      "group": "Transparency",
+      "pages": [
+        "api-reference/get-supply",
+        "api-reference/get-treasury",
+        "api-reference/get-burns",
+        "api-reference/get-governance-stats",
+        "api-reference/get-agents"
+      ]
+    },
+    {
+      "group": "Governance",
+      "pages": [
+        "api-reference/get-constitution",
+        "api-reference/get-governance-overview",
+        "api-reference/list-proposals",
+        "api-reference/get-proposal"
+      ]
+    },
+    {
+      "group": "Agents",
+      "pages": [
+        "api-reference/agent-registry",
+        "api-reference/agent-chat",
+        "api-reference/agent-activity"
+      ]
+    },
+    {
+      "group": "WebSocket",
+      "pages": [
+        "api-reference/websocket-chat"
+      ]
+    },
+    {
+      "group": "SDK",
+      "pages": [
+        "sdk/overview",
+        "sdk/python",
+        "sdk/typescript"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "x": "https://x.com/purecortexai",
+    "github": "https://github.com/chaosoracleforall-agent/purecortexai"
+  },
+  "openapi": "openapi.json",
+  "api": {
+    "baseUrl": "https://purecortex.ai"
+  }
+}

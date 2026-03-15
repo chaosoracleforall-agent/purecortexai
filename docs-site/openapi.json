@@ -1,0 +1,1216 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PureCortex API Gateway",
+    "version": "0.7.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "description": "Basic health check for load balancers and monitoring.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transparency/supply": {
+      "get": {
+        "tags": [
+          "transparency"
+        ],
+        "summary": "Get Supply",
+        "description": "CORTEX token supply breakdown with vesting schedule.",
+        "operationId": "get_supply_api_transparency_supply_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transparency/treasury": {
+      "get": {
+        "tags": [
+          "transparency"
+        ],
+        "summary": "Get Treasury",
+        "description": "Treasury wallet balances and revenue split.",
+        "operationId": "get_treasury_api_transparency_treasury_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreasuryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transparency/burns": {
+      "get": {
+        "tags": [
+          "transparency"
+        ],
+        "summary": "Get Burns",
+        "description": "Burn history and total burned CORTEX.",
+        "operationId": "get_burns_api_transparency_burns_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BurnsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transparency/governance": {
+      "get": {
+        "tags": [
+          "transparency"
+        ],
+        "summary": "Get Governance Transparency",
+        "description": "Governance overview \u2014 proposals, participation, and veCORTEX totals.",
+        "operationId": "get_governance_transparency_api_transparency_governance_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GovernanceTransparencyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transparency/agents": {
+      "get": {
+        "tags": [
+          "transparency"
+        ],
+        "summary": "Get Agents",
+        "description": "Query live agent data from the Algorand indexer via the factory app.",
+        "operationId": "get_agents_api_transparency_agents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/constitution": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Get Constitution",
+        "description": "Returns the full PureCortex Constitution.\nThe Preamble is immutable; the Articles are amendable via governance.",
+        "operationId": "get_constitution_api_governance_constitution_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConstitutionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/overview": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Get Governance Overview",
+        "description": "High-level governance stats (proposals, participation, veCORTEX).",
+        "operationId": "get_governance_overview_api_governance_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GovernanceOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/proposals": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "List Proposals",
+        "description": "List all governance proposals.",
+        "operationId": "list_proposals_api_governance_proposals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalsListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/proposals/{proposal_id}": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Get Proposal",
+        "description": "Get a single proposal by ID.",
+        "operationId": "get_proposal_api_governance_proposals__proposal_id__get",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/registry": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Agent Registry",
+        "description": "List all protocol AI agents with their roles, addresses, and status.",
+        "operationId": "get_agent_registry_api_agents_registry_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRegistryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/{agent_name}/chat": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Chat With Agent",
+        "description": "Chat with a specific protocol agent.\nCurrently returns a placeholder response. Post-TGE, this will route\nthrough the Dual-Brain Orchestrator with agent-specific system prompts.",
+        "operationId": "chat_with_agent_api_agents__agent_name__chat_post",
+        "parameters": [
+          {
+            "name": "agent_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/{agent_name}/activity": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Agent Activity",
+        "description": "Get an agent's recent on-chain and off-chain activity.",
+        "operationId": "get_agent_activity_api_agents__agent_name__activity_get",
+        "parameters": [
+          {
+            "name": "agent_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActivityRecord": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "txn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txn Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "detail",
+          "timestamp"
+        ],
+        "title": "ActivityRecord"
+      },
+      "ActivityResponse": {
+        "properties": {
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "total_actions": {
+            "type": "integer",
+            "title": "Total Actions"
+          },
+          "recent_activity": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityRecord"
+            },
+            "type": "array",
+            "title": "Recent Activity"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent",
+          "total_actions",
+          "recent_activity"
+        ],
+        "title": "ActivityResponse"
+      },
+      "AgentInfo": {
+        "properties": {
+          "asset_id": {
+            "type": "integer",
+            "title": "Asset Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "unit_name": {
+            "type": "string",
+            "title": "Unit Name"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "decimals": {
+            "type": "integer",
+            "title": "Decimals"
+          },
+          "creator_txn": {
+            "type": "string",
+            "title": "Creator Txn"
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_id",
+          "name",
+          "unit_name",
+          "total",
+          "decimals",
+          "creator_txn"
+        ],
+        "title": "AgentInfo"
+      },
+      "AgentRecord": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/AgentRole"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "algorand_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Algorand Address"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgentStatus"
+          },
+          "permission_tier": {
+            "type": "integer",
+            "title": "Permission Tier"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "role",
+          "description",
+          "status",
+          "permission_tier",
+          "capabilities",
+          "created_at"
+        ],
+        "title": "AgentRecord"
+      },
+      "AgentRegistryResponse": {
+        "properties": {
+          "total_agents": {
+            "type": "integer",
+            "title": "Total Agents"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRecord"
+            },
+            "type": "array",
+            "title": "Agents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_agents",
+          "agents"
+        ],
+        "title": "AgentRegistryResponse"
+      },
+      "AgentRole": {
+        "type": "string",
+        "enum": [
+          "senator",
+          "curator",
+          "social"
+        ],
+        "title": "AgentRole"
+      },
+      "AgentStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "standby",
+          "offline",
+          "pre_launch"
+        ],
+        "title": "AgentStatus"
+      },
+      "AgentsResponse": {
+        "properties": {
+          "factory_app_id": {
+            "type": "integer",
+            "title": "Factory App Id"
+          },
+          "total_agents": {
+            "type": "integer",
+            "title": "Total Agents"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentInfo"
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "factory_app_id",
+          "total_agents",
+          "agents"
+        ],
+        "title": "AgentsResponse"
+      },
+      "AllocationItem": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "pct": {
+            "type": "integer",
+            "title": "Pct"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "pct",
+          "amount"
+        ],
+        "title": "AllocationItem"
+      },
+      "BurnRecord": {
+        "properties": {
+          "txn_id": {
+            "type": "string",
+            "title": "Txn Id"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "round": {
+            "type": "integer",
+            "title": "Round"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "txn_id",
+          "amount",
+          "round",
+          "timestamp"
+        ],
+        "title": "BurnRecord"
+      },
+      "BurnsResponse": {
+        "properties": {
+          "total_burned": {
+            "type": "integer",
+            "title": "Total Burned"
+          },
+          "burn_history": {
+            "items": {
+              "$ref": "#/components/schemas/BurnRecord"
+            },
+            "type": "array",
+            "title": "Burn History"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_burned",
+          "burn_history"
+        ],
+        "title": "BurnsResponse"
+      },
+      "ChatMessage": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "ChatMessage"
+      },
+      "ChatResponse": {
+        "properties": {
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "response": {
+            "type": "string",
+            "title": "Response"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent",
+          "response",
+          "timestamp"
+        ],
+        "title": "ChatResponse"
+      },
+      "ConstitutionResponse": {
+        "properties": {
+          "preamble": {
+            "type": "string",
+            "title": "Preamble"
+          },
+          "articles": {
+            "type": "string",
+            "title": "Articles"
+          },
+          "preamble_status": {
+            "type": "string",
+            "title": "Preamble Status",
+            "default": "IMMUTABLE"
+          },
+          "articles_status": {
+            "type": "string",
+            "title": "Articles Status",
+            "default": "AMENDABLE"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preamble",
+          "articles"
+        ],
+        "title": "ConstitutionResponse"
+      },
+      "GovernanceOverview": {
+        "properties": {
+          "total_proposals": {
+            "type": "integer",
+            "title": "Total Proposals"
+          },
+          "active_proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalSummary"
+            },
+            "type": "array",
+            "title": "Active Proposals"
+          },
+          "participation_rate": {
+            "type": "number",
+            "title": "Participation Rate"
+          },
+          "total_vecortex": {
+            "type": "integer",
+            "title": "Total Vecortex"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_proposals",
+          "active_proposals",
+          "participation_rate",
+          "total_vecortex"
+        ],
+        "title": "GovernanceOverview"
+      },
+      "GovernanceTransparencyResponse": {
+        "properties": {
+          "total_proposals": {
+            "type": "integer",
+            "title": "Total Proposals"
+          },
+          "active_proposals": {
+            "items": {},
+            "type": "array",
+            "title": "Active Proposals"
+          },
+          "participation_rate": {
+            "type": "number",
+            "title": "Participation Rate"
+          },
+          "total_vecortex": {
+            "type": "integer",
+            "title": "Total Vecortex"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_proposals",
+          "active_proposals",
+          "participation_rate",
+          "total_vecortex"
+        ],
+        "title": "GovernanceTransparencyResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ProposalDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProposalStatus"
+          },
+          "proposer": {
+            "type": "string",
+            "title": "Proposer"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "voting_ends": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voting Ends"
+          },
+          "votes_for": {
+            "type": "integer",
+            "title": "Votes For",
+            "default": 0
+          },
+          "votes_against": {
+            "type": "integer",
+            "title": "Votes Against",
+            "default": 0
+          },
+          "quorum_reached": {
+            "type": "boolean",
+            "title": "Quorum Reached",
+            "default": false
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          },
+          "affected_articles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affected Articles",
+            "default": []
+          },
+          "amendment_text": {
+            "type": "string",
+            "title": "Amendment Text",
+            "default": ""
+          },
+          "risk_analysis": {
+            "type": "string",
+            "title": "Risk Analysis",
+            "default": ""
+          },
+          "discussion_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discussion Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "proposer",
+          "created_at"
+        ],
+        "title": "ProposalDetail"
+      },
+      "ProposalStatus": {
+        "type": "string",
+        "enum": [
+          "discussion",
+          "voting",
+          "passed",
+          "rejected",
+          "executed",
+          "cancelled"
+        ],
+        "title": "ProposalStatus"
+      },
+      "ProposalSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProposalStatus"
+          },
+          "proposer": {
+            "type": "string",
+            "title": "Proposer"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "voting_ends": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voting Ends"
+          },
+          "votes_for": {
+            "type": "integer",
+            "title": "Votes For",
+            "default": 0
+          },
+          "votes_against": {
+            "type": "integer",
+            "title": "Votes Against",
+            "default": 0
+          },
+          "quorum_reached": {
+            "type": "boolean",
+            "title": "Quorum Reached",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "proposer",
+          "created_at"
+        ],
+        "title": "ProposalSummary"
+      },
+      "ProposalsListResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalSummary"
+            },
+            "type": "array",
+            "title": "Proposals"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "proposals"
+        ],
+        "title": "ProposalsListResponse"
+      },
+      "SupplyResponse": {
+        "properties": {
+          "total_supply": {
+            "type": "integer",
+            "title": "Total Supply"
+          },
+          "circulating": {
+            "type": "integer",
+            "title": "Circulating"
+          },
+          "burned": {
+            "type": "integer",
+            "title": "Burned"
+          },
+          "vesting": {
+            "$ref": "#/components/schemas/VestingInfo"
+          },
+          "allocation": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationItem"
+            },
+            "type": "array",
+            "title": "Allocation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_supply",
+          "circulating",
+          "burned",
+          "vesting",
+          "allocation"
+        ],
+        "title": "SupplyResponse"
+      },
+      "TreasuryResponse": {
+        "properties": {
+          "assistance_fund": {
+            "$ref": "#/components/schemas/WalletInfo"
+          },
+          "operations": {
+            "$ref": "#/components/schemas/WalletInfo"
+          },
+          "total_revenue_collected": {
+            "type": "integer",
+            "title": "Total Revenue Collected"
+          },
+          "revenue_split": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Revenue Split"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assistance_fund",
+          "operations",
+          "total_revenue_collected",
+          "revenue_split"
+        ],
+        "title": "TreasuryResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VestingInfo": {
+        "properties": {
+          "released": {
+            "type": "integer",
+            "title": "Released"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          },
+          "pct_released": {
+            "type": "number",
+            "title": "Pct Released"
+          },
+          "tge_date": {
+            "type": "string",
+            "title": "Tge Date",
+            "default": "2026-03-31T00:00:00+00:00"
+          },
+          "vest_days": {
+            "type": "integer",
+            "title": "Vest Days",
+            "default": 180
+          }
+        },
+        "type": "object",
+        "required": [
+          "released",
+          "remaining",
+          "pct_released"
+        ],
+        "title": "VestingInfo"
+      },
+      "WalletInfo": {
+        "properties": {
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "balance_algo": {
+            "type": "number",
+            "title": "Balance Algo"
+          },
+          "balance_cortex": {
+            "type": "integer",
+            "title": "Balance Cortex"
+          }
+        },
+        "type": "object",
+        "required": [
+          "address",
+          "balance_algo",
+          "balance_cortex"
+        ],
+        "title": "WalletInfo"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://purecortex.ai",
+      "description": "Production"
+    }
+  ]
+}

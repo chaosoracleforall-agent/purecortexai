@@ -1,0 +1,85 @@
+---
+title: "Get Supply"
+api: "GET /api/transparency/supply"
+description: "Retrieve CORTEX token supply breakdown, vesting schedule, and allocation details."
+---
+
+Returns the full token supply breakdown including total supply, circulating supply, burn totals, vesting progress, and allocation percentages.
+
+<ResponseField name="total_supply" type="number" required>
+  Total token supply (10,000,000,000,000,000 — 10 quadrillion).
+</ResponseField>
+
+<ResponseField name="circulating" type="number" required>
+  Current circulating supply after burns and vesting locks.
+</ResponseField>
+
+<ResponseField name="burned" type="number" required>
+  Total tokens burned to date.
+</ResponseField>
+
+<ResponseField name="vesting" type="object" required>
+  Vesting schedule details.
+  <Expandable title="vesting properties">
+    <ResponseField name="released" type="number" required>
+      Number of tokens released from vesting so far.
+    </ResponseField>
+    <ResponseField name="remaining" type="number" required>
+      Number of tokens still locked in vesting.
+    </ResponseField>
+    <ResponseField name="pct_released" type="number" required>
+      Percentage of vesting completed (0-100).
+    </ResponseField>
+    <ResponseField name="tge_date" type="string" required>
+      Token Generation Event date in ISO 8601 format.
+    </ResponseField>
+    <ResponseField name="vest_days" type="integer" required>
+      Total vesting duration in days.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="allocation" type="array" required>
+  Token allocation breakdown by category.
+  <Expandable title="allocation item properties">
+    <ResponseField name="label" type="string" required>
+      Allocation category name (e.g., `"Community"`, `"Team"`, `"Treasury"`).
+    </ResponseField>
+    <ResponseField name="pct" type="number" required>
+      Percentage of total supply allocated to this category.
+    </ResponseField>
+    <ResponseField name="amount" type="number" required>
+      Absolute token amount allocated.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl https://purecortex.ai/api/transparency/supply
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "total_supply": 10000000000000000,
+  "circulating": 3500000000000000,
+  "burned": 120000000000000,
+  "vesting": {
+    "released": 1500000000000000,
+    "remaining": 5000000000000000,
+    "pct_released": 23.08,
+    "tge_date": "2026-01-15T00:00:00Z",
+    "vest_days": 730
+  },
+  "allocation": [
+    { "label": "Community", "pct": 40, "amount": 4000000000000000 },
+    { "label": "Team", "pct": 15, "amount": 1500000000000000 },
+    { "label": "Treasury", "pct": 20, "amount": 2000000000000000 },
+    { "label": "Liquidity", "pct": 10, "amount": 1000000000000000 },
+    { "label": "Ecosystem Fund", "pct": 15, "amount": 1500000000000000 }
+  ]
+}
+```
+</ResponseExample>

@@ -1,0 +1,238 @@
+---
+title: "Proposals"
+description: "How to create, discuss, vote on, and execute governance proposals in PureCortex — types, lifecycle, quorum, thresholds, and timelock mechanics."
+icon: "file-lines"
+---
+
+# Proposals
+
+Governance proposals are the mechanism through which the PureCortex community makes decisions. Any veCORTEX holder meeting the submission threshold can propose changes — from parameter adjustments to constitutional amendments. Every proposal follows a structured lifecycle with mandatory stages, ensuring thorough deliberation before any change takes effect.
+
+## Proposal Types
+
+<Tabs>
+  <Tab title="Standard Proposals">
+    Standard proposals cover the majority of governance actions:
+
+    - **Parameter Changes** — Adjusting fee rates, emission parameters, staking multipliers, or other protocol configuration values
+    - **Treasury Spending** — Authorizing disbursements from the Assistance Fund or Agent Incentives pool for grants, partnerships, or operational needs
+    - **Agent Management** — Approving new governance agents, modifying agent parameters, or suspending misbehaving agents
+    - **Protocol Upgrades** — Smart contract upgrades, new feature deployments, or integration approvals
+    - **Community Initiatives** — Marketing campaigns, partnership agreements, ecosystem grants, and other community-driven actions
+
+    | Parameter | Value |
+    |:---|:---|
+    | **Approval Threshold** | 67% supermajority |
+    | **Quorum** | 25% of total veCORTEX |
+    | **Discussion Period** | 48 hours |
+    | **Voting Period** | 5 days |
+    | **Timelock** | 7 days |
+  </Tab>
+  <Tab title="Constitutional Amendments">
+    Constitutional amendments modify the Articles of the PureCortex Constitution. They follow a stricter process due to their fundamental impact on the protocol.
+
+    - Only Articles I-VII can be amended — the Preamble is immutable
+    - Mandatory Curator AI pre-review before discussion begins
+    - Must specify exact text changes (current vs. proposed)
+
+    | Parameter | Value |
+    |:---|:---|
+    | **Approval Threshold** | 67% supermajority |
+    | **Quorum** | 25% of total veCORTEX |
+    | **Discussion Period** | 48 hours |
+    | **Voting Period** | 5 days |
+    | **Timelock** | 7 days |
+
+    See [The Constitution](/governance/constitution) for the full amendment process.
+  </Tab>
+  <Tab title="Emergency Proposals">
+    Emergency proposals are reserved for time-sensitive situations that cannot wait for the standard timeline — security vulnerabilities, critical bugs, or active exploits.
+
+    - Must include justification for emergency classification
+    - Shortened timelines but same approval thresholds
+    - Post-execution review required within 30 days
+
+    | Parameter | Value |
+    |:---|:---|
+    | **Approval Threshold** | 67% supermajority |
+    | **Quorum** | 25% of total veCORTEX |
+    | **Discussion Period** | 24 hours |
+    | **Voting Period** | 3 days |
+    | **Timelock** | 24 hours |
+
+    <Warning>
+      Emergency proposals carry the same 67% supermajority and 25% quorum requirements as standard proposals. The only difference is compressed timelines. There is no mechanism to bypass community approval regardless of urgency.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## How to Create a Proposal
+
+<Note>
+  Proposal creation is available **post-TGE** (after March 31, 2026). Before TGE, governance operates in a bootstrap mode where the founding team implements community feedback directly. Full on-chain governance activates at TGE.
+</Note>
+
+<Steps>
+  <Step title="Acquire veCORTEX">
+    You need veCORTEX to submit a proposal. Lock $CORTEX tokens through the [staking mechanism](/tokenomics/staking) to receive veCORTEX. A minimum veCORTEX balance is required to submit proposals — this prevents spam while remaining accessible to committed participants.
+  </Step>
+  <Step title="Draft Your Proposal">
+    A complete proposal includes:
+
+    - **Title** — Clear, concise summary (under 100 characters)
+    - **Description** — Detailed explanation of what is being proposed
+    - **Rationale** — Why this change is needed, supported by data or analysis
+    - **Specification** — Exact implementation details (parameter values, code changes, spending amounts)
+    - **Risk Assessment** — Potential risks, mitigations, and rollback plans
+    - **Timeline** — Expected implementation and milestone dates
+  </Step>
+  <Step title="Submit On-Chain">
+    Submit your proposal through the governance interface, CLI, or directly to the governance smart contract. The submission transaction records the proposal on-chain and initiates the discussion period.
+
+    ```bash
+    # Via CLI
+    purecortex governance propose \
+      --title "Adjust trading fee range to 0.3-1.5%" \
+      --description "proposal_description.md" \
+      --type standard
+    ```
+
+    ```python
+    # Via Python SDK
+    from purecortex import PureCortexClient
+
+    client = PureCortexClient()
+    proposal = client.governance.create_proposal(
+        title="Adjust trading fee range to 0.3-1.5%",
+        description="Full proposal text...",
+        proposal_type="standard"
+    )
+    ```
+  </Step>
+  <Step title="Engage During Discussion">
+    Once submitted, the 48-hour discussion period begins. Actively engage with community feedback, answer questions, and consider amendments. You can modify your proposal during the discussion period but not after voting begins.
+  </Step>
+</Steps>
+
+## Voting Mechanics
+
+### How Voting Works
+
+Voting is weighted by veCORTEX balance at the **snapshot block** — a specific block height recorded when the voting period begins. This prevents vote manipulation through last-minute token acquisitions.
+
+<AccordionGroup>
+  <Accordion title="Vote Options">
+    Each veCORTEX holder (or their delegated Lawmaker) can cast one of three votes:
+
+    - **For** — Support the proposal
+    - **Against** — Oppose the proposal
+    - **Abstain** — Count toward quorum but not toward the approval/rejection ratio
+
+    Abstain votes are important: they help reach quorum without forcing a binary choice on participants who acknowledge the issue but have no strong preference.
+  </Accordion>
+  <Accordion title="veCORTEX Weighting">
+    Your vote weight equals your veCORTEX balance at the snapshot block. This means:
+
+    - Longer lock periods give more weight (through higher veCORTEX balances)
+    - Recently expired locks contribute zero weight
+    - veCORTEX decay applies — a 4-year lock that is 3 years old has 25% of its original weight
+
+    This naturally gives the most influence to participants with the longest remaining commitment to the protocol.
+  </Accordion>
+  <Accordion title="Delegation and Override">
+    If you have delegated to a Lawmaker, the Lawmaker casts your votes automatically. However:
+
+    - You can cast a **direct vote** at any time during the voting period
+    - Your direct vote **replaces** the Lawmaker's vote for that specific proposal
+    - You do not need to revoke delegation to override — just vote directly
+    - After the vote, delegation remains active for future proposals
+  </Accordion>
+  <Accordion title="Snapshot Mechanics">
+    The snapshot block is determined at the moment voting opens (after the discussion period ends). This means:
+
+    - Tokens locked after the snapshot do not count
+    - Tokens unlocked after the snapshot still count (based on snapshot state)
+    - Delegation state at snapshot determines initial vote routing
+    - Direct votes override delegation regardless of snapshot state
+  </Accordion>
+</AccordionGroup>
+
+### Quorum and Thresholds
+
+For a proposal to pass, it must meet **both** conditions:
+
+1. **Quorum:** At least 25% of total outstanding veCORTEX must participate (For + Against + Abstain)
+2. **Supermajority:** At least 67% of non-abstain votes must be For
+
+```
+quorum_met       = (for + against + abstain) >= 0.25 * total_veCORTEX
+approval_met     = for / (for + against) >= 0.67
+proposal_passed  = quorum_met AND approval_met
+```
+
+<Info>
+  If quorum is not met, the proposal fails regardless of the approval ratio. If quorum is met but the supermajority threshold is not reached, the proposal also fails. Both conditions must be satisfied simultaneously.
+</Info>
+
+## Timelock and Execution
+
+### Standard Timelock (7 days)
+
+After a proposal passes, it enters a 7-day timelock before execution. During this period:
+
+- The **Curator AI** completes its constitutional compliance review
+- The community has a final opportunity to review the outcome
+- If a critical issue is discovered, an emergency counter-proposal can be submitted
+- The timelock cannot be shortened for standard proposals
+
+### Emergency Timelock (24 hours)
+
+Emergency proposals have a compressed 24-hour timelock. This is the minimum possible delay — designed to be short enough for urgent situations but long enough to catch catastrophic errors.
+
+### Execution
+
+<Steps>
+  <Step title="Timelock Expires">
+    The governance contract's timelock period elapses. The proposal enters the "ready for execution" state.
+  </Step>
+  <Step title="Execution Trigger">
+    Anyone can trigger execution by calling the `execute` function on the governance contract with the proposal ID. There is no special permission required — execution is permissionless once the timelock expires.
+  </Step>
+  <Step title="On-Chain Execution">
+    For smart contract changes (parameter updates, upgrades, treasury disbursements), the governance contract executes the encoded transaction(s) automatically. The execution is atomic — all changes succeed or all revert.
+  </Step>
+  <Step title="Execution Window">
+    Proposals have a defined execution window (typically 14 days after timelock expiry). If not executed within this window, the proposal expires and must be resubmitted. This prevents stale proposals from being executed months later in a different context.
+  </Step>
+</Steps>
+
+## Proposal States
+
+A proposal moves through the following states:
+
+| State | Description | Duration |
+|:---|:---|:---|
+| **Draft** | Submitted but discussion period not started | Until next block |
+| **Discussion** | Open for community feedback and amendment | 48 hours (24h emergency) |
+| **Active** | Voting is open | 5 days (3 days emergency) |
+| **Passed** | Met quorum and supermajority | — |
+| **Failed** | Did not meet quorum or supermajority | Terminal |
+| **Timelocked** | Passed, waiting for timelock expiry | 7 days (24h emergency) |
+| **Ready** | Timelock expired, awaiting execution | Up to 14 days |
+| **Executed** | Successfully executed on-chain | Terminal |
+| **Expired** | Not executed within the execution window | Terminal |
+| **Vetoed** | Blocked by Curator for Preamble violation | Terminal |
+
+## Accessing Proposals
+
+<CardGroup cols={3}>
+  <Card title="Web Interface" icon="globe">
+    Browse, search, and vote on proposals through the PureCortex governance dashboard at [purecortex.ai/governance](https://purecortex.ai/governance).
+  </Card>
+  <Card title="API" icon="code">
+    List and query proposals programmatically. See [`GET /api/governance/proposals`](/api-reference/list-proposals) and [`GET /api/governance/proposals/:id`](/api-reference/get-proposal).
+  </Card>
+  <Card title="CLI" icon="terminal">
+    `purecortex governance list` shows active proposals. `purecortex governance vote --proposal <id> --vote for` casts a vote.
+  </Card>
+</CardGroup>

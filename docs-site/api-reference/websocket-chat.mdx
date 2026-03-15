@@ -1,0 +1,97 @@
+---
+title: "WebSocket Chat"
+description: "Bidirectional WebSocket connection for real-time AI agent chat using Dual-Brain consensus."
+---
+
+Connect to the PureCortex WebSocket endpoint for real-time, streaming conversations with the AI agent system. Messages are processed through the **Dual-Brain consensus** mechanism, where two independent AI models evaluate your query and converge on a response.
+
+## Endpoint
+
+```
+wss://purecortex.ai/ws/chat
+```
+
+## Connection Details
+
+| Parameter           | Value           |
+|---------------------|-----------------|
+| Protocol            | WebSocket (WSS) |
+| Max message size    | 4096 characters |
+| Rate limit          | 10 msg/min      |
+| Message format      | Plain text       |
+
+## Message Flow
+
+1. **Client** connects to `wss://purecortex.ai/ws/chat`
+2. **Server** sends a welcome message confirming the connection
+3. **Client** sends a text message (max 4096 characters)
+4. **Server** responds with the Dual-Brain consensus result as a text message
+5. Repeat steps 3-4 for continued conversation
+
+## JavaScript Example
+
+```javascript
+const ws = new WebSocket("wss://purecortex.ai/ws/chat");
+
+ws.onopen = () => {
+  console.log("Connected to PureCortex");
+  ws.send("What is the current CORTEX burn rate?");
+};
+
+ws.onmessage = (event) => {
+  console.log("Response:", event.data);
+};
+
+ws.onerror = (error) => {
+  console.error("WebSocket error:", error);
+};
+
+ws.onclose = (event) => {
+  console.log("Disconnected:", event.code, event.reason);
+};
+```
+
+## Python Example
+
+```python
+import asyncio
+import websockets
+
+async def chat():
+    uri = "wss://purecortex.ai/ws/chat"
+    async with websockets.connect(uri) as ws:
+        # Send a message
+        await ws.send("What is the current CORTEX burn rate?")
+
+        # Receive the response
+        response = await ws.recv()
+        print(f"Response: {response}")
+
+        # Continue the conversation
+        await ws.send("How does the Dual-Brain consensus work?")
+        response = await ws.recv()
+        print(f"Response: {response}")
+
+asyncio.run(chat())
+```
+
+## Error Handling
+
+The server may close the connection with the following close codes:
+
+| Code   | Reason                                      |
+|--------|---------------------------------------------|
+| `1000` | Normal closure                               |
+| `1008` | Policy violation (message too long)          |
+| `1011` | Internal server error                        |
+| `1013` | Rate limit exceeded — try again later        |
+
+When a rate limit is hit, the server sends a text message with the error before closing:
+
+```json
+{
+  "error": "rate_limit_exceeded",
+  "detail": "Maximum 10 messages per minute. Try again in 12 seconds.",
+  "retry_after": 12
+}
+```

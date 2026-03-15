@@ -1,0 +1,81 @@
+---
+title: "Get Treasury"
+api: "GET /api/transparency/treasury"
+description: "Retrieve treasury wallet balances, revenue collected, and revenue split configuration."
+---
+
+Returns treasury wallet addresses and balances, total revenue collected, and the revenue split between buyback-and-burn and operations.
+
+<ResponseField name="assistance_fund" type="object" required>
+  Assistance fund wallet details.
+  <Expandable title="assistance_fund properties">
+    <ResponseField name="address" type="string" required>
+      Algorand wallet address for the assistance fund.
+    </ResponseField>
+    <ResponseField name="balance_algo" type="number" required>
+      ALGO balance in the assistance fund wallet.
+    </ResponseField>
+    <ResponseField name="balance_cortex" type="number" required>
+      CORTEX token balance in the assistance fund wallet.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="operations" type="object" required>
+  Operations wallet details.
+  <Expandable title="operations properties">
+    <ResponseField name="address" type="string" required>
+      Algorand wallet address for the operations fund.
+    </ResponseField>
+    <ResponseField name="balance_algo" type="number" required>
+      ALGO balance in the operations wallet.
+    </ResponseField>
+    <ResponseField name="balance_cortex" type="number" required>
+      CORTEX token balance in the operations wallet.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total_revenue_collected" type="number" required>
+  Total revenue collected across all sources (in CORTEX).
+</ResponseField>
+
+<ResponseField name="revenue_split" type="object" required>
+  Revenue split configuration.
+  <Expandable title="revenue_split properties">
+    <ResponseField name="buyback_burn_pct" type="number" required>
+      Percentage of revenue allocated to buyback and burn. Default: `90`.
+    </ResponseField>
+    <ResponseField name="operations_pct" type="number" required>
+      Percentage of revenue allocated to operations. Default: `10`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl https://purecortex.ai/api/transparency/treasury
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "assistance_fund": {
+    "address": "ASST...WXYZ",
+    "balance_algo": 15230.45,
+    "balance_cortex": 500000000000
+  },
+  "operations": {
+    "address": "OPS1...ABCD",
+    "balance_algo": 8420.12,
+    "balance_cortex": 250000000000
+  },
+  "total_revenue_collected": 1800000000000,
+  "revenue_split": {
+    "buyback_burn_pct": 90,
+    "operations_pct": 10
+  }
+}
+```
+</ResponseExample>

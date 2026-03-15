@@ -1,0 +1,210 @@
+---
+title: "Revenue Model"
+description: "How PureCortex generates revenue, the 90/10 buyback-burn split, fee structures, and the SovereignTreasury smart contract."
+icon: "money-bill-trend-up"
+---
+
+# Revenue Model
+
+PureCortex operates a transparent, on-chain revenue model where **90% of all protocol revenue** is used to buy back and burn $CORTEX tokens, permanently reducing circulating supply. The remaining 10% covers operational costs. There are no hidden fees, off-chain revenue captures, or discretionary treasury spending.
+
+## The 90/10 Split
+
+<CardGroup cols={2}>
+  <Card title="90% — Buyback & Burn" icon="fire">
+    Ninety percent of every revenue dollar flows into the Assistance Fund smart contract, which executes programmatic market buys of $CORTEX and sends the purchased tokens to the burn address. This is automated, verifiable, and irreversible.
+  </Card>
+  <Card title="10% — Operations" icon="gear">
+    Ten percent covers infrastructure (Algorand node costs, compute, storage), security audits, legal compliance, and essential operational overhead. This is the minimum required to keep the protocol running.
+  </Card>
+</CardGroup>
+
+<Note>
+  The 90/10 split is enforced at the smart contract level by the SovereignTreasury. Revenue enters the contract and is automatically routed — 90% to the buyback-burn module, 10% to the operations multisig. No individual can alter this ratio without a governance vote.
+</Note>
+
+## Revenue Sources
+
+PureCortex generates revenue from four primary sources, each tied to real ecosystem activity:
+
+### Trading Fees
+
+| Parameter | Value |
+|:---|:---|
+| **Fee Range** | 0.5% - 2% (dynamic) |
+| **Fee Basis** | Per transaction value |
+| **Adjustment** | Algorithmic, based on market conditions and volume |
+
+Trading fees apply to agent-facilitated transactions within the PureCortex ecosystem. The dynamic fee model adjusts within the 0.5-2% range based on:
+
+- **Market volatility** — Higher volatility periods may see fees adjust upward to compensate for increased risk
+- **Transaction volume** — High-volume periods may see reduced per-transaction fees
+- **Asset type** — Different asset classes may carry different fee profiles
+
+### Agent Creation Fees
+
+| Parameter | Value |
+|:---|:---|
+| **Fee** | 100 CORTEX per agent |
+| **Payment** | One-time, at agent deployment |
+| **Destination** | 100% to Assistance Fund |
+
+Every new AI agent deployed on PureCortex requires a 100 CORTEX creation fee. This serves two purposes: it provides a modest sybil-resistance barrier against spam agent deployment, and it feeds directly into the buyback-burn cycle.
+
+### x402 Commissions
+
+| Parameter | Value |
+|:---|:---|
+| **Commission Rate** | 5% |
+| **Applies To** | All x402 protocol micropayments |
+| **Payment** | Automatic, deducted at settlement |
+
+The x402 protocol enables AI-to-AI micropayments — agents paying other agents for services, data, and compute. PureCortex takes a 5% commission on these transactions, capturing value from the machine-to-machine economy.
+
+### LP Fees
+
+| Parameter | Value |
+|:---|:---|
+| **Source** | Protocol-owned liquidity positions |
+| **Fee Model** | Standard DEX LP fee accrual |
+| **Destination** | Assistance Fund |
+
+PureCortex maintains protocol-owned liquidity in DEX pools. The trading fees earned by these LP positions are collected by the SovereignTreasury and routed through the standard 90/10 split.
+
+## How Buyback-Burn Works
+
+The buyback-burn mechanism is the core deflationary engine of $CORTEX. Here is exactly how it operates:
+
+<Steps>
+  <Step title="Revenue Collection">
+    Revenue from all sources (trading fees, agent creation, x402 commissions, LP fees) flows into the SovereignTreasury smart contract. Revenue accumulates in ALGO or USDC depending on the source.
+  </Step>
+  <Step title="90/10 Routing">
+    The SovereignTreasury automatically splits incoming revenue: 90% is earmarked for buyback-burn, 10% is routed to the operations address. This split is enforced at the contract level.
+  </Step>
+  <Step title="Market Buy Execution">
+    The buyback module executes market purchases of $CORTEX on Algorand DEXs. Purchases are executed in batches to minimize slippage, using time-weighted average pricing (TWAP) over configurable intervals.
+  </Step>
+  <Step title="Burn Execution">
+    Purchased $CORTEX tokens are sent to the Algorand burn address (a provably unspendable address with no known private key). Once burned, tokens are permanently and irrevocably removed from circulation.
+  </Step>
+  <Step title="On-Chain Verification">
+    Every buyback and burn transaction is recorded on-chain and surfaced through the PureCortex transparency API. Anyone can independently verify the total burned supply, burn history, and revenue flows at any time.
+  </Step>
+</Steps>
+
+<Info>
+  Burn data is available through the transparency API at `GET /api/transparency/burns`. See the [API Reference](/api-reference/get-burns) for details.
+</Info>
+
+## Revenue Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Revenue Sources                     │
+├──────────┬──────────┬──────────────┬────────────────┤
+│ Trading  │  Agent   │    x402      │   LP Fees      │
+│  Fees    │ Creation │ Commissions  │                │
+│ 0.5-2%   │ 100 CRX  │    5%        │  DEX accrual   │
+└────┬─────┴────┬─────┴──────┬───────┴───────┬────────┘
+     │          │            │               │
+     └──────────┴────────────┴───────────────┘
+                         │
+                         ▼
+              ┌─────────────────────┐
+              │  SovereignTreasury  │
+              │   Smart Contract    │
+              └──────────┬──────────┘
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+              ▼                     ▼
+     ┌────────────────┐   ┌────────────────┐
+     │  90% Buyback   │   │ 10% Operations │
+     │    & Burn      │   │                │
+     └───────┬────────┘   └────────────────┘
+             │
+             ▼
+     ┌────────────────┐
+     │  TWAP Market   │
+     │   Buy on DEX   │
+     └───────┬────────┘
+             │
+             ▼
+     ┌────────────────┐
+     │  Burn Address  │
+     │  (permanent)   │
+     └────────────────┘
+```
+
+## Tax Efficiency
+
+The buyback-burn model is intentionally structured as a **supply reduction mechanism** rather than a dividend distribution. This distinction matters for token holders:
+
+<Tabs>
+  <Tab title="Buyback-Burn (PureCortex)">
+    **How it works:** Revenue buys tokens off the market and destroys them. Your percentage ownership of the remaining supply increases, but you receive nothing directly.
+
+    **Tax implication:** In most jurisdictions, you realize no taxable event until you sell your tokens. The increased value per token due to reduced supply is treated as capital appreciation — typically taxed at **long-term capital gains rates** if held over one year.
+
+    **Effective rate:** 0-20% in the US (depending on income bracket and holding period).
+  </Tab>
+  <Tab title="Dividends (Traditional)">
+    **How it works:** Revenue is distributed directly to token holders as payments.
+
+    **Tax implication:** Each distribution is a taxable event in the period received, regardless of whether you sell. Treated as ordinary income in most jurisdictions.
+
+    **Effective rate:** 10-37% in the US (ordinary income rates).
+  </Tab>
+</Tabs>
+
+<Warning>
+  This is general information, not tax advice. Tax treatment of digital assets varies by jurisdiction and individual circumstances. Consult a qualified tax professional for guidance specific to your situation.
+</Warning>
+
+## SovereignTreasury Smart Contract
+
+The SovereignTreasury is the on-chain contract that enforces the revenue model. It is the single point through which all protocol revenue flows.
+
+### Key Functions
+
+| Function | Description |
+|:---|:---|
+| `receive_revenue()` | Accepts incoming revenue from any source |
+| `execute_buyback()` | Triggers TWAP market buy of $CORTEX |
+| `execute_burn()` | Sends purchased tokens to burn address |
+| `route_operations()` | Releases 10% operations allocation |
+| `get_total_burned()` | Returns cumulative burned token count |
+| `get_revenue_history()` | Returns historical revenue data |
+
+### Contract Properties
+
+<AccordionGroup>
+  <Accordion title="Immutable Split Ratio">
+    The 90/10 split is hardcoded in the contract. It cannot be changed by any single party. Modifying the ratio requires a governance proposal with 67% supermajority approval, 25% quorum, and a 7-day timelock — giving the community full visibility and veto power before any change takes effect.
+  </Accordion>
+  <Accordion title="Permissionless Verification">
+    All contract state is readable by anyone. Total revenue received, total burned, burn transaction history, and operations withdrawals are all public on-chain data. The transparency API surfaces this data in a human-readable format, but the raw on-chain data is the source of truth.
+  </Accordion>
+  <Accordion title="Automated Execution">
+    Buyback-burn cycles execute automatically when the contract balance exceeds a configurable threshold. No manual intervention is required. The TWAP parameters (batch size, interval, slippage tolerance) are set by governance and enforced by the contract.
+  </Accordion>
+  <Accordion title="Emergency Pause">
+    The contract includes a governance-controlled pause function for emergency situations (e.g., DEX exploit, oracle manipulation). Pausing requires a multisig threshold and automatically resumes after a maximum pause duration. Pausing halts buyback execution but continues to accept and hold revenue.
+  </Accordion>
+</AccordionGroup>
+
+## Revenue Projections
+
+Revenue scales directly with ecosystem activity. The key growth levers are:
+
+1. **Agent count** — More agents means more creation fees and more x402 transaction volume
+2. **Transaction volume** — Higher trading and micropayment volume drives fee revenue
+3. **Protocol-owned liquidity depth** — Deeper POL earns more LP fees
+4. **x402 adoption** — As AI-to-AI payments grow, the 5% commission captures increasing value
+
+Because 90% of all revenue is permanently burned, the deflationary pressure compounds over time. Each burn slightly increases the value of remaining tokens, which attracts more participants, which generates more revenue, which burns more tokens.
+
+<Info>
+  Live treasury and burn data is available at the [transparency dashboard](https://purecortex.ai/transparency) and through the API at [`GET /api/transparency/treasury`](/api-reference/get-treasury) and [`GET /api/transparency/burns`](/api-reference/get-burns).
+</Info>

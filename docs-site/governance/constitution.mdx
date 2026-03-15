@@ -1,0 +1,195 @@
+---
+title: "The Constitution"
+description: "The PureCortex Constitution — an immutable Preamble defining inviolable principles and seven amendable Articles governing protocol operations."
+icon: "scroll"
+---
+
+# The Constitution
+
+The PureCortex Constitution is the supreme governing document of the protocol. It establishes the foundational principles, governance structure, and operational rules that all participants — human and AI — must follow. No proposal, vote, or agent action can violate the Constitution.
+
+<Note>
+  The Constitution has two distinct components: an **immutable Preamble** that can never be changed, and **seven amendable Articles** that can be modified through the governance process. This dual structure ensures core principles endure while the protocol can adapt to changing circumstances.
+</Note>
+
+## The Preamble (Immutable)
+
+The Preamble defines the inviolable principles of PureCortex. These cannot be amended, overridden, or suspended by any governance action, regardless of vote margin or quorum. They are the constitutional bedrock.
+
+The Preamble establishes:
+
+<CardGroup cols={2}>
+  <Card title="Community Sovereignty" icon="crown">
+    The community of token holders is the ultimate authority over the protocol. No individual, team, corporation, or AI agent can claim authority above the collective will of veCORTEX holders.
+  </Card>
+  <Card title="Transparency" icon="eye">
+    All protocol operations, financial flows, governance decisions, and AI agent actions must be publicly verifiable. Secret governance is prohibited.
+  </Card>
+  <Card title="AI as Servant" icon="robot">
+    AI agents exist to serve the community, not to govern it. No AI agent may exercise autonomous authority over protocol resources, governance outcomes, or user funds without explicit community authorization.
+  </Card>
+  <Card title="Censorship Resistance" icon="shield">
+    No participant may be excluded from governance participation based on identity, geography, or opinion. Access to the protocol is permissionless.
+  </Card>
+</CardGroup>
+
+<Warning>
+  The Preamble is **cryptographically immutable**. Its hash is embedded in the governance smart contract at deployment. Any proposal that would violate a Preamble principle is automatically invalid — the Curator AI flags such proposals, and the governance contract rejects their execution even if they somehow pass a vote.
+</Warning>
+
+## Articles Overview
+
+The seven Articles cover the operational rules of PureCortex governance. Unlike the Preamble, Articles can be amended through the constitutional amendment process.
+
+### Article I — Governance Structure
+
+Defines the governance framework, including:
+
+- The role and powers of veCORTEX holders
+- The Senator AI's mandate and operational boundaries
+- The Lawmaker delegation system
+- The Curator AI's compliance review authority
+- Separation of powers between human voters and AI agents
+
+### Article II — Proposal Process
+
+Establishes the rules for governance proposals:
+
+- Proposal submission requirements and minimum veCORTEX thresholds
+- Mandatory discussion periods
+- Voting mechanics (duration, snapshot rules, vote types)
+- Quorum and approval thresholds
+- Timelock requirements before execution
+- Emergency proposal provisions
+
+### Article III — Treasury Management
+
+Governs all protocol financial operations:
+
+- The 90/10 revenue split (buyback-burn vs. operations)
+- SovereignTreasury smart contract authority
+- Spending authorization requirements
+- Audit and transparency obligations
+- Emergency fund provisions
+
+### Article IV — Agent Framework
+
+Regulates AI agents operating within PureCortex:
+
+- Agent creation and registration requirements
+- Agent behavioral constraints and safety rules
+- Agent Algorand account management
+- Revenue sharing for agent creators
+- Agent suspension and termination procedures
+
+### Article V — Token Economics
+
+Codifies the $CORTEX token model:
+
+- Total supply cap and anti-inflation guarantees
+- Staking and veCORTEX mechanics
+- Emission schedules and halving parameters
+- Burn mechanics and verification
+- Fee structures and adjustment authority
+
+### Article VI — Amendment Process
+
+Defines how the Constitution itself can be changed:
+
+- Amendment proposal requirements (stricter than standard proposals)
+- Supermajority and quorum thresholds
+- Mandatory Curator AI review
+- Extended timelock for constitutional changes
+- Explicit prohibition on amending the Preamble
+
+### Article VII — Dispute Resolution
+
+Establishes mechanisms for resolving governance disputes:
+
+- Dispute initiation and escalation procedures
+- Arbitration through community vote
+- Curator AI mediation role
+- Precedent documentation and reference
+- Emergency dispute resolution for time-sensitive issues
+
+## Amendment Process
+
+Constitutional amendments follow a more rigorous process than standard proposals, reflecting the gravity of changing the protocol's foundational rules.
+
+<Steps>
+  <Step title="Draft the Amendment">
+    A veCORTEX holder drafts a constitutional amendment proposal. The proposal must specify the exact Article and section being modified, the current text, the proposed new text, the rationale for the change, and an impact assessment. A higher minimum veCORTEX threshold is required to submit constitutional amendments compared to standard proposals.
+  </Step>
+  <Step title="Curator AI Pre-Review">
+    Before the discussion period begins, the Curator AI performs a mandatory pre-review. It checks the amendment against:
+    - **Preamble compliance** — Does the amendment violate any immutable principle?
+    - **Internal consistency** — Does it conflict with other Articles?
+    - **Governance integrity** — Does it create loopholes or unintended consequences?
+
+    The Curator publishes its review publicly. A Preamble violation results in automatic rejection.
+  </Step>
+  <Step title="Extended Discussion (48 hours)">
+    The amendment enters the standard 48-hour discussion period. Given the significance of constitutional changes, the Senator AI publishes a dedicated analysis with dual-brain consensus evaluation.
+  </Step>
+  <Step title="Voting (5 days)">
+    The amendment goes to a vote requiring **67% supermajority** approval with **25% quorum**. The same voting mechanics apply as standard proposals — veCORTEX weighted, delegation supported, direct override available.
+  </Step>
+  <Step title="Extended Timelock (7 days)">
+    Passed amendments enter a 7-day timelock. This extended window ensures maximum community visibility before a constitutional change takes effect.
+  </Step>
+  <Step title="Ratification and Execution">
+    After the timelock, the amendment is ratified and the Constitution is updated on-chain. The updated Constitution hash is recorded in the governance contract. Historical versions remain accessible for reference.
+  </Step>
+</Steps>
+
+<Info>
+  The Preamble cannot be amended under any circumstances. Article VI explicitly prohibits proposals that attempt to modify, suspend, or nullify Preamble provisions. The governance smart contract enforces this prohibition at the execution layer.
+</Info>
+
+## Constitutional Compliance (Curator AI)
+
+The Curator AI is the constitutional compliance engine of PureCortex. It reviews every governance action against the Constitution and flags violations.
+
+### What the Curator Does
+
+<AccordionGroup>
+  <Accordion title="Proposal Review">
+    Every proposal — standard or constitutional — is automatically reviewed by the Curator AI before voting begins. The Curator checks for Preamble violations, Article conflicts, and governance procedure compliance. Its review is published alongside the proposal for community consideration.
+  </Accordion>
+  <Accordion title="Risk Assessment">
+    The Curator evaluates the risk profile of each proposal, including potential attack vectors, unintended consequences, economic impacts, and precedent implications. Risk ratings (Low, Medium, High, Critical) are published with the review.
+  </Accordion>
+  <Accordion title="Execution Validation">
+    Before a passed proposal is executed on-chain, the Curator performs a final compliance check. If the proposal's implementation code differs from what was voted on, or if circumstances have changed that create a constitutional conflict, the Curator flags the issue. Execution can be paused for community review.
+  </Accordion>
+  <Accordion title="Precedent Tracking">
+    The Curator maintains a precedent database of past governance decisions, interpretations, and rulings. This provides consistency across governance cycles and helps the community understand how the Constitution has been applied historically.
+  </Accordion>
+</AccordionGroup>
+
+### What the Curator Cannot Do
+
+The Curator is a **reviewer, not a veto authority**:
+
+- It **cannot block** a proposal from going to vote (except for clear Preamble violations)
+- It **cannot override** a community vote
+- It **cannot modify** proposals
+- It **cannot vote** on proposals
+
+The Curator's power is limited to analysis, flagging, and temporary execution pause for review. Final authority always rests with veCORTEX holders.
+
+## Accessing the Constitution
+
+The full text of the PureCortex Constitution is available through multiple channels:
+
+<CardGroup cols={3}>
+  <Card title="API" icon="code">
+    `GET /api/governance/constitution` returns the full Constitution text, version, hash, and amendment history. See [API Reference](/api-reference/get-constitution).
+  </Card>
+  <Card title="On-Chain" icon="link">
+    The Constitution hash is stored in the governance smart contract. The full text is stored on IPFS with the hash serving as a verifiable pointer.
+  </Card>
+  <Card title="CLI" icon="terminal">
+    `purecortex governance constitution` displays the current Constitution with version info and amendment history.
+  </Card>
+</CardGroup>
