@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getDocBySlug, getAllDocSlugs } from '@/lib/docs';
 import type { Metadata } from 'next';
+import 'highlight.js/styles/github-dark.css';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const doc = await getDocBySlug(slug);
   if (!doc) return { title: 'Not Found' };
   return {
-    title: `${doc.title} | PureCortex Docs`,
+    title: `${doc.title} | PURECORTEX Docs`,
     description: doc.description,
   };
 }

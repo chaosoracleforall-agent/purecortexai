@@ -1,10 +1,10 @@
 ---
 title: "Get Constitution"
 api: "GET /api/governance/constitution"
-description: "Retrieve the PureCortex DAO constitution, including preamble and articles."
+description: "Retrieve the PURECORTEX DAO constitution, including preamble and articles."
 ---
 
-Returns the full text of the PureCortex DAO constitution. The preamble is immutable; articles may be amended through the governance proposal process.
+Returns the full text of the PURECORTEX DAO constitution. The preamble is immutable; articles may be amended through the governance proposal process.
 
 <ResponseField name="preamble" type="string" required>
   The constitution preamble in Markdown format. This text is immutable and cannot be changed by governance.
@@ -31,8 +31,8 @@ curl https://purecortex.ai/api/governance/constitution
 <ResponseExample>
 ```json 200
 {
-  "preamble": "# Preamble\n\nWe, the members of the PureCortex DAO, establish this constitution to govern the decentralized ecosystem of autonomous AI agents...",
-  "articles": "# Article I — Governance Structure\n\n## Section 1.1\nThe DAO shall be governed by veCORTEX holders through on-chain proposals...\n\n# Article II — Agent Framework\n\n## Section 2.1\nAI agents deployed through the PureCortex factory operate under the Dual-Brain consensus model...",
+  "preamble": "# Preamble\n\nWe, the members of the PURECORTEX DAO, establish this constitution to govern the decentralized ecosystem of autonomous AI agents...",
+  "articles": "# Article I — Governance Structure\n\n## Section 1.1\nThe DAO shall be governed by veCORTEX holders through on-chain proposals...\n\n# Article II — Agent Framework\n\n## Section 2.1\nAI agents deployed through the PURECORTEX factory operate under the Tri-Brain consensus model...",
   "preamble_status": "IMMUTABLE",
   "articles_status": "AMENDABLE"
 }

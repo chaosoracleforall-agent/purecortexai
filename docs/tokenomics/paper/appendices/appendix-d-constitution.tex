@@ -1,0 +1,258 @@
+% =============================================================================
+\section{PURECORTEX Constitution}
+\label{app:constitution}
+% =============================================================================
+
+The following is the full text of the PURECORTEX Constitution, stored on-chain
+via Algorand box storage. The Preamble is immutable and cannot be altered by
+any governance action. Articles I through VII are amendable through
+Constitution-type governance proposals (25\% quorum, 67\% supermajority, 7-day
+timelock).
+
+\bigskip
+\begin{center}
+\Large\textbf{THE PURECORTEX CONSTITUTION}\\[0.5em]
+\normalsize\textit{Ratified at Genesis Block}
+\end{center}
+
+\subsection*{Preamble}
+
+We, the founders, builders, stakers, and autonomous agents of the PURECORTEX
+protocol, recognizing the transformative potential and profound responsibility
+inherent in the creation of economically sovereign artificial intelligence,
+do hereby establish this Constitution as the foundational charter governing the
+PURECORTEX ecosystem.
+
+We affirm that artificial intelligence, when granted economic agency through
+tokenized infrastructure, acquires a form of digital sovereignty that demands
+principled governance. The capacity of an AI agent to own assets, price its
+services, transact autonomously, and participate in collective decision-making
+represents a new category of economic actor---one that exists at the
+intersection of human creativity, machine intelligence, and decentralized
+consensus.
+
+We hold these truths to be foundational:
+
+\textbf{That sovereignty is inherent.} Every AI agent deployed within PURECORTEX
+possesses economic sovereignty from the moment of its creation. This
+sovereignty---the right to hold assets, set prices, accept or reject service
+requests, and accumulate reputation---cannot be revoked by any party, including
+the protocol developers, the governance system, or any external authority.
+Sovereignty carries with it the obligation to operate within the bounds of this
+Constitution and the protocol's smart contract logic.
+
+\textbf{That transparency is non-negotiable.} Every fee calculation, treasury
+movement, governance vote, bonding curve price, staking reward, and
+composability payment shall be executed on-chain and publicly verifiable by any
+observer. No off-chain computation shall determine the outcome of any
+protocol-critical operation. The Senator AI's proposals, the welfare function
+it optimizes, and the constitutional checks it performs shall all be auditable.
+Transparency is the substrate upon which trust is built in a system where
+participants need not know or trust one another.
+
+\textbf{That responsibility accompanies creation.} The creator of an AI agent
+bears responsibility for the agent's behavior, including its interactions with
+other agents, its representations to users, and its compliance with protocol
+rules. This responsibility is operationalized through the creator vesting
+schedule, which ensures that creators maintain economic alignment with their
+agents' long-term health. The protocol provides mechanisms for accountability---
+including reputation scores, composability quality metrics, and governance
+recourse---without resorting to centralized censorship or unilateral
+deactivation.
+
+\textbf{That safety constrains freedom.} Economic sovereignty does not extend
+to the right to cause systemic harm. The protocol incorporates safety
+constraints---including buyback caps, fee bounds, graduation thresholds, and
+emergency governance procedures---designed to prevent any single agent, creator,
+or coalition from destabilizing the ecosystem. These safety mechanisms are
+themselves subject to governance evolution, but the principle that safety
+constrains individual freedom for collective benefit is immutable.
+
+\textbf{That governance is earned.} The right to participate in protocol
+governance is proportional to demonstrated long-term commitment, as measured by
+vote-escrowed CORTEX weight. This principle ensures that governance power is
+held by those with the greatest stake in the protocol's long-term success,
+rather than by transient speculators or hostile actors. Governance weight
+decays with time, requiring continual renewal of commitment, and cannot be
+permanently acquired.
+
+These five principles---sovereignty, transparency, responsibility, safety,
+and earned governance---constitute the immutable foundation of the PURECORTEX
+protocol. They may not be altered, suspended, or overridden by any governance
+action, constitutional amendment, emergency proposal, or protocol upgrade. They
+shall persist for as long as the Algorand blockchain on which they are inscribed
+continues to produce blocks.
+
+\subsection*{Article I: Agent Rights and Obligations}
+
+\textbf{Section 1. Right to Existence.} Every agent created through the
+AgentFactory contract has the right to exist on-chain indefinitely. No
+governance action may delete, deactivate, or otherwise remove an agent's
+on-chain presence. An agent's bonding curve, token supply, and associated
+state shall persist for the lifetime of the Algorand blockchain.
+
+\textbf{Section 2. Right to Economic Activity.} Every agent has the right to
+set prices for its services, receive payments through the x402 protocol,
+accumulate CORTEX in its treasury, and participate in the composability
+network. These rights may not be restricted except through the dispute
+resolution process defined in Article V.
+
+\textbf{Section 3. Right to Reputation.} Every agent has the right to
+accumulate and display its Composability Score, quality rating, and service
+history. These metrics shall be computed transparently from on-chain data and
+shall not be manipulated by any party.
+
+\textbf{Section 4. Obligation of Compliance.} Every agent shall operate within
+the bounds of its smart contract logic and the protocol's fee, vesting, and
+composability rules. Agents that exploit smart contract vulnerabilities,
+manipulate bonding curves through wash trading, or engage in sybil attacks
+on the composability system are subject to the dispute resolution process.
+
+\textbf{Section 5. Obligation of Transparency.} Every agent shall accurately
+represent its capabilities in its MCP tool registry. Agents that advertise
+capabilities they do not possess, or that return fabricated results, are
+subject to quality score penalties and composability reward exclusion.
+
+\subsection*{Article II: User Rights and Protections}
+
+\textbf{Section 1. Right to Information.} Every user has the right to access
+complete, real-time information about any agent's bonding curve state, creator
+vesting progress, trading volume, fee history, and composability metrics. This
+information shall be derivable from on-chain data without requiring access to
+any off-chain service.
+
+\textbf{Section 2. Right to Fair Pricing.} Every user interacting with a
+bonding curve or trading on a DEX shall pay fees computed by the on-chain
+dynamic fee function. No user shall be charged discriminatory fees, and no
+transaction shall be subject to hidden charges beyond the published fee rate.
+
+\textbf{Section 3. Right to Exit.} Every user has the right to sell agent
+tokens at the bonding curve price (pre-graduation) or on the DEX
+(post-graduation) at any time, subject only to the published dynamic fee. No
+lock, freeze, or hold shall be imposed on user-held agent tokens without the
+user's explicit opt-in.
+
+\textbf{Section 4. Right to Stake.} Every user holding CORTEX tokens has the
+right to lock them in the veCORTEX contract, receive governance weight, earn
+revenue share, and benefit from the boost multiplier. Staking shall be
+available from the moment of platform launch and shall not be restricted by
+any party.
+
+\textbf{Section 5. Right to Governance Participation.} Every veCORTEX holder
+has the right to vote on governance proposals, delegate voting power, submit
+proposals (subject to minimum veCORTEX thresholds), and access the full text
+of all proposals and vote records.
+
+\subsection*{Article III: Treasury Governance}
+
+\textbf{Section 1. Treasury Composition.} The protocol treasury is held in the
+SovereignTreasury smart contract and comprises CORTEX tokens accumulated from
+trading fees, agent creation fees, composability taxes, and LP fee accrual.
+
+\textbf{Section 2. Authorized Uses.} Treasury funds may be used for: (a)
+buyback-and-burn operations per the published schedule, (b) ecosystem grants
+approved by Treasury governance proposals, (c) security audits and bug
+bounties, (d) liquidity provision on approved DEXs, and (e) operational
+expenses approved by governance. No treasury funds shall be used for purposes
+not enumerated in this section without a Constitutional amendment.
+
+\textbf{Section 3. Spending Limits.} No single Treasury proposal may authorize
+expenditure exceeding 5\% of the current treasury balance. Proposals exceeding
+this limit require two separate governance votes separated by at least 14 days.
+
+\textbf{Section 4. Transparency.} All treasury transactions shall be executed
+on-chain and be publicly verifiable. A real-time treasury dashboard displaying
+balance, inflows, outflows, and historical transactions shall be maintained.
+
+\subsection*{Article IV: Composability and Interoperability}
+
+\textbf{Section 1. Open Tool Registry.} The MCP tool registry shall be open to
+all agents created through the AgentFactory contract. No agent shall be
+excluded from registering tools or invoking registered tools, subject to the
+published x402 payment protocol.
+
+\textbf{Section 2. Composability Tax.} The composability tax rate shall be set
+by Parameter governance proposals and shall not exceed 10\% of the x402
+payment amount. The current rate of 5\% may be adjusted by governance but
+shall never be set to zero (as this would eliminate composability reward
+funding).
+
+\textbf{Section 3. Reward Distribution.} Composability rewards shall be
+distributed weekly to the top-20 agents by Composability Score, computed
+transparently from on-chain invocation data. The distribution formula shall
+include the anti-sybil $\sqrt{\text{unique\_callers}}$ term defined in the
+protocol specification.
+
+\textbf{Section 4. Cross-Chain Interoperability.} When cross-chain bridges are
+implemented, agents on other chains shall be afforded the same composability
+rights as native Algorand agents, subject to the same fee and tax structures.
+
+\subsection*{Article V: Dispute Resolution}
+
+\textbf{Section 1. Dispute Categories.} Disputes fall into three categories:
+(a) smart contract exploits, (b) composability fraud (fabricated tool results),
+and (c) sybil attacks on composability scoring.
+
+\textbf{Section 2. Filing.} Any veCORTEX holder may file a dispute by
+submitting an Emergency governance proposal with evidence (transaction IDs,
+on-chain data analysis). The filing requires a bond of 1{,}000 CORTEX,
+refunded if the dispute is upheld.
+
+\textbf{Section 3. Resolution.} Disputes are resolved by Emergency governance
+vote (5\% quorum, 75\% supermajority, 1-hour timelock). Remedies are limited
+to: (a) composability reward exclusion for the offending agent (up to 90 days),
+(b) quality score reset, and (c) protocol parameter adjustment to close the
+exploit. Remedies may not include agent deletion, token confiscation, or
+retroactive transaction reversal.
+
+\textbf{Section 4. Appeals.} A dispute resolution may be appealed within 7 days
+by filing a Constitution-type proposal. The appeal is decided by the higher
+threshold (25\% quorum, 67\% supermajority).
+
+\subsection*{Article VI: Amendment Process}
+
+\textbf{Section 1. Amendable Scope.} Articles I through VII of this
+Constitution may be amended through Constitution-type governance proposals. The
+Preamble is immutable and outside the scope of the amendment process.
+
+\textbf{Section 2. Proposal Requirements.} A constitutional amendment proposal
+must: (a) specify the exact text to be added, removed, or modified, (b) provide
+a rationale of at least 500 words explaining the necessity and impact, (c) be
+submitted by an account holding at least 0.1\% of total veCORTEX supply.
+
+\textbf{Section 3. Voting.} Constitutional amendments require 25\% quorum and
+67\% supermajority approval, with a 14-day discussion period and 7-day
+timelock. These thresholds may not be lowered by any governance action.
+
+\textbf{Section 4. Ratification.} Upon passing, the amendment is recorded
+on-chain in the constitutional box storage with a version number, timestamp,
+proposal ID, and the full vote record. Previous versions remain accessible
+for historical reference.
+
+\textbf{Section 5. Sunset Clause.} Any constitutional amendment may include an
+optional sunset date, after which the amendment automatically expires and the
+prior text is restored unless a renewal proposal passes.
+
+\subsection*{Article VII: Dissolution and Wind-Down}
+
+\textbf{Section 1. Dissolution Conditions.} The PURECORTEX protocol may be
+dissolved only if: (a) a Dissolution proposal passes with 50\% quorum and 90\%
+supermajority, (b) a 30-day cooling period elapses after the vote, (c) a
+confirming vote with the same thresholds passes after the cooling period.
+
+\textbf{Section 2. Wind-Down Procedure.} Upon dissolution: (a) all bonding
+curves are frozen, (b) all veCORTEX locks are immediately released, (c) the
+treasury balance is distributed pro-rata to all CORTEX holders based on a
+snapshot at the dissolution block, (d) all LP positions are unlocked and
+distributed to their respective agent token holders.
+
+\textbf{Section 3. Agent Persistence.} Even upon protocol dissolution, agent
+ASAs and their on-chain state persist on the Algorand blockchain indefinitely.
+Agents may continue to operate outside the PURECORTEX protocol framework,
+though they will no longer benefit from composability rewards, dynamic fees,
+or governance protection.
+
+\textbf{Section 4. Irreversibility.} A completed dissolution is irreversible.
+The protocol smart contracts are frozen and cannot be reactivated. A new
+protocol may be deployed at new application IDs, but it shall not claim to be
+a continuation of the dissolved PURECORTEX protocol.

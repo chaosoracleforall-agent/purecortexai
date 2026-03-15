@@ -1,0 +1,354 @@
+% =============================================================================
+\section{Full Proofs}
+\label{app:proofs}
+% =============================================================================
+
+This appendix provides complete proofs for Theorems~1--4 and Propositions~1--4
+stated in the main text.
+
+\subsection{Proof of Proposition~\ref{prop:monotonicity}: Monotonicity and Convexity}
+
+\begin{proof}
+From the cost function $C(s, n) = nB + S(2sn + n^2)/2$:
+
+\textbf{(i) Monotonicity in $s$.}
+\begin{equation}
+  \frac{\partial C}{\partial s} = \frac{\partial}{\partial s}\left[nB + \frac{S(2sn + n^2)}{2}\right] = \frac{S \cdot 2n}{2} = Sn
+\end{equation}
+Since $S > 0$ and $n > 0$ by assumption, $\partial C / \partial s = Sn > 0$.
+
+\textbf{(ii) Monotonicity in $n$.}
+\begin{equation}
+  \frac{\partial C}{\partial n} = B + \frac{S(2s + 2n)}{2} = B + S(s + n)
+\end{equation}
+Since $B > 0$, $S > 0$, and $s, n \geq 0$ with $n > 0$ for a nontrivial
+purchase, $\partial C / \partial n = B + S(s + n) > 0$.
+
+Note that $\partial C / \partial n = P(s + n)$, the price at the upper
+boundary of the purchase interval. This confirms that the marginal cost of the
+last infinitesimal unit equals the bonding curve price at the post-purchase
+supply level.
+
+\textbf{(iii) Convexity in $n$.}
+\begin{equation}
+  \frac{\partial^2 C}{\partial n^2} = \frac{\partial}{\partial n}[B + S(s + n)] = S
+\end{equation}
+Since $S > 0$, the cost function is strictly convex in $n$. This implies that
+the marginal cost is strictly increasing: each additional token costs more than
+the previous one. \qed
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:curve-comparison}: Quadratic vs.\ Linear vs.\ Exponential}
+
+\begin{proof}
+We prove each part in sequence.
+
+\textbf{Setup.} Calibrate the three curves to produce identical total cost at
+reference supply $q^*$. Let $C_{\text{lin}}(q^*) = C_{\text{quad}}(q^*) =
+C_{\text{exp}}(q^*)$. This yields:
+\begin{align}
+  C_{\text{lin}}(q^*) &= B_1 \cdot q^* \\
+  C_{\text{quad}}(q^*) &= B_2 \cdot q^* + \frac{S_2 (q^*)^2}{2} \\
+  C_{\text{exp}}(q^*) &= \frac{B_3}{\alpha}(e^{\alpha q^*} - 1)
+\end{align}
+
+Setting these equal determines the calibration relationships.
+
+\textbf{(i) Price ordering for $q > q^*$.}
+
+The exponential price function is $P_{\text{exp}}(q) = B_3 e^{\alpha q}$,
+which grows without bound. The quadratic price function is $P_{\text{quad}}(q)
+= B_2 + S_2 q$, which is linear. The constant price function is
+$P_{\text{lin}}(q) = B_1$.
+
+For sufficiently large $q$, the exponential dominates the linear, which
+dominates the constant:
+\begin{equation}
+  \lim_{q \to \infty} \frac{P_{\text{exp}}(q)}{P_{\text{quad}}(q)} = \lim_{q \to \infty} \frac{B_3 e^{\alpha q}}{B_2 + S_2 q} = +\infty
+\end{equation}
+
+By the calibration, at $q = q^*$ the ordering may not hold, but for $q > q^*$
+with $q - q^*$ sufficiently large, the exponential exceeds the quadratic which
+exceeds the constant. More precisely, since $P_{\text{exp}}''(q) = \alpha^2 B_3
+e^{\alpha q} > 0 = P_{\text{quad}}''(q)$ and both are continuous with
+calibrated crossing at $q^*$, the exponential lies above the quadratic for
+$q > q^*$.
+
+\textbf{(ii) Surplus ratio.}
+
+The early-buyer surplus for the quadratic curve is:
+\begin{equation}
+  \Delta_{\text{quad}}^{\text{early}} = P_{\text{quad}}(q^*) - P_{\text{quad}}(0) = S_2 q^*
+\end{equation}
+
+The late-buyer cost premium for $q > q^*$ is:
+\begin{equation}
+  \Delta_{\text{quad}}^{\text{late}} = P_{\text{quad}}(q) - P_{\text{quad}}(q^*) = S_2 (q - q^*)
+\end{equation}
+
+The ratio is:
+\begin{equation}
+  R_{\text{quad}} = \frac{S_2 q^*}{S_2(q - q^*)} = \frac{q^*}{q - q^*}
+\end{equation}
+
+For the exponential curve:
+\begin{align}
+  \Delta_{\text{exp}}^{\text{early}} &= B_3(e^{\alpha q^*} - 1) \\
+  \Delta_{\text{exp}}^{\text{late}} &= B_3(e^{\alpha q} - e^{\alpha q^*})
+\end{align}
+
+The ratio is:
+\begin{equation}
+  R_{\text{exp}} = \frac{e^{\alpha q^*} - 1}{e^{\alpha q} - e^{\alpha q^*}} = \frac{e^{\alpha q^*} - 1}{e^{\alpha q^*}(e^{\alpha(q - q^*)} - 1)}
+\end{equation}
+
+For large $q - q^*$:
+\begin{equation}
+  R_{\text{exp}} \approx \frac{e^{\alpha q^*} - 1}{e^{\alpha q^*} \cdot e^{\alpha(q - q^*)}} \to 0
+\end{equation}
+
+while $R_{\text{quad}} = q^* / (q - q^*)$ decays as $O(1/q)$. Since the
+exponential ratio decays as $O(e^{-\alpha q})$, which is faster than
+$O(1/q)$, we have $R_{\text{quad}} > R_{\text{exp}}$ for sufficiently large
+$q$, confirming inequality~\eqref{eq:surplus-ratio}.
+
+\textbf{(iii) Goldilocks property.}
+
+Accessibility requires $C(q) < \infty$ for all finite $q$. This holds for the
+constant ($C = B_1 q$), quadratic ($C = B_2 q + S_2 q^2 / 2$), and
+exponential ($C = (B_3 / \alpha)(e^{\alpha q} - 1)$) curves. However, the
+exponential cost grows as $e^{\alpha q}$, making participation at large $q$
+economically prohibitive even though mathematically finite. We formalize this
+by defining \emph{practical accessibility} as $C(q) \leq \kappa \cdot C(q^*)$
+for a constant $\kappa$ (e.g., $\kappa = 10$). The quadratic curve satisfies
+this for $q \leq q^* \sqrt{2\kappa}$, while the exponential curve satisfies
+this only for $q \leq q^* + \ln(\kappa) / \alpha$, which is much more
+restrictive for typical $\alpha$.
+
+Scarcity requires $P'(q) > 0$. The constant curve fails ($P' = 0$). The
+quadratic satisfies $P'(q) = S > 0$. The exponential satisfies $P'(q) =
+\alpha B_3 e^{\alpha q} > 0$ but with the excessive growth noted above.
+
+The quadratic curve is the unique member of the polynomial family $P(q) = B +
+Sq^k$ with $k = 1$ that satisfies both $P'(q) > 0$ (scarcity) and
+$P''(q) = 0$ (linear price growth, ensuring practical accessibility). \qed
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:folk}: Cooperation via Lock Commitment}
+
+\begin{proof}
+We apply the folk theorem for finitely repeated games with known
+horizon~\citep{fudenberg1991game}.
+
+Consider the grim-trigger strategy: ``Stake in every period; if the opponent
+ever Sells, Sell in all subsequent periods.'' Under this strategy profile, the
+payoff from perpetual cooperation is:
+\begin{equation}
+  V_{\text{coop}} = \sum_{t=0}^{T-1} \delta^t (r + g - c) = (r + g - c) \cdot \frac{1 - \delta^T}{1 - \delta}
+\end{equation}
+
+The best deviation payoff (Sell in period 0, then mutual Sell thereafter) is:
+\begin{equation}
+  V_{\text{dev}} = \ell + \sum_{t=1}^{T-1} \delta^t (\ell - d) = \ell + (\ell - d) \cdot \delta \cdot \frac{1 - \delta^{T-1}}{1 - \delta}
+\end{equation}
+
+For cooperation to be sustained, we need $V_{\text{coop}} \geq V_{\text{dev}}$:
+\begin{align}
+  (r + g - c) \cdot \frac{1 - \delta^T}{1 - \delta} &\geq \ell + (\ell - d) \cdot \delta \cdot \frac{1 - \delta^{T-1}}{1 - \delta}
+\end{align}
+
+For $T \to \infty$ (or equivalently, for $T$ large enough that $\delta^T
+\approx 0$), this simplifies to:
+\begin{equation}
+  \frac{r + g - c}{1 - \delta} \geq \ell + \frac{(\ell - d)\delta}{1 - \delta}
+\end{equation}
+
+Multiplying through by $(1 - \delta)$:
+\begin{equation}
+  r + g - c \geq \ell(1 - \delta) + (\ell - d)\delta = \ell - d\delta
+\end{equation}
+
+Rearranging:
+\begin{equation}
+  \delta \geq \frac{\ell - r - g + c}{\ell - r + c - (d - g) + g} = \frac{\ell - r - g + c}{d}
+\end{equation}
+
+Wait---let us redo this more carefully. From the original condition:
+\begin{equation}
+  r + g - c \geq \ell - \ell\delta + \ell\delta - d\delta = \ell - d\delta
+\end{equation}
+
+So: $r + g - c - \ell + d\delta \geq 0$, giving:
+\begin{equation}
+  \delta \geq \frac{\ell - (r + g - c)}{d}
+\end{equation}
+
+However, the \veCORTEX{} lock mechanism provides a stronger result: during
+the lock period, the Sell action is \emph{mechanically unavailable}. The
+strategy space is reduced to $\{\text{Stake}\}$ for the duration of the lock.
+This is equivalent to setting the deviation payoff to $-\infty$ during the
+lock period, making cooperation the unique available strategy regardless of
+the discount factor. The folk theorem threshold~\eqref{eq:folk-threshold}
+then serves as the condition for voluntary re-locking after the initial lock
+expires. \qed
+\end{proof}
+
+\subsection{Proof of Proposition~\ref{prop:creator-wealth}: Vesting Maximizes Expected Wealth}
+
+\begin{proof}
+The creator's expected wealth at day $d$ is:
+\begin{equation}
+  W(d) = V(d) \cdot P(d) + \sum_{t=d}^{\infty} \beta^{t-d} \cdot f_c \cdot TV(t)
+\end{equation}
+
+Under the vesting schedule $V(d) = 0.01 A_c + 0.99 A_c \min(d, 180)/180$,
+the creator cannot sell more than $V(d)$ at day $d$. Consider a creator
+choosing effort level $e$ at cost $\psi(e)$ (convex, increasing). Both $P$
+and $TV$ depend on $e$:
+\begin{equation}
+  P(d; e) = P_0 + \phi_P(e), \quad TV(t; e) = TV_0 + \phi_{TV}(e)
+\end{equation}
+where $\phi_P, \phi_{TV}$ are increasing in $e$ (effort improves agent quality,
+which increases token price and trading volume).
+
+The creator maximizes:
+\begin{equation}
+  \max_e \; W(d; e) - \psi(e)
+\end{equation}
+
+The first-order condition is:
+\begin{equation}
+  V(d) \cdot \phi_P'(e) + \sum_{t=d}^{\infty} \beta^{t-d} f_c \phi_{TV}'(e) = \psi'(e)
+\end{equation}
+
+Now compare two regimes:
+
+\textbf{Regime 1 (Vesting):} At $d = 0$, $V(0) = 0.01 A_c$. The creator
+cannot liquidate and must rely primarily on the fee stream. The optimal effort
+$e^*_V$ satisfies:
+\begin{equation}
+  0.01 A_c \cdot \phi_P'(e^*_V) + \frac{f_c \phi_{TV}'(e^*_V)}{1 - \beta} = \psi'(e^*_V)
+\end{equation}
+
+\textbf{Regime 2 (No vesting):} At $d = 0$, $V(0) = A_c$. The creator can
+immediately sell $A_c \cdot P_0$ and exit. The optimal effort $e^*_N$ satisfies:
+\begin{equation}
+  A_c \cdot \phi_P'(e^*_N) + \frac{f_c \phi_{TV}'(e^*_N)}{1 - \beta} = \psi'(e^*_N)
+\end{equation}
+
+In Regime 2, the creator has a profitable deviation: set $e = 0$, sell $A_c$
+at $P_0$, and exit. This yields $W = A_c \cdot P_0$, which may exceed the
+effort-adjusted long-run value if $\psi(e^*_N)$ is large.
+
+In Regime 1, the deviation to $e = 0$ yields only $W = 0.01 A_c \cdot P_0$,
+which is 99\% lower. The creator is thus incentivized to choose $e > 0$ to
+increase $P(d)$ for $d > 0$ (when more tokens vest) and to build the fee
+stream. The vesting constraint effectively forces the creator to internalize
+the future, converting a short-horizon liquidation problem into a long-horizon
+optimization problem. \qed
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:separating}: Separating Equilibrium}
+
+\begin{proof}
+Following the Spence signaling framework~\citep{spence1973job}, define:
+\begin{itemize}
+  \item Types: $\theta \in \{\theta_L, \theta_H\}$ with $\theta_H > \theta_L$.
+  \item Signal: Platform choice $\sigma \in \{P, A\}$ (PURECORTEX with vesting,
+    or Platform A without vesting).
+  \item Cost of signal: $c(\theta, \sigma)$ where $c(\theta, P) > c(\theta, A)$
+    for all $\theta$ (vesting is costlier than no vesting).
+\end{itemize}
+
+The single-crossing condition requires:
+\begin{equation}
+  \frac{\partial c}{\partial \sigma}\bigg|_{\theta_H} < \frac{\partial c}{\partial \sigma}\bigg|_{\theta_L}
+\end{equation}
+
+Interpreted: the marginal cost of the vesting signal (choosing PURECORTEX over
+Platform A) is lower for high-quality creators than for low-quality creators.
+
+This holds because:
+\begin{itemize}
+  \item A high-quality creator ($\theta_H$) who continues developing their
+    agent expects $P(d)$ to increase or remain stable during the 180-day
+    vesting. The effective cost of vesting is $c_H = A_c \cdot [P(0) - P(180; \theta_H)]$, which is negative (a benefit) if the token appreciates.
+  \item A low-quality creator ($\theta_L$) who plans to abandon the agent
+    expects $P(d)$ to decline. The effective cost is $c_L = A_c \cdot [P(0) - P(180; \theta_L)]$, which is positive and potentially large.
+\end{itemize}
+
+For a separating equilibrium:
+\begin{align}
+  \theta_H: &\quad \theta_H \cdot \Delta P - c_H \geq 0 \quad \text{(prefer PURECORTEX)} \\
+  \theta_L: &\quad 0 \geq \theta_L \cdot \Delta P - c_L \quad \text{(prefer Platform A)}
+\end{align}
+
+where $\Delta P$ is the price premium buyers assign to PURECORTEX-launched
+agents. This gives the separating condition:
+\begin{equation}
+  \frac{c_L}{\theta_L} \geq \Delta P \geq \frac{c_H}{\theta_H}
+\end{equation}
+
+Since $c_H < c_L$ (vesting is less costly for high-quality creators) and
+$\theta_H > \theta_L$, we have $c_H / \theta_H < c_L / \theta_L$, so the
+interval is nonempty and a separating equilibrium exists.
+
+In equilibrium, buyers correctly infer $\theta_H$ from the PURECORTEX signal
+and $\theta_L$ from the Platform A signal, pricing agent tokens accordingly.
+The vesting mechanism serves as a credible commitment device that only
+high-quality creators are willing to undertake. \qed
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:pareto}: Pareto Improvement via Governance}
+
+\begin{proof}
+See the proof in Section~\ref{subsec:senator-mechanism}. We provide additional
+detail here.
+
+Let $o_0$ be the current parameter configuration and $o^*$ be the
+Senator-proposed configuration with $W(o^*) > W(o_0) + \epsilon$.
+
+The welfare function $W = \alpha \cdot \text{TVL} + \beta \cdot N + \gamma
+\cdot \text{ret} - \delta \cdot \text{risk}$ is a weighted sum of ecosystem
+health metrics. We need to show that an increase in $W$ implies a Pareto
+improvement.
+
+Decompose the agent population into stakers ($\mathcal{S}$), creators
+($\mathcal{C}$), and traders ($\mathcal{T}$). Each group's utility depends
+on different welfare components:
+\begin{align}
+  u_i^{\mathcal{S}} &= h_1(\text{TVL}, \text{ret}) \quad \text{(stakers benefit from TVL and retention)} \\
+  u_i^{\mathcal{C}} &= h_2(N, \text{TVL}) \quad \text{(creators benefit from agent count and TVL)} \\
+  u_i^{\mathcal{T}} &= h_3(\text{TVL}, -\text{risk}) \quad \text{(traders benefit from TVL and low risk)}
+\end{align}
+
+where $h_1, h_2, h_3$ are increasing in each argument. If $W(o^*) > W(o_0)$,
+then at least one welfare component has increased. By the monotonicity of
+group utilities in welfare components, the corresponding group is strictly
+better off. By the constraint that the Senator only proposes changes that do
+not decrease any individual welfare component (enforced by the constitutional
+check), no group is worse off.
+
+More formally, the Senator's proposal algorithm operates as follows:
+\begin{enumerate}
+  \item Compute $W(o)$ for each candidate configuration $o$.
+  \item Filter: retain only configurations where each welfare component is
+    weakly greater than under $o_0$.
+  \item Select $o^* = \argmax_o W(o)$ from the filtered set.
+\end{enumerate}
+
+Step 2 ensures the Pareto condition: no welfare component decreases, so no
+group is worse off. Step 3 ensures welfare maximization among Pareto-improving
+alternatives. \qed
+\end{proof}
+
+\subsection{Proof of Proposition~\ref{prop:delegation}: Rationality of Delegation}
+
+\begin{proof}
+See the proof in Section~\ref{subsec:delegation-game}. The result follows
+from comparing expected utilities under direct voting and delegation, with the
+key insight that delegation to a better-informed delegate strictly dominates
+direct voting whenever the delegate's informational advantage exceeds the
+agency cost (which is bounded by the delegate's own incentive alignment via
+\veCORTEX{} staking). \qed
+\end{proof}

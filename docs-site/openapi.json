@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "PureCortex API Gateway",
+    "title": "PURECORTEX API Gateway",
     "version": "0.7.0"
   },
   "paths": {
@@ -141,7 +141,7 @@
           "governance"
         ],
         "summary": "Get Constitution",
-        "description": "Returns the full PureCortex Constitution.\nThe Preamble is immutable; the Articles are amendable via governance.",
+        "description": "Returns the full PURECORTEX Constitution.\nThe Preamble is immutable; the Articles are amendable via governance.",
         "operationId": "get_constitution_api_governance_constitution_get",
         "responses": {
           "200": {
@@ -272,7 +272,7 @@
           "agents"
         ],
         "summary": "Chat With Agent",
-        "description": "Chat with a specific protocol agent.\nCurrently returns a placeholder response. Post-TGE, this will route\nthrough the Dual-Brain Orchestrator with agent-specific system prompts.",
+        "description": "Chat with a specific protocol agent.\nCurrently returns a placeholder response. Post-TGE, this will route\nthrough the Tri-Brain Orchestrator with agent-specific system prompts.",
         "operationId": "chat_with_agent_api_agents__agent_name__chat_post",
         "parameters": [
           {

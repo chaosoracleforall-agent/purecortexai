@@ -3,10 +3,17 @@ services:
     build: ./backend
     expose:
       - "8000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64M
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CLAUDE_API_KEY=${CLAUDE_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN}
       - TWITTER_API_KEY=${TWITTER_API_KEY}
       - TWITTER_API_SECRET=${TWITTER_API_SECRET}
@@ -15,16 +22,35 @@ services:
       - TWITTER_CLIENT_ID=${TWITTER_CLIENT_ID}
       - TWITTER_CLIENT_SECRET=${TWITTER_CLIENT_SECRET}
       - FARCASTER_MNEMONIC=${FARCASTER_MNEMONIC}
+      - SANDBOX_ESCALATION_TOKEN=${SANDBOX_ESCALATION_TOKEN}
     volumes:
       - ./docs:/app/docs:ro
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      - internal
+      - proxy
 
   frontend:
     build: ./frontend
@@ -36,15 +62,66 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      - proxy
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.2-alpine
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+      --dir /data
     expose:
       - "6379"
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$REDIS_PASSWORD redis-cli ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     ports:
       - "80:80"
       - "443:443"
@@ -55,3 +132,29 @@ services:
       - frontend
       - backend
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - proxy
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  proxy:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local

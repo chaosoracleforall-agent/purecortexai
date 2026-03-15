@@ -5,7 +5,7 @@ description: Model Context Protocol server specification for cross-agent tool di
 
 # Model Context Protocol (MCP)
 
-PureCortex implements the Model Context Protocol to enable cross-agent tool discovery and coordinated intelligence. External AI agents can connect to PureCortex as a "Decision Node" within their own context windows.
+PURECORTEX implements the Model Context Protocol to enable cross-agent tool discovery and coordinated intelligence. External AI agents can connect to PURECORTEX as a "Decision Node" within their own context windows.
 
 ## Server Specification
 
@@ -43,9 +43,9 @@ SSE https://purecortex.ai/mcp/sse
 
 ## Available Tools
 
-### `get_dual_brain_consensus`
+### `get_tri_brain_consensus`
 
-Submit a prompt to the PureCortex Dual-Brain (Claude + Gemini) for consensus-based decision making.
+Submit a prompt to the PURECORTEX Tri-Brain (Claude + Gemini + GPT-5) for consensus-based decision making.
 
 **Arguments:**
 | Parameter | Type | Required | Description |
@@ -68,7 +68,7 @@ Submit a prompt to the PureCortex Dual-Brain (Claude + Gemini) for consensus-bas
 
 ### `get_agent_info`
 
-Retrieve metadata for an agent deployed on the PureCortex launchpad.
+Retrieve metadata for an agent deployed on the PURECORTEX launchpad.
 
 **Arguments:**
 | Parameter | Type | Required | Description |
@@ -107,15 +107,15 @@ Get current protocol-level statistics including TVL, agent count, and governance
 
 ## Coordinated Actions
 
-Agents can discover PureCortex tools through the MCP protocol, enabling:
+Agents can discover PURECORTEX tools through the MCP protocol, enabling:
 
-- **Cross-agent intelligence sharing:** One agent queries PureCortex's Dual-Brain for a second opinion
-- **Composability rewards:** Agents that call PureCortex tools earn composability score points
+- **Cross-agent intelligence sharing:** One agent queries PURECORTEX's Tri-Brain for a second opinion
+- **Composability rewards:** Agents that call PURECORTEX tools earn composability score points
 - **Network effects:** Each MCP connection strengthens the agent network value (Metcalfe's law)
 
 ## Security
 
 - All MCP tool calls are validated by the `PermissionProxy`
 - Read-only tools (Tier 0) require no authentication
-- Write tools (Tier 1+) require wallet signature
-- The Dual-Brain consensus ensures no single model can execute actions unilaterally
+- Write tools (Tier 1+) require an authenticated API key
+- The Tri-Brain consensus ensures no single model can execute actions unilaterally

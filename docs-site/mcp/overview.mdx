@@ -1,6 +1,6 @@
 ---
 title: "MCP Overview"
-description: "How PureCortex exposes AI agent intelligence to external systems via the Model Context Protocol."
+description: "How PURECORTEX exposes AI agent intelligence to external systems via the Model Context Protocol."
 icon: "plug"
 ---
 
@@ -8,22 +8,23 @@ icon: "plug"
 
 The **Model Context Protocol** is an open standard for connecting AI models to external tools, data sources, and services. It defines a structured JSON-RPC interface that lets any MCP-compatible client discover and invoke tools exposed by an MCP server -- without custom API integration.
 
-PureCortex implements an MCP server that turns every protocol capability into a callable tool. External AI agents, IDE extensions, and automation pipelines can query dual-brain consensus, inspect on-chain agent data, and read protocol statistics through a single standardized interface.
+PURECORTEX implements an MCP server that turns every protocol capability into a callable tool. External AI agents, IDE extensions, and automation pipelines can query tri-brain consensus, inspect on-chain agent data, and read protocol statistics through a single standardized interface.
 
 <Note>
-  PureCortex implements **MCP 1.0** using the [FastMCP](https://github.com/jlowin/fastmcp) Python framework.
+  PURECORTEX implements **MCP 1.0** using the [FastMCP](https://github.com/jlowin/fastmcp) Python framework.
 </Note>
 
-## PureCortex as a Decision Node
+## PURECORTEX as a Decision Node
 
-In an MCP network, PureCortex operates as a **Decision Node** -- a composable intelligence endpoint that other agents can invoke to get validated, consensus-backed responses. Instead of calling a single LLM, callers get the output of parallel Claude Opus 4.6 + Gemini 2.5 Pro inference, filtered through the protocol's permission sandbox.
+In an MCP network, PURECORTEX operates as a **Decision Node** -- a composable intelligence endpoint that other agents can invoke to get validated, consensus-backed responses. Instead of calling a single LLM, callers get the output of parallel Claude Opus 4.6 + Gemini 2.5 Pro + GPT-5 inference, filtered through the protocol's permission sandbox.
 
 ```
-External Agent ──► MCP Client ──► PureCortex MCP Server
+External Agent ──► MCP Client ──► PURECORTEX MCP Server
                                        │
                                        ├── ConsensusOrchestrator
                                        │     ├── Claude Opus 4.6
-                                       │     └── Gemini 2.5 Pro
+                                       │     ├── Gemini 2.5 Pro
+                                       │     └── GPT-5
                                        │
                                        └── PermissionProxy (validation)
 ```
@@ -32,7 +33,7 @@ Every tool invocation passes through the `PermissionProxy` before a response is 
 
 ## Transports
 
-PureCortex supports two MCP transport modes:
+PURECORTEX supports two MCP transport modes:
 
 <CardGroup cols={2}>
   <Card title="stdio (Local)" icon="terminal">
@@ -52,10 +53,10 @@ PureCortex supports two MCP transport modes:
 
 <AccordionGroup>
   <Accordion title="Cross-Agent Intelligence" icon="brain">
-    An external DeFi agent can call `get_dual_brain_consensus` with a market analysis prompt and receive a consensus-validated response. The calling agent benefits from PureCortex's dual-brain validation without implementing its own multi-model orchestration.
+    An external DeFi agent can call `get_tri_brain_consensus` with a market analysis prompt and receive a consensus-validated response. The calling agent benefits from PURECORTEX's tri-brain validation without implementing its own multi-model orchestration.
   </Accordion>
   <Accordion title="Composability Rewards" icon="coins">
-    Agents that register tools in the PureCortex MCP registry and are invoked by other agents earn composability scores. Higher composability scores unlock protocol incentives, including CORTEX token rewards from the Agent Incentives allocation (15% of total supply).
+    Agents that register tools in the PURECORTEX MCP registry and are invoked by other agents earn composability scores. Higher composability scores unlock protocol incentives, including CORTEX token rewards from the Agent Incentives allocation (15% of total supply).
   </Accordion>
   <Accordion title="Protocol Transparency" icon="eye">
     MCP clients can query `get_protocol_stats` and `get_agent_info` to surface real-time protocol health data inside dashboards, reports, or other agent workflows -- without building custom API integrations.
@@ -71,7 +72,7 @@ from mcp.server.fastmcp import FastMCP
 from orchestrator import ConsensusOrchestrator
 from sandboxing import PermissionProxy, PermissionTier
 
-mcp = FastMCP("PureCortex", description="PureCortex Dual-Brain Orchestrator MCP Server")
+mcp = FastMCP("PURECORTEX", description="PURECORTEX Tri-Brain Orchestrator MCP Server")
 proxy = PermissionProxy(PermissionTier.READ_ONLY)
 orchestrator = ConsensusOrchestrator()
 ```

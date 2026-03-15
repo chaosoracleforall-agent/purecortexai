@@ -1,14 +1,18 @@
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
-# Configure logging for all PureCortex modules
+import redis.asyncio as aioredis
+
+# Configure logging for all PURECORTEX modules
 logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
 logging.getLogger("purecortex").setLevel(logging.INFO)
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from orchestrator import ConsensusOrchestrator
 from sandboxing import PermissionProxy, PermissionTier
@@ -18,6 +22,13 @@ from src.api.health import router as health_router
 from src.api.transparency import router as transparency_router
 from src.api.governance import router as governance_router
 from src.api.agents_api import router as agents_router
+from src.api.chat import router as chat_router
+from src.api.admin import router as admin_router, set_api_key_manager
+
+# Auth
+from src.api.auth import APIKeyMiddleware
+from src.services.api_keys import APIKeyManager
+from src.services.chat_sessions import ChatSessionManager
 
 # Services
 from src.services.cache import get_cache_service
@@ -48,7 +59,27 @@ async def lifespan(app: FastAPI):
     # ── Startup ──
     cache = get_cache_service()
     await cache.connect()
-    print("Redis cache: connected" if cache.available else "Redis cache: unavailable (running without cache)")
+    logger.info("Redis cache: %s", "connected" if cache.available else "unavailable (running without cache)")
+
+    # ── Initialize API Key Auth ──
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    try:
+        _redis_rl = aioredis.from_url(redis_url, decode_responses=True, socket_connect_timeout=5)
+        await _redis_rl.ping()
+        api_key_mgr = APIKeyManager(_redis_rl)
+        chat_session_mgr = ChatSessionManager(_redis_rl)
+        set_api_key_manager(api_key_mgr)
+        app.state.api_key_manager = api_key_mgr
+        app.state.chat_session_manager = chat_session_mgr
+        app.state.redis_rate_limit = _redis_rl
+        logger.info("API key authentication initialized.")
+    except Exception as e:
+        logger.warning("Redis for API keys unavailable: %s — protected routes will fail closed", e)
+        set_api_key_manager(None)
+        app.state.api_key_manager = None
+        app.state.chat_session_manager = None
+        _redis_rl = None
+        app.state.redis_rate_limit = None
 
     # ── Start Agent Orchestration Loop ──
     if orchestrator and os.getenv("ENABLE_AGENTS", "1") == "1":
@@ -83,34 +114,80 @@ async def lifespan(app: FastAPI):
         logger.info("Agent orchestration loop stopped.")
 
     await cache.disconnect()
+    if getattr(app.state, "redis_rate_limit", None):
+        await app.state.redis_rate_limit.aclose()
     algo = get_algorand_service()
     await algo.close()
-    print("Services shut down cleanly.")
+    logger.info("Services shut down cleanly.")
 
 
 app = FastAPI(
-    title="PureCortex API Gateway",
+    title="PURECORTEX API Gateway",
     version="0.7.0",
     lifespan=lifespan,
 )
 
-# CORS configuration
+app.state.api_key_manager = None
+app.state.chat_session_manager = None
+app.state.redis_rate_limit = None
+
+app.add_middleware(APIKeyMiddleware)
+
+# CORS configuration — environment-aware
+_cors_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if _cors_origins_env:
+    _cors_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+elif os.getenv("ENVIRONMENT", "development") == "production":
+    _cors_origins = ["https://purecortex.ai"]
+else:
+    _cors_origins = ["https://purecortex.ai", "http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://purecortex.ai",
-        "http://localhost:3000",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
 )
+
+# ── Rate Limiting (Redis-backed) ──
+RATE_LIMIT_WINDOW = 60    # seconds
+RATE_LIMIT_MAX = 60       # requests per window
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.headers.get("x-real-ip", request.client.host if request.client else "unknown")
+    redis_rl = getattr(request.app.state, "redis_rate_limit", None)
+    if redis_rl:
+        try:
+            rl_key = f"ip_ratelimit:{client_ip}"
+            count = await redis_rl.incr(rl_key)
+            if count == 1:
+                await redis_rl.expire(rl_key, RATE_LIMIT_WINDOW)
+            if count > RATE_LIMIT_MAX:
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
+        except Exception:
+            # If Redis is down, allow the request through rather than blocking
+            pass
+    response = await call_next(request)
+    return response
+
+
+# ── Global Exception Handler ──
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception on %s: %s", request.url.path, exc)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
 
 # ── Register Routers ──
 app.include_router(health_router)
 app.include_router(transparency_router)
 app.include_router(governance_router)
 app.include_router(agents_router)
+app.include_router(chat_router)
+app.include_router(admin_router)
 
 # ── Security Proxy ──
 proxy = PermissionProxy(PermissionTier.READ_ONLY)
@@ -119,23 +196,33 @@ proxy = PermissionProxy(PermissionTier.READ_ONLY)
 try:
     orchestrator = ConsensusOrchestrator()
 except Exception as e:
-    print(f"Warning: Failed to initialize orchestrator: {e}")
+    logger.warning("Failed to initialize orchestrator: %s", e)
     orchestrator = None
 
 
 # ── WebSocket Connection Manager ──
+MAX_WS_CONNECTIONS = 100
+WS_RATE_LIMIT_PER_SEC = 2  # max messages per second per connection
+
+
 class ConnectionManager:
-    """Manages active WebSocket connections."""
+    """Manages active WebSocket connections with limits."""
 
-    def __init__(self):
+    def __init__(self, max_connections: int = MAX_WS_CONNECTIONS):
         self.active_connections: list[WebSocket] = []
+        self.max_connections = max_connections
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket) -> bool:
+        if len(self.active_connections) >= self.max_connections:
+            await websocket.close(code=1013, reason="Server at capacity")
+            return False
         await websocket.accept()
         self.active_connections.append(websocket)
+        return True
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
@@ -150,10 +237,42 @@ manager = ConnectionManager()
 
 @app.websocket("/ws/chat")
 async def websocket_chat(websocket: WebSocket):
-    await manager.connect(websocket)
+    session_token = websocket.query_params.get("session")
+    legacy_token = websocket.query_params.get("token")
+    api_key_mgr = getattr(websocket.app.state, "api_key_manager", None)
+    chat_session_mgr = getattr(websocket.app.state, "chat_session_manager", None)
+
+    if chat_session_mgr and session_token:
+        key_data = await chat_session_mgr.validate_session(session_token)
+        if not key_data:
+            await websocket.close(code=4001, reason="Invalid or expired chat session")
+            return
+    elif api_key_mgr and legacy_token:
+        key_data = await api_key_mgr.validate_key(legacy_token)
+        if not key_data:
+            await websocket.close(code=4001, reason="Invalid API key")
+            return
+    elif api_key_mgr:
+        await websocket.close(code=4001, reason="Chat session required. Bootstrap via POST /api/chat/session first.")
+        return
+
+    connected = await manager.connect(websocket)
+    if not connected:
+        return
+
+    last_message_time = 0.0
     try:
         while True:
             data = await websocket.receive_text()
+
+            # Per-connection rate limit
+            now = time.time()
+            if now - last_message_time < (1.0 / WS_RATE_LIMIT_PER_SEC):
+                await manager.send_personal_message(
+                    "Rate limited. Please slow down.", websocket
+                )
+                continue
+            last_message_time = now
 
             # Enforce max message length
             if len(data) > 4096:
@@ -164,7 +283,7 @@ async def websocket_chat(websocket: WebSocket):
 
             if orchestrator:
                 system_prompt = (
-                    "You are a PureCortex Autonomous Agent. "
+                    "You are a PURECORTEX Autonomous Agent. "
                     "Engage the user. Respond ONLY in valid JSON with 'action' (REPLY) and 'message'."
                 )
 
@@ -173,9 +292,9 @@ async def websocket_chat(websocket: WebSocket):
                 if decision and proxy.validate_action(decision):
                     response_text = decision.get("message", "Cognition complete.")
                 else:
-                    response_text = "Action blocked by PureCortex Security Sandbox."
+                    response_text = "Action blocked by PURECORTEX Security Sandbox."
             else:
-                response_text = f"Mock Agent Reply to: {data}"
+                response_text = "PURECORTEX agent is currently offline."
 
             await manager.send_personal_message(response_text, websocket)
     except WebSocketDisconnect:

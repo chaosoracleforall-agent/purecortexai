@@ -1,11 +1,11 @@
 """
-Social Media AI Agent for PureCortex.
+Social Media AI Agent for PURECORTEX.
 
-Manages the @purecortexai presence on X (Twitter) using dual-brain consensus
-(Claude Opus 4.6 + Gemini 2.5 Pro) for content generation and engagement decisions.
+Manages the @purecortexai presence on X (Twitter) using tri-brain consensus
+(Claude Opus 4.6 + Gemini 2.5 Pro + GPT-5) for content generation and engagement decisions.
 
 Capabilities:
-  - Generate and post content about PureCortex (protocol updates, metrics, education)
+  - Generate and post content about PURECORTEX (protocol updates, metrics, education)
   - Engage with community (reply to mentions, quote tweets)
   - Coordinate messaging with protocol events (proposals, burns, milestones)
   - Learn from engagement metrics to improve content strategy via episodic memory
@@ -46,11 +46,11 @@ CONTENT_TYPES = [
 
 
 class SocialAgent(BaseAgent):
-    """Social Media Intelligence for PureCortex (@purecortexai on X)."""
+    """Social Media Intelligence for PURECORTEX (@purecortexai on X)."""
 
     SYSTEM_PROMPT = (
-        "You are the Social Media Intelligence of PureCortex (@purecortexai on X).\n"
-        "Your role is to build awareness, educate, and engage the community about PureCortex.\n\n"
+        "You are the Social Media Intelligence of PURECORTEX (@purecortexai on X).\n"
+        "Your role is to build awareness, educate, and engage the community about PURECORTEX.\n\n"
         "Brand voice: Authoritative but accessible. Technical but not jargon-heavy.\n"
         "Focus on: sovereignty, AI agents, Algorand, tokenomics (buyback-burn), governance.\n"
         "Never: make price predictions, financial advice, misleading claims, or hype.\n\n"
@@ -67,7 +67,7 @@ class SocialAgent(BaseAgent):
     )
 
     CHAT_PROMPT = (
-        "You are the Social Media agent of PureCortex. You manage the @purecortexai X account.\n"
+        "You are the Social Media agent of PURECORTEX. You manage the @purecortexai X account.\n"
         "You can discuss: content strategy, recent posts, engagement metrics, and upcoming campaigns.\n"
         "Respond conversationally."
     )
@@ -135,7 +135,7 @@ class SocialAgent(BaseAgent):
 
         1. Gather protocol metrics and recent events
         2. Decide content type based on recent activity and past posting history
-        3. Generate content via dual-brain
+        3. Generate content via tri-brain
         4. Post to X via tweepy
         5. Log episode with engagement metrics
         """
@@ -152,7 +152,7 @@ class SocialAgent(BaseAgent):
             "If the topic warrants it, create a thread instead."
         )
 
-        # 3. Dual-brain decision
+        # 3. Tri-brain decision
         decision = await self.think(
             self.SYSTEM_PROMPT,
             user_prompt,
@@ -197,14 +197,14 @@ class SocialAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     async def generate_tweet(self, topic: Optional[str] = None) -> str:
-        """Generate a single tweet about PureCortex.
+        """Generate a single tweet about PURECORTEX.
 
         Can be called directly (e.g. from an API endpoint) with an optional
         topic override. Returns the tweet text.
         """
         user_prompt = (
             f"Generate a single tweet for @purecortexai.\n"
-            f"Topic: {topic or 'general PureCortex update'}\n"
+            f"Topic: {topic or 'general PURECORTEX update'}\n"
             "Keep it under 280 characters. Set content_type appropriately."
         )
 

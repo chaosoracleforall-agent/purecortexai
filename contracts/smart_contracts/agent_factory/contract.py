@@ -17,7 +17,7 @@ from algopy.arc4 import abimethod
 
 class AgentFactory(ARC4Contract):
     def __init__(self) -> None:
-        self.agent_supplies = BoxMap(UInt64, UInt64)
+        self.agent_supplies = BoxMap(UInt64, UInt64, key_prefix=b"")
         self.latest_asset_id = UInt64(0)
         self.cortex_token = UInt64(0)
         self.BASE_PRICE = UInt64(10_000)
@@ -30,6 +30,10 @@ class AgentFactory(ARC4Contract):
 
         # Graduation threshold: 50,000 CORTEX worth of ALGO locked in curve
         self.GRADUATION_THRESHOLD = UInt64(50_000_000_000)
+
+        # Maximum per-transaction amount to prevent uint64 overflow in bonding curve math
+        # 100K tokens with 6 decimals = 100_000_000_000
+        self.MAX_TX_AMOUNT = UInt64(100_000_000_000)
 
     # ------------------------------------------------------------------ #
     #  Bootstrap
@@ -45,7 +49,7 @@ class AgentFactory(ARC4Contract):
         assert self.cortex_token == UInt64(0), "Already bootstrapped"
 
         created_asset_tx = itxn.AssetConfig(
-            asset_name="PureCortex",
+            asset_name="PURECORTEX",
             unit_name="CORTEX",
             total=UInt64(10_000_000_000_000_000),
             decimals=UInt64(6),
@@ -72,6 +76,11 @@ class AgentFactory(ARC4Contract):
         Creates a new Agent Token. Requires a CORTEX fee (default 100).
         """
         assert self.cortex_token != UInt64(0), "Protocol not bootstrapped"
+        assert name.bytes.length > UInt64(0), "Name cannot be empty"
+        assert name.bytes.length <= UInt64(32), "Name too long (max 32 bytes)"
+        assert unit_name.bytes.length > UInt64(0), "Unit name cannot be empty"
+        assert unit_name.bytes.length <= UInt64(8), "Unit name too long (max 8 bytes)"
+        assert cortex_payment.sender == Txn.sender, "Fee sender must match caller"
         assert cortex_payment.xfer_asset.id == self.cortex_token, "Invalid fee asset"
         assert cortex_payment.asset_amount >= self.creation_fee, "Insufficient creation fee"
         assert (
@@ -94,6 +103,9 @@ class AgentFactory(ARC4Contract):
         asset_id = created_asset_tx.created_asset.id
         self.latest_asset_id = asset_id
 
+        # Initialize supply tracking box for the new agent token
+        self.agent_supplies[asset_id] = UInt64(0)
+
         return asset_id
 
     # ------------------------------------------------------------------ #
@@ -106,6 +118,10 @@ class AgentFactory(ARC4Contract):
         Calculates ALGO required to buy 'amount' of tokens along the curve.
         Price = integral of (BASE_PRICE + SLOPE * supply) from S to S+amount.
         """
+        assert amount > UInt64(0), "Amount must be positive"
+        assert amount <= UInt64(1_000_000_000), "Amount exceeds max supply"
+        assert amount <= self.MAX_TX_AMOUNT, "Amount exceeds max per-transaction limit"
+
         # If box doesn't exist, assume supply 0
         current_supply = UInt64(0)
         if op.Box.get(op.itob(asset.id))[1]:
@@ -129,9 +145,13 @@ class AgentFactory(ARC4Contract):
         Buys tokens from the bonding curve by paying ALGO.
         A buy fee (default 1%) is added on top of the curve price.
         """
+        assert payment.sender == Txn.sender, "Payment sender must match caller"
         assert (
             payment.receiver == Global.current_application_address
         ), "Payment must be directed to the factory contract"
+
+        assert amount >= UInt64(1_000), "Minimum buy is 1000 micro-units"
+        assert amount <= self.MAX_TX_AMOUNT, "Amount exceeds max per-transaction limit"
 
         required_algo = self.calculate_buy_price(asset, amount)
 
@@ -139,8 +159,14 @@ class AgentFactory(ARC4Contract):
         fee = (required_algo * self.buy_fee_bps) // UInt64(10_000)
         total_required = required_algo + fee
         assert (
-            payment.amount >= total_required
-        ), "Insufficient ALGO payment including fee"
+            payment.amount == total_required
+        ), "Payment must exactly match required ALGO including fee"
+
+        # Update state BEFORE external interaction (checks-effects-interactions)
+        current_supply = UInt64(0)
+        if op.Box.get(op.itob(asset.id))[1]:
+            current_supply = self.agent_supplies[asset.id]
+        self.agent_supplies[asset.id] = current_supply + amount
 
         # Transfer the tokens to the buyer via Inner Transaction
         itxn.AssetTransfer(
@@ -149,13 +175,6 @@ class AgentFactory(ARC4Contract):
             asset_amount=amount,
             fee=0,
         ).submit()
-
-        # Update or Create supply box
-        current_supply = UInt64(0)
-        if op.Box.get(op.itob(asset.id))[1]:
-            current_supply = self.agent_supplies[asset.id]
-
-        self.agent_supplies[asset.id] = current_supply + amount
 
     # ------------------------------------------------------------------ #
     #  Bonding curve — sell
@@ -167,6 +186,8 @@ class AgentFactory(ARC4Contract):
         Calculate ALGO returned for selling 'amount' tokens.
         Integral of curve from (supply - amount) to supply, minus sell fee.
         """
+        assert amount > UInt64(0), "Amount must be positive"
+
         current_supply = UInt64(0)
         if op.Box.get(op.itob(asset.id))[1]:
             current_supply = self.agent_supplies[asset.id]
@@ -202,8 +223,11 @@ class AgentFactory(ARC4Contract):
         The seller must send an asset transfer of the agent token to the contract
         in the same group transaction.
         """
+        assert token_transfer.sender == Txn.sender, "Token sender must match caller"
         assert token_transfer.xfer_asset.id == asset.id, "Wrong asset"
-        assert token_transfer.asset_amount >= amount, "Insufficient tokens sent"
+        assert token_transfer.asset_amount == amount, "Token amount must exactly match sell amount"
+        assert amount >= UInt64(1_000), "Minimum sell is 1000 micro-units"
+        assert amount <= self.MAX_TX_AMOUNT, "Amount exceeds max per-transaction limit"
         assert (
             token_transfer.asset_receiver == Global.current_application_address
         ), "Tokens must go to factory"
@@ -211,16 +235,16 @@ class AgentFactory(ARC4Contract):
         # Calculate sell price (accounts for fee internally)
         sell_price = self.calculate_sell_price(asset, amount)
 
+        # Update state BEFORE external interaction (checks-effects-interactions)
+        current_supply = self.agent_supplies[asset.id]
+        self.agent_supplies[asset.id] = current_supply - amount
+
         # Pay ALGO to seller via inner transaction
         itxn.Payment(
             receiver=Txn.sender,
             amount=sell_price,
             fee=0,
         ).submit()
-
-        # Update supply
-        current_supply = self.agent_supplies[asset.id]
-        self.agent_supplies[asset.id] = current_supply - amount
 
     # ------------------------------------------------------------------ #
     #  Graduation
@@ -250,6 +274,29 @@ class AgentFactory(ARC4Contract):
         return total_value >= self.GRADUATION_THRESHOLD
 
     # ------------------------------------------------------------------ #
+    #  CORTEX distribution (testnet / airdrop)
+    # ------------------------------------------------------------------ #
+
+    @abimethod()
+    def distribute_cortex(self, receiver: Account, amount: UInt64) -> None:
+        """
+        Distribute CORTEX tokens from the factory escrow.
+        Only callable by the application creator.
+        Used for testnet distribution and genesis airdrop.
+        """
+        assert Txn.sender == Global.creator_address, "Only creator can distribute"
+        assert self.cortex_token != UInt64(0), "Protocol not bootstrapped"
+        assert amount > UInt64(0), "Amount must be positive"
+        assert amount <= UInt64(1_000_000_000_000), "Max 1M CORTEX per distribution"
+
+        itxn.AssetTransfer(
+            xfer_asset=Asset(self.cortex_token),
+            asset_receiver=receiver,
+            asset_amount=amount,
+            fee=0,
+        ).submit()
+
+    # ------------------------------------------------------------------ #
     #  Governance / Admin
     # ------------------------------------------------------------------ #
 
@@ -263,7 +310,9 @@ class AgentFactory(ARC4Contract):
         Fees are in basis points (100 = 1%). Max 10%.
         """
         assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert buy_fee >= UInt64(10), "Min buy fee is 0.1%"
         assert buy_fee <= UInt64(1000), "Max buy fee is 10%"
+        assert sell_fee >= UInt64(10), "Min sell fee is 0.1%"
         assert sell_fee <= UInt64(1000), "Max sell fee is 10%"
         self.buy_fee_bps = buy_fee
         self.sell_fee_bps = sell_fee
@@ -275,6 +324,7 @@ class AgentFactory(ARC4Contract):
         Only callable by the application creator.
         """
         assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert new_fee >= UInt64(1_000_000), "Minimum creation fee is 1 CORTEX"
         self.creation_fee = new_fee
 
     @abimethod()
@@ -284,4 +334,5 @@ class AgentFactory(ARC4Contract):
         Only callable by the application creator.
         """
         assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert new_threshold > UInt64(0), "Threshold must be positive"
         self.GRADUATION_THRESHOLD = new_threshold

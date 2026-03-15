@@ -1,5 +1,5 @@
 """
-Agent Orchestration Loop for PureCortex.
+Agent Orchestration Loop for PURECORTEX.
 
 Manages background asyncio tasks for all agents.  Designed to be integrated
 with FastAPI's lifespan so that agent loops start when the server boots
@@ -33,7 +33,7 @@ logger = logging.getLogger("purecortex.agents.loop")
 
 
 class AgentOrchestrationLoop:
-    """Manages background asyncio tasks for all PureCortex agents."""
+    """Manages background asyncio tasks for all PURECORTEX agents."""
 
     # Default intervals (seconds)
     SENATOR_INTERVAL = 14 * 24 * 3600   # 2 weeks
@@ -71,13 +71,19 @@ class AgentOrchestrationLoop:
             logger.warning("Orchestration loop already running — ignoring start().")
             return
 
-        logger.info("Starting PureCortex agent orchestration loop.")
+        logger.info("Starting PURECORTEX agent orchestration loop.")
         self._running = True
 
         # Connect agent memories
         await self.senator.memory.connect()
         await self.curator.memory.connect()
         await self.social.memory.connect()
+
+        # Initialize GPG encryption + isolated signing vaults
+        await self.senator.init_crypto()
+        await self.curator.init_crypto()
+        await self.social.init_crypto()
+        logger.info("Agent GPG + signing vaults initialized.")
 
         self._tasks = [
             asyncio.create_task(self._senator_loop(), name="senator_loop"),
@@ -97,7 +103,7 @@ class AgentOrchestrationLoop:
         if not self._running:
             return
 
-        logger.info("Stopping PureCortex agent orchestration loop.")
+        logger.info("Stopping PURECORTEX agent orchestration loop.")
         self._running = False
 
         for task in self._tasks:
@@ -110,6 +116,11 @@ class AgentOrchestrationLoop:
                 logger.error("Task %s raised during shutdown: %s", task.get_name(), result)
 
         self._tasks.clear()
+
+        # Clean up GPG keyrings and signing vaults
+        await self.senator.cleanup_crypto()
+        await self.curator.cleanup_crypto()
+        await self.social.cleanup_crypto()
 
         # Disconnect memories
         await self.senator.memory.disconnect()

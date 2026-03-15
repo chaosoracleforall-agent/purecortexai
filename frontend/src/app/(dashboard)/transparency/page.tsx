@@ -1,14 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, Flame, Wallet, Clock, ExternalLink, BarChart3, ArrowDownRight, TrendingDown, Globe } from 'lucide-react';
+import {
+  AGENT_FACTORY_ESCROW,
+  ASSISTANCE_FUND_ADDRESS,
+  CREATOR_VESTING_ADDRESS,
+  FACTORY_APP_ID,
+  OPERATIONS_ADDRESS,
+  TGE_DATE_ISO,
+  TOTAL_SUPPLY,
+} from '@/lib/protocolConfig';
 
 const PROTOCOL_WALLETS = [
-  { label: 'Agent Factory', address: 'FACTORY_APP_757089323', role: 'Bonding curve & agent creation' },
-  { label: 'Assistance Fund', address: 'TBD_AT_MAINNET', role: '90% revenue → buyback-burn' },
-  { label: 'Operations', address: 'TBD_AT_MAINNET', role: '10% revenue → operations' },
-  { label: 'Creator Vesting', address: 'TBD_AT_MAINNET', role: '10% TGE + daily vest over 6 months' },
+  { label: 'Agent Factory Escrow', address: AGENT_FACTORY_ESCROW, role: `Canonical factory deployment (App ID ${FACTORY_APP_ID})` },
+  { label: 'Assistance Fund', address: ASSISTANCE_FUND_ADDRESS, role: '90% revenue → buyback-burn' },
+  { label: 'Operations', address: OPERATIONS_ADDRESS, role: '10% revenue → operations' },
+  { label: 'Creator Vesting', address: CREATOR_VESTING_ADDRESS, role: '10% TGE + daily vest over 6 months' },
 ];
 
 const SUPPLY_ALLOCATION = [
@@ -20,9 +28,11 @@ const SUPPLY_ALLOCATION = [
   { label: 'Assistance Fund', pct: 5, color: '#8B5CF6' },
 ];
 
-const TOTAL_SUPPLY = 10_000_000_000_000_000;
-const TGE_DATE = new Date('2026-03-31T00:00:00Z');
-const VEST_END_DATE = new Date('2026-09-27T00:00:00Z');
+const TGE_DATE = new Date(TGE_DATE_ISO);
+
+function isAlgorandAddress(value: string | null): value is string {
+  return typeof value === 'string' && /^[A-Z2-7]{58}$/.test(value);
+}
 
 function formatNumber(n: number): string {
   if (n >= 1e15) return (n / 1e15).toFixed(1) + 'Q';
@@ -200,11 +210,13 @@ export default function TransparencyPage() {
               </div>
               <div className="flex items-center gap-2">
                 <code className="text-[10px] font-mono text-[#007AFF] bg-[#007AFF]/10 px-2 py-1 rounded">
-                  {wallet.address}
+                  {wallet.address || 'Pending testnet assignment'}
                 </code>
-                <a href={`https://allo.info/account/${wallet.address}`} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#007AFF] transition-colors">
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                {isAlgorandAddress(wallet.address) && (
+                  <a href={`https://allo.info/account/${wallet.address}`} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#007AFF] transition-colors">
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
               </div>
             </div>
           ))}

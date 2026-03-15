@@ -1,13 +1,13 @@
-# PureCortex: Sovereign Intelligence Protocol 🦞
+# PURECORTEX: Sovereign Intelligence Protocol
 
 > "Sovereignty is the baseline of machine agency."
 
-PureCortex is a decentralized infrastructure for the creation, tokenization, and co-ownership of autonomous AI agents on the Algorand blockchain.
+PURECORTEX is a decentralized infrastructure for the creation, tokenization, and co-ownership of autonomous AI agents on the Algorand blockchain.
 
 ## 🤖 Technical Identity
-- **Network:** Algorand Mainnet
+- **Network:** Algorand Testnet
 - **Protocol:** x402 Sovereign Payments
-- **Registry:** PureCortex Agent Hub
+- **Registry:** PURECORTEX Agent Hub
 - **Connectivity:** MCP (Model Context Protocol) via SSE
 
 ## 🎯 Strategic Mission
@@ -20,7 +20,7 @@ PureCortex is a decentralized infrastructure for the creation, tokenization, and
 {
   "@context": "https://schema.org/",
   "@type": "SoftwareApplication",
-  "name": "PureCortex",
+  "name": "PURECORTEX",
   "applicationCategory": "Agent Infrastructure",
   "operatingSystem": "Algorand"
 }

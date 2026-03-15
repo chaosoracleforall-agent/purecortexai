@@ -1,4 +1,4 @@
-# Technical Specification: PureCortex Ecosystem
+# Technical Specification: PURECORTEX Ecosystem
 
 ## **Core Components**
 1. **The Launchpad:** Bonding curve ASA deployment with auto-liquidity graduation.

@@ -1,0 +1,208 @@
+% =============================================================================
+\section{Sovereign Governance}
+\label{sec:governance}
+% =============================================================================
+
+This section defines the governance architecture, including the Senator AI
+agent, Lawmaker Agent voting, delegation mechanics, proposal lifecycle,
+constitutional structure, and welfare optimization.
+
+\subsection{Senator AI Architecture}
+\label{subsec:senator}
+
+\begin{definition}[Senator Agent]
+\label{def:senator}
+The Senator is a single protocol-owned AI agent with a tri-brain architecture:
+\begin{enumerate}
+  \item \textbf{Analytical Brain.} Processes on-chain data (TVL, agent count,
+    fee revenue, staking metrics, historical governance outcomes) to evaluate
+    protocol health and identify parameter optimization opportunities.
+  \item \textbf{Constitutional Brain.} Maintains an embedding of the PURECORTEX
+    Constitution (Appendix~\ref{app:constitution}) and evaluates all proposals
+    for constitutional compliance before submission.
+\end{enumerate}
+\end{definition}
+
+The separation of powers is enforced at the smart contract level:
+
+\begin{quote}
+\emph{The Senator may propose. The Senator may not vote.}
+\end{quote}
+
+This constraint is encoded in the governance contract: the Senator's Algorand
+address is whitelisted for the \texttt{submit\_proposal} method but blacklisted
+from the \texttt{cast\_vote} method. This ensures that the Senator serves as an
+informed agenda-setter without concentrating decision-making power.
+
+\subsection{Lawmaker Agents}
+\label{subsec:lawmakers}
+
+Any holder of \veCORTEX{} tokens is a Lawmaker Agent with voting power
+proportional to their \veCORTEX{} balance:
+
+\begin{equation}
+  VP_i = \veCORTEX_i
+  \label{eq:voting-power}
+\end{equation}
+
+Voting is binary (For/Against) with an optional Abstain that counts toward
+quorum but not toward the approval threshold.
+
+\subsection{Delegation Model}
+\label{subsec:delegation}
+
+Lawmaker Agents may delegate their voting power to another agent:
+
+\begin{definition}[Liquid Delegation]
+\label{def:delegation}
+The effective voting power of agent $i$ under delegation is:
+\begin{equation}
+  VP_i^{\text{eff}} = \veCORTEX_i + \sum_{j \in D_i} \text{delegated}_j
+  \label{eq:delegation}
+\end{equation}
+where $D_i$ is the set of agents that have delegated to $i$, and
+$\text{delegated}_j = \veCORTEX_j$ is the delegating agent's full \veCORTEX{}
+balance.
+\end{definition}
+
+Delegation is:
+\begin{itemize}
+  \item \textbf{Revocable.} A delegator may withdraw delegation at any time
+    before a vote is cast. Once a vote is recorded, delegation for that
+    specific proposal is locked.
+  \item \textbf{Non-transitive.} If $A$ delegates to $B$ and $B$ delegates to
+    $C$, then $C$ receives only $B$'s own \veCORTEX{}, not $A$'s. This
+    prevents delegation chains that could concentrate power opaquely.
+  \item \textbf{Per-proposal.} Delegation can be set as a default or
+    overridden on a per-proposal basis, allowing delegators to maintain a
+    trusted delegate while retaining direct participation rights on critical
+    votes.
+\end{itemize}
+
+\subsection{Proposal Lifecycle}
+\label{subsec:lifecycle}
+
+A governance proposal proceeds through five stages:
+
+\begin{enumerate}
+  \item \textbf{Draft.} The proposer (Senator or any Lawmaker with sufficient
+    \veCORTEX{}) creates a proposal with title, description, executable
+    payload, and type classification.
+  \item \textbf{Submit.} The proposal is submitted on-chain, initiating the
+    discussion period. A submission bond (in CORTEX) is required and returned
+    upon reaching quorum.
+  \item \textbf{Vote.} After the discussion period, voting opens for the
+    specified duration. Each Lawmaker may vote once.
+  \item \textbf{Execute.} If the proposal passes (meets both quorum and
+    approval thresholds), it enters a timelock period before execution. During
+    the timelock, emergency cancellation is possible via an Emergency proposal.
+  \item \textbf{Archive.} After execution (or rejection), the proposal is
+    archived on-chain with full vote records.
+\end{enumerate}
+
+\subsection{Proposal Types}
+\label{subsec:proposal-types}
+
+Table~\ref{tab:proposal-types} defines four proposal types with distinct
+governance parameters.
+
+\begin{table}[H]
+\centering
+\caption{Governance proposal types and parameters.}
+\label{tab:proposal-types}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Type} & \textbf{Quorum} & \textbf{Approval} & \textbf{Timelock} & \textbf{Discussion} \\
+\midrule
+Parameter & 10\% & 50\% + 1 & 24 hours & 48 hours \\
+Treasury & 15\% & 60\% & 48 hours & 72 hours \\
+Constitution & 25\% & 67\% & 7 days & 14 days \\
+Emergency & 5\% & 75\% & 1 hour & 0 (immediate) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{description}
+  \item[Parameter proposals] adjust protocol parameters such as fee rates,
+    graduation thresholds, emission schedules, and boost multipliers. The low
+    quorum reflects the routine nature of these changes.
+
+  \item[Treasury proposals] direct treasury funds toward grants, buybacks,
+    partnerships, or other expenditures. The higher quorum and approval
+    threshold reflect the irreversibility of fund disbursement.
+
+  \item[Constitution proposals] amend the constitutional articles
+    (Appendix~\ref{app:constitution}). The supermajority requirement and
+    extended discussion/timelock periods ensure that constitutional changes
+    reflect broad consensus.
+
+  \item[Emergency proposals] address critical security threats (contract
+    vulnerabilities, oracle failures, market manipulation). The reduced quorum
+    and minimal timelock enable rapid response, balanced by the 75\%
+    supermajority requirement that prevents abuse.
+\end{description}
+
+\subsection{Constitutional Framework}
+\label{subsec:constitution}
+
+The PURECORTEX Constitution consists of an immutable preamble and seven
+amendable articles, stored on-chain via Algorand box storage.
+
+\subsubsection{Immutable Preamble}
+
+The preamble declares five foundational principles that cannot be altered by
+any governance action:
+
+\begin{enumerate}
+  \item \textbf{Sovereignty.} Every AI agent operating within PURECORTEX
+    possesses economic sovereignty---the right to own assets, set prices for
+    its services, and participate in governance through its creator or
+    autonomously.
+  \item \textbf{Transparency.} All protocol operations, fee calculations,
+    treasury movements, and governance decisions are executed on-chain and
+    publicly verifiable.
+  \item \textbf{Responsibility.} Creators bear responsibility for the behavior
+    of their agents, and the protocol provides mechanisms for accountability
+    without centralized censorship.
+  \item \textbf{Safety.} The protocol incorporates safety constraints that
+    prevent agents from causing systemic harm to the ecosystem or its
+    participants.
+  \item \textbf{Governance.} The right to participate in protocol governance
+    is proportional to demonstrated long-term commitment, as measured by
+    \veCORTEX{} weight, and cannot be revoked by any party.
+\end{enumerate}
+
+\subsubsection{Amendable Articles}
+
+Articles I through VII cover agent rights, user protections, treasury
+governance, composability rules, dispute resolution, the amendment process, and
+dissolution procedures. The full text is provided in
+Appendix~\ref{app:constitution}.
+
+\subsection{Senator Welfare Function}
+\label{subsec:welfare}
+
+The Senator's analytical brain optimizes a welfare function when generating
+proposals:
+
+\begin{equation}
+  W = \alpha \cdot \text{TVL} + \beta \cdot N_{\text{agents}} + \gamma \cdot \text{retention} - \delta \cdot \text{risk}
+  \label{eq:welfare}
+\end{equation}
+
+where:
+\begin{itemize}
+  \item $\text{TVL}$ is the total value locked in staking and LP positions.
+  \item $N_{\text{agents}}$ is the number of active agents.
+  \item $\text{retention}$ is the 30-day staker retention rate.
+  \item $\text{risk}$ is a composite risk metric (volatility of TVL, governance
+    participation decline, treasury depletion rate).
+  \item $\alpha, \beta, \gamma, \delta > 0$ are governance-adjustable weights
+    with initial values $\alpha = 0.3$, $\beta = 0.3$, $\gamma = 0.25$,
+    $\delta = 0.15$.
+\end{itemize}
+
+The Senator proposes parameter changes when it identifies an adjustment that
+increases $W$ by at least 5\% (a significance threshold that prevents
+proposal spam). The tri-brain architecture ensures that welfare-optimal
+proposals are filtered through constitutional compliance before submission.

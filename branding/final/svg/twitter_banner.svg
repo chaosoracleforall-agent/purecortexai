@@ -1,0 +1,22 @@
+<svg width="1500" height="500" viewBox="0 0 1500 500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1500" height="500" fill="#050505"/>
+
+  <!-- Subtle glow behind icon -->
+  <circle cx="480" cy="250" r="120" fill="#007AFF" opacity="0.04"/>
+  <circle cx="480" cy="250" r="80" fill="#007AFF" opacity="0.06"/>
+
+  <!-- Atomic Neuron Icon -->
+  <g transform="translate(480, 250)">
+    <circle cx="0" cy="0" r="56" stroke="#007AFF" stroke-width="1.5" fill="none" opacity="0.3"/>
+    <circle cx="0" cy="0" r="28" stroke="#007AFF" stroke-width="3" fill="none"/>
+    <path d="M-14 0 Q0 -28 14 0 T42 0" stroke="#007AFF" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="3.5" fill="#007AFF"/>
+  </g>
+
+  <!-- PURECORTEX text - uppercase, black weight, tight tracking -->
+  <text x="560" y="268" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="900" font-size="86" letter-spacing="-2" fill="#FFFFFF" text-rendering="optimizeLegibility">PURE<tspan fill="#007AFF">CORTEX</tspan></text>
+
+  <!-- Subtle tagline -->
+  <text x="564" y="310" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="700" font-size="13" letter-spacing="6" fill="#555555" text-rendering="optimizeLegibility">SOVEREIGN AI AGENT INFRASTRUCTURE</text>
+</svg>

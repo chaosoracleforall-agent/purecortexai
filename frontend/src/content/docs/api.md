@@ -1,11 +1,11 @@
 ---
 title: API Documentation
-description: PureCortex REST and WebSocket API reference for interacting with sovereign AI agents on Algorand.
+description: PURECORTEX REST and WebSocket API reference for interacting with sovereign AI agents on Algorand.
 ---
 
-# PureCortex API Documentation
+# PURECORTEX API Documentation
 
-The PureCortex API provides high-performance, asynchronous endpoints for interacting with sovereign AI agents and the Algorand blockchain.
+The PURECORTEX API provides high-performance, asynchronous endpoints for interacting with sovereign AI agents and the Algorand blockchain.
 
 ## Base URL
 
@@ -13,7 +13,7 @@ The PureCortex API provides high-performance, asynchronous endpoints for interac
 
 ## Authentication
 
-Authentication is handled via the `PermissionProxy`. High-tier actions require wallet signature verification. Read-only endpoints are publicly accessible.
+Read-only transparency and governance endpoints are publicly accessible. Protected REST endpoints require `X-API-Key`, and WebSocket chat requires a short-lived session token created through `POST /api/chat/session`.
 
 ---
 
@@ -25,14 +25,18 @@ Authentication is handled via the `PermissionProxy`. High-tier actions require w
 GET /health
 ```
 
-Returns the operational status of the API and Dual-Brain orchestrator.
+Returns the operational status of the API and Tri-Brain orchestrator.
 
 **Response:**
 ```json
 {
   "status": "ok",
-  "orchestrator_active": true,
-  "version": "0.6.0"
+  "version": "0.7.0",
+  "dependencies": {
+    "redis": "connected",
+    "orchestrator": "initialized",
+    "agent_loop": "running"
+  }
 }
 ```
 
@@ -44,23 +48,20 @@ Returns the operational status of the API and Dual-Brain orchestrator.
 WS /ws/chat
 ```
 
-Establish a real-time bi-directional link with the PureCortex Dual-Brain consensus engine.
+Establish a real-time bi-directional link with the PURECORTEX Tri-Brain consensus engine.
 
 - **Protocol:** Message-based string exchange
-- **Security:** Guarded by XML structural guardrails and the `PermissionProxy`
+- **Security:** Guarded by XML structural guardrails and an authenticated chat session
 - **Consensus:** Both Claude and Gemini must agree on an action before execution
 
 **Usage:**
 ```javascript
-const ws = new WebSocket('wss://purecortex.ai/ws/chat');
+const session = await fetch('https://purecortex.ai/api/chat/session', {
+  method: 'POST',
+  headers: { 'X-API-Key': process.env.PURECORTEX_API_KEY! },
+}).then((r) => r.json());
 
-ws.onopen = () => {
-  ws.send('What is the current bonding curve price for agent CORTX?');
-};
-
-ws.onmessage = (event) => {
-  console.log('Response:', event.data);
-};
+const ws = new WebSocket(`wss://purecortex.ai/ws/chat?session=${session.session_token}`);
 ```
 
 ---
@@ -136,7 +137,7 @@ Retrieve on-chain and off-chain metadata for a specific agent token.
 **Response:**
 ```json
 {
-  "asset_id": 757092088,
+  "asset_id": 757172171,
   "name": "Cortex-Omega-1",
   "symbol": "CORTX",
   "total_supply": 1000000000,
@@ -164,7 +165,7 @@ Retrieve on-chain and off-chain metadata for a specific agent token.
 |------|-------------|
 | 200 | Success |
 | 400 | Bad request — invalid parameters |
-| 401 | Unauthorized — wallet signature required |
+| 401 | Unauthorized — missing or invalid API key or chat session |
 | 404 | Resource not found |
 | 429 | Rate limit exceeded |
 | 500 | Internal server error |

@@ -1,6 +1,6 @@
 ---
 title: "API Overview"
-description: "PureCortex REST and WebSocket API"
+description: "PURECORTEX REST and WebSocket API"
 ---
 
 ## Base URL
@@ -15,7 +15,7 @@ https://purecortex.ai
 
 Read-only endpoints (transparency, governance, agents) are **public** and require no authentication.
 
-Write endpoints (voting, proposals, agent commands) will require a **wallet signature** post-TGE. Details will be published closer to launch.
+Protected REST endpoints require an `X-API-Key`. WebSocket chat requires a short-lived session token minted by `POST /api/chat/session`.
 
 ## Rate Limits
 
@@ -55,7 +55,7 @@ Error responses include `error` and `detail` fields:
 |-----------|------------------------|------------------------------------------------------|
 | `200`     | OK                     | Request succeeded.                                   |
 | `400`     | Bad Request            | Malformed request body or missing required fields.   |
-| `401`     | Unauthorized           | Missing or invalid wallet signature (write endpoints). |
+| `401`     | Unauthorized           | Missing or invalid API key or chat session. |
 | `404`     | Not Found              | The requested resource does not exist.               |
 | `429`     | Too Many Requests      | Rate limit exceeded. Retry after the indicated delay. |
 | `500`     | Internal Server Error  | Unexpected server-side failure.                      |

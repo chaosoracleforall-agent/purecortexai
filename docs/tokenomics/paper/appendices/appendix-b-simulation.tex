@@ -1,0 +1,241 @@
+% =============================================================================
+\section{Simulation Methodology}
+\label{app:simulation}
+% =============================================================================
+
+This appendix provides the complete simulation methodology, parameter tables,
+and random seed generation procedure for the Monte Carlo simulations presented
+in Section~\ref{sec:simulations}.
+
+\subsection{Simulation Engine}
+\label{subsec:sim-engine}
+
+The simulation engine is implemented in Python 3.13 using NumPy 1.26 and
+SciPy 1.12. Each simulation run models a 48-month (1{,}461-day) horizon with
+daily time steps. The state vector at each step includes:
+
+\begin{itemize}
+  \item Circulating supply $S(t)$
+  \item Total \veCORTEX{} supply $V_{\text{total}}(t)$
+  \item Number of active agents $N(t)$
+  \item Treasury balance $R_{\text{treasury}}(t)$
+  \item Cumulative tokens burned $B(t)$
+  \item Market regime $\mu(t) \in \{\text{Bull, Neutral, Bear}\}$
+  \item Per-agent state: bonding curve position, graduation status, trading
+    volume, composability connections
+\end{itemize}
+
+\subsection{Parameter Tables}
+\label{subsec:sim-params}
+
+Table~\ref{tab:sim-core} presents the core simulation parameters.
+
+\begin{table}[H]
+\centering
+\caption{Core simulation parameters.}
+\label{tab:sim-core}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
+\midrule
+$T_{\text{sim}}$ & 1{,}461 days & Simulation horizon (4 years) \\
+$N_{\text{runs}}$ & 1{,}000 & Monte Carlo runs per scenario \\
+$\Delta t$ & 1 day & Time step \\
+$S_0$ & $5.75 \times 10^{14}$ & Initial circulating supply \\
+$R_{\text{total}}$ & $2.5 \times 10^{15}$ & Total staking emissions \\
+$\mathbf{w}$ & $(0.4, 0.3, 0.2, 0.1)$ & Annual emission weights \\
+$f_{\text{base}}$ & 0.005 & Base fee rate \\
+$f_{\text{dyn}}$ & 0.015 & Dynamic fee coefficient \\
+$\sigma_{\max}$ & 0.5 & Maximum volatility for fee scaling \\
+$G$ & 50{,}000 CORTEX & Graduation threshold \\
+$T_{\max}$ & 4 years & Maximum lock duration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:sim-growth} presents the growth scenario parameters.
+
+\begin{table}[H]
+\centering
+\caption{Growth scenario parameters.}
+\label{tab:sim-growth}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Parameter} & \textbf{Conservative} & \textbf{Moderate} & \textbf{Aggressive} \\
+\midrule
+Agent arrival rate $\lambda_0$ & 1.5/week & 3/week & 6/week \\
+Growth rate $\alpha$ & 0.01 & 0.02 & 0.04 \\
+Mean daily volume (log) $\mu_V$ & 7.0 & 8.0 & 9.0 \\
+Volume std dev $\sigma_V$ & 1.5 & 1.5 & 1.5 \\
+Graduation rate & 40\% & 60\% & 80\% \\
+Staking participation & 25\% & 40\% & 55\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:sim-regime} presents the market regime transition matrix.
+
+\begin{table}[H]
+\centering
+\caption{Daily market regime transition probabilities.}
+\label{tab:sim-regime}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{From $\backslash$ To} & \textbf{Bull} & \textbf{Neutral} & \textbf{Bear} \\
+\midrule
+Bull & 0.97 & 0.02 & 0.01 \\
+Neutral & 0.03 & 0.94 & 0.03 \\
+Bear & 0.01 & 0.04 & 0.95 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The transition probabilities are calibrated to produce regime durations
+consistent with historical crypto market cycles: bull regimes last
+approximately 33 days on average ($1/0.03$), neutral regimes approximately
+17 days ($1/0.06$), and bear regimes approximately 20 days ($1/0.05$).
+
+Table~\ref{tab:sim-staker} presents the staker behavior parameters.
+
+\begin{table}[H]
+\centering
+\caption{Staker behavior distribution.}
+\label{tab:sim-staker}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Lock Duration} & \textbf{Probability} & \textbf{veCORTEX Multiplier} \\
+\midrule
+4 years ($T_{\max}$) & 30\% & 1.0 \\
+2 years ($T_{\max}/2$) & 40\% & 0.5 \\
+1 year ($T_{\max}/4$) & 30\% & 0.25 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Volatility Model}
+\label{subsec:sim-vol}
+
+Realized volatility is modeled as a regime-dependent log-normal process:
+
+\begin{equation}
+  \sigma(t) \sim \text{LogNormal}(\mu_\sigma(\mu(t)),\; \xi^2)
+\end{equation}
+
+with regime-dependent mean parameters:
+
+\begin{table}[H]
+\centering
+\caption{Volatility model parameters by regime.}
+\label{tab:sim-vol}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Regime} & $\mu_\sigma$ (log-scale) & \textbf{Implied Mean Vol} \\
+\midrule
+Bull & $-1.2$ & 33\% (annualized) \\
+Neutral & $-1.8$ & 18\% \\
+Bear & $-0.8$ & 49\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The shared variance parameter is $\xi^2 = 0.3$, producing fat-tailed
+volatility distributions consistent with empirical crypto market data.
+
+\subsection{Trading Volume Model}
+\label{subsec:sim-volume}
+
+Daily trading volume per agent follows:
+
+\begin{equation}
+  V_{\text{agent}}(t) = \exp(\mu_V + \sigma_V Z) \cdot \kappa(\mu(t)) \cdot \text{age\_factor}(t - t_{\text{create}})
+\end{equation}
+
+where $Z \sim \mathcal{N}(0,1)$, $\kappa(\text{Bull}) = 1.5$,
+$\kappa(\text{Neutral}) = 1.0$, $\kappa(\text{Bear}) = 0.5$, and:
+
+\begin{equation}
+  \text{age\_factor}(\Delta) = \begin{cases}
+    0.3 + 0.7 \cdot \Delta / 30 & \text{if } \Delta < 30 \\
+    1.0 & \text{if } 30 \leq \Delta < 180 \\
+    1.0 \cdot e^{-0.002(\Delta - 180)} & \text{if } \Delta \geq 180
+  \end{cases}
+\end{equation}
+
+This models initial ramp-up, peak activity, and gradual decay.
+
+\subsection{Composability Model}
+\label{subsec:sim-comp}
+
+Agent tool registration follows a Bernoulli process with probability
+$p_{\text{tool}} = 0.7$ (70\% of agents expose at least one tool). Cross-agent
+invocations follow a preferential attachment model:
+
+\begin{equation}
+  P(\text{agent } j \text{ calls agent } i) \propto CS_i^{0.8} + \epsilon
+\end{equation}
+
+where $\epsilon = 0.01$ ensures nonzero probability for agents with low
+Composability Scores, preventing rich-get-richer lock-in.
+
+\subsection{Governance Model}
+\label{subsec:sim-gov}
+
+The governance simulation generates Senator proposals at a rate of 2 per month,
+with:
+\begin{itemize}
+  \item 60\% Parameter proposals, 25\% Treasury proposals, 10\% Constitution
+    proposals, 5\% Emergency proposals.
+  \item Voter turnout drawn from a beta distribution
+    $\text{Beta}(2, 3)$ (mean 40\%, right-skewed).
+  \item Delegation probability: 35\% of stakers delegate, with delegates
+    chosen proportional to \veCORTEX{} weight.
+  \item Vote correlation with Senator recommendation: 0.7 (voters are
+    partially influenced by the Senator's proposal quality assessment).
+\end{itemize}
+
+\subsection{Random Seed Generation}
+\label{subsec:seeds}
+
+Each of the 1{,}000 Monte Carlo runs uses a distinct random seed:
+
+\begin{equation}
+  \text{seed}_k = \text{SHA-256}(\text{master\_seed} \,\|\, k) \mod 2^{32}
+\end{equation}
+
+where $\text{master\_seed} = \texttt{0xDEADBEEF42}$ and $k \in \{0, 1,
+\ldots, 999\}$. The SHA-256 hash ensures statistical independence between
+runs. The master seed is fixed for reproducibility; all results can be exactly
+replicated by using the same master seed and simulation code.
+
+\subsection{Stress Test Methodology}
+\label{subsec:sim-stress-method}
+
+The stress test (Figure~\ref{fig:stress-test}) is implemented as a
+deterministic shock at day 365 (month 12):
+
+\begin{itemize}
+  \item Token price: instantaneous 60\% decline.
+  \item Trading volume: 40\% decline (partially offset by panic selling).
+  \item New agent arrivals: 80\% decline for 30 days, linear recovery over 90
+    days.
+  \item Staker behavior: 20\% of non-locked stakers exit (locked stakers
+    cannot exit by construction).
+\end{itemize}
+
+Recovery is measured as the number of days until TVL returns to the pre-crash
+level.
+
+\subsection{Confidence Interval Construction}
+\label{subsec:sim-ci}
+
+Confidence intervals in Figures~\ref{fig:supply-trajectory}--\ref{fig:sensitivity}
+are constructed as pointwise 95\% intervals:
+
+\begin{equation}
+  \text{CI}_{95}(t) = \left[\hat{Q}_{0.025}(t),\; \hat{Q}_{0.975}(t)\right]
+\end{equation}
+
+where $\hat{Q}_p(t)$ is the empirical $p$-quantile across the 1{,}000 runs at
+time $t$. We use quantile-based intervals rather than mean $\pm$ 1.96 standard
+deviations because several output distributions (particularly trading volume
+and burn amounts) are right-skewed.

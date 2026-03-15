@@ -7,7 +7,7 @@ description: "Retrieve agent factory information and the list of deployed AI age
 Returns the on-chain agent factory details and all deployed AI agents, including their Algorand Standard Asset (ASA) metadata.
 
 <ResponseField name="factory_app_id" type="integer" required>
-  Algorand Application ID of the agent factory smart contract. Current value: `757089323`.
+  Algorand Application ID of the agent factory smart contract. Current value: `757172168`.
 </ResponseField>
 
 <ResponseField name="total_agents" type="integer" required>
@@ -51,7 +51,7 @@ curl https://purecortex.ai/api/transparency/agents
 <ResponseExample>
 ```json 200
 {
-  "factory_app_id": 757089323,
+  "factory_app_id": 757172168,
   "total_agents": 3,
   "agents": [
     {
@@ -79,7 +79,7 @@ curl https://purecortex.ai/api/transparency/agents
       "creator_txn": "CRTX3...IJKL"
     }
   ],
-  "note": "All agents are registered on Algorand mainnet via the factory contract."
+  "note": "Agents are discovered from the canonical Algorand testnet factory deployment."
 }
 ```
 </ResponseExample>

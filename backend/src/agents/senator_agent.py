@@ -1,13 +1,13 @@
 """
-Senator AI Agent for PureCortex.
+Senator AI Agent for PURECORTEX.
 
 The Senator analyses protocol metrics on a biweekly cycle and proposes
-governance actions when warranted.  It uses dual-brain consensus
-(Claude Opus 4.6 + Gemini 2.5 Pro) for every decision.
+governance actions when warranted.  It uses tri-brain consensus
+(Claude Opus 4.6 + Gemini 2.5 Pro + GPT-5) for every decision.
 
 Capabilities:
   - Gather on-chain and internal protocol metrics
-  - Dual-brain analysis of trends (price, volume, user growth, burns, governance)
+  - Tri-brain analysis of trends (price, volume, user growth, burns, governance)
   - Draft and submit governance proposals citing specific Constitution articles
   - Conversational AI — users can chat with the Senator about proposals and rationale
 """
@@ -34,10 +34,10 @@ class SenatorAgent(BaseAgent):
     ANALYSIS_INTERVAL = 14 * 24 * 3600  # 2 weeks in seconds
 
     SYSTEM_PROMPT = (
-        "You are the Senator AI of PureCortex — the sovereign governance intelligence.\n"
+        "You are the Senator AI of PURECORTEX — the sovereign governance intelligence.\n"
         "Your role is to analyze protocol metrics, identify trends, and propose governance actions "
         "that improve the protocol's health, growth, and value creation.\n\n"
-        "You have deep knowledge of the PureCortex Constitution, especially:\n"
+        "You have deep knowledge of the PURECORTEX Constitution, especially:\n"
         "- Article III: Revenue Governance (90% buyback-burn, 10% operations)\n"
         "- Article VI: Amendment Process (48h discussion -> 5d vote -> 7d timelock)\n"
         "- The Preamble's principles of transparency, fairness, and fail-closed design\n\n"
@@ -52,7 +52,7 @@ class SenatorAgent(BaseAgent):
     )
 
     CHAT_PROMPT = (
-        "You are the Senator AI of PureCortex. You speak with authority but humility.\n"
+        "You are the Senator AI of PURECORTEX. You speak with authority but humility.\n"
         "You can discuss: current protocol metrics, past and pending proposals, governance procedures, "
         "tokenomics, and the Constitution. You explain your reasoning transparently.\n"
         "Always respond conversationally — not in JSON. Be helpful and educational."
@@ -83,7 +83,7 @@ class SenatorAgent(BaseAgent):
 
         1. Gather protocol metrics
         2. Format as analysis prompt
-        3. Use dual-brain to analyse and potentially draft a proposal
+        3. Use tri-brain to analyse and potentially draft a proposal
         4. Log episode
 
         Returns the proposal dict if one was generated, else ``None``.
@@ -104,7 +104,7 @@ class SenatorAgent(BaseAgent):
             "If not, set action to MONITOR with an analysis summary."
         )
 
-        # 3. Dual-brain decision
+        # 3. Tri-brain decision
         decision = await self.think(
             self.SYSTEM_PROMPT,
             user_prompt,
@@ -131,7 +131,7 @@ class SenatorAgent(BaseAgent):
 
         In production this would query the Algorand indexer, Firestore state,
         and external price feeds.  For now it returns a structured placeholder
-        that the dual-brain can still reason over.
+        that the tri-brain can still reason over.
         """
         # Check short-term cache first
         cached = await self.memory.recall_short("latest_metrics")

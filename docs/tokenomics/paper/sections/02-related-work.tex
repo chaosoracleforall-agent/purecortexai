@@ -1,0 +1,121 @@
+% =============================================================================
+\section{Related Work}
+\label{sec:related-work}
+% =============================================================================
+
+This section surveys four streams of literature that inform the PURECORTEX
+tokenomic design: bonding curves and automated market makers, vote-escrowed
+tokenomics, agent tokenization platforms, and game-theoretic mechanism design
+for decentralized systems.
+
+\subsection{Bonding Curves and Continuous Token Models}
+\label{subsec:rw-bonding}
+
+The concept of automated price discovery through mathematical functions
+originates with Hanson's logarithmic market scoring rule for prediction
+markets~\citep{hanson2003combinatorial}. Hanson demonstrated that a cost
+function derived from a convex potential can simultaneously serve as a market
+maker and an information aggregation device. The Bancor protocol generalized
+this insight to arbitrary token issuance, introducing continuous liquidity
+through a reserve-backed bonding curve parameterized by a connector
+weight~\citep{bancor2017}. Subsequent work by Angeris et
+al.~\citep{angeris2020improved} provided rigorous analysis of constant-product
+market makers (the Uniswap model), establishing conditions under which
+arbitrageurs drive prices toward external reference values.
+
+Our quadratic bonding curve (Section~\ref{sec:bonding-curve}) builds on this
+lineage but introduces two innovations absent from prior work: a deterministic
+graduation mechanism that atomically transitions liquidity from the bonding
+curve to a decentralized exchange, and a mandatory creator vesting schedule
+that conditions token release on elapsed time rather than price milestones.
+
+\subsection{Vote-Escrowed Tokenomics}
+\label{subsec:rw-ve}
+
+The vote-escrowed (ve) model was pioneered by Curve Finance's
+veCRV~\citep{curvefinance2020, egorov2019stableswap}, wherein users lock CRV
+tokens for up to four years to receive governance weight proportional to the
+remaining lock duration. This mechanism simultaneously reduces circulating
+supply, aligns governance power with long-term commitment, and distributes
+protocol revenue to lockers. Balancer subsequently adapted the model as
+veBAL~\citep{balancer2022vebal}, adding a gauge-based emission allocation
+system.
+
+Two limitations of existing ve implementations motivate our design. First,
+veCRV was introduced approximately two years after CRV launch, disadvantaging
+early participants who could not lock tokens from inception. Second, the linear
+decay of governance weight creates a ``cliff problem'' wherein users must
+repeatedly re-lock to maintain influence, introducing gas costs and
+attentional overhead. The \veCORTEX{} mechanism
+(Section~\ref{sec:vecortex-staking}) addresses the first limitation by
+launching contemporaneously with the token, and mitigates the second through a
+boost multiplier that rewards sustained participation.
+
+\subsection{Agent Tokenization Platforms}
+\label{subsec:rw-agent}
+
+The tokenization of AI agents---the process of creating tradeable digital
+assets representing ownership stakes in or usage rights to autonomous
+agents---has emerged as a distinct category within decentralized infrastructure.
+The most prominent exemplar, which we refer to as \emph{Platform~A} for
+neutrality, implements the following design:
+
+\begin{itemize}
+  \item A fixed supply of $10^9$ tokens per agent, with 1\% allocated to the
+    creator at launch and no vesting schedule.
+  \item A flat 1\% trading fee on all buy and sell transactions, split between
+    the creator and the protocol.
+  \item Initial liquidity bootstrapped through a bonding curve, with LP tokens
+    locked upon migration to a decentralized exchange.
+  \item No on-chain governance mechanism; protocol parameters are controlled by
+    the development team.
+  \item No composability framework; agents operate as isolated services.
+\end{itemize}
+
+While Platform~A demonstrated product-market fit and catalyzed the agent token
+category, its design exhibits the five structural deficiencies enumerated in
+Section~\ref{subsec:problem}. The absence of creator vesting has been
+empirically associated with rapid creator exits; the flat fee structure fails
+to adapt to volatility regimes; and the lack of governance creates platform
+risk.
+
+\subsection{Game Theory and Mechanism Design in DeFi}
+\label{subsec:rw-game-theory}
+
+Roughgarden~\citep{roughgarden2020transaction} established a formal framework
+for analyzing transaction fee mechanisms as games between users and block
+producers, proving that EIP-1559-style mechanisms are incentive-compatible
+under certain conditions. Daian et al.~\citep{daian2020flash} identified
+miner extractable value (MEV) as a fundamental game-theoretic challenge in
+decentralized exchanges, demonstrating that frontrunning and sandwich attacks
+constitute rational strategies under existing fee structures.
+
+In the broader mechanism design literature,
+Myerson~\citep{myerson1981optimal} established revenue-optimal auction theory,
+while Spence~\citep{spence1973job} introduced the signaling model that we
+adapt in Section~\ref{sec:game-theory} to analyze bonding curve participation
+as a quality signal. Zargham et al.~\citep{zargham2020} proposed cadCAD-based
+simulation frameworks for economic games in token ecosystems, providing
+methodological grounding for our simulation approach.
+
+The intersection of game theory and governance has been explored in the context
+of liquid democracy and delegative voting~\citep{fudenberg1991game}. Our
+governance model (Section~\ref{sec:governance}) extends this literature by
+introducing an AI Senator agent that participates in the proposal process but
+is constitutionally prohibited from voting, creating a novel separation of
+powers within a token-governed system.
+
+\subsection{Algorand as Settlement Layer}
+\label{subsec:rw-algorand}
+
+The Algorand blockchain~\citep{algorand2019, chen2019algorand} provides
+several properties that are structurally advantageous for agent tokenomics:
+immediate transaction finality (no probabilistic confirmation), native asset
+support through the Algorand Standard Asset (ASA) model, atomic transaction
+groups that enable multi-step operations without reentrancy risk, and
+LogicSig-based programmable accounts that can enforce time-locked LP
+positions without trusted intermediaries.
+
+These properties eliminate entire classes of vulnerabilities present in
+EVM-based implementations (see Section~\ref{sec:security}) and enable the
+atomic graduation mechanism described in Section~\ref{sec:bonding-curve}.

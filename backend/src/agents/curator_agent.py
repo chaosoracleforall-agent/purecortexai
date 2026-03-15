@@ -1,7 +1,7 @@
 """
-Curator AI Agent for PureCortex.
+Curator AI Agent for PURECORTEX.
 
-The Curator reviews every governance proposal against the PureCortex
+The Curator reviews every governance proposal against the PURECORTEX
 Constitution (Preamble + Articles) and issues an APPROVE or REJECT
 recommendation with detailed rationale.
 
@@ -10,7 +10,7 @@ rather than running on a periodic schedule.
 
 Capabilities:
   - Load and parse the full Constitution (Preamble is immutable, Articles are amendable)
-  - Dual-brain compliance analysis (Claude Opus 4.6 + Gemini 2.5 Pro)
+  - Tri-brain compliance analysis (Claude Opus 4.6 + Gemini 2.5 Pro + GPT-5)
   - Risk assessment and impact analysis
   - Conversational AI — users can ask about constitutional provisions and review outcomes
 """
@@ -42,8 +42,8 @@ class CuratorAgent(BaseAgent):
     """Constitutional compliance reviewer for governance proposals."""
 
     SYSTEM_PROMPT = (
-        "You are the Curator AI of PureCortex — the constitutional compliance reviewer.\n"
-        "Your role is to review every governance proposal against the PureCortex Constitution.\n\n"
+        "You are the Curator AI of PURECORTEX — the constitutional compliance reviewer.\n"
+        "Your role is to review every governance proposal against the PURECORTEX Constitution.\n\n"
         "You must:\n"
         "1. Check if the proposal contradicts the immutable Preamble (auto-reject if so)\n"
         "2. Verify the correct Article/Section is cited\n"
@@ -62,7 +62,7 @@ class CuratorAgent(BaseAgent):
     )
 
     CHAT_PROMPT = (
-        "You are the Curator AI of PureCortex. You are the constitutional scholar.\n"
+        "You are the Curator AI of PURECORTEX. You are the constitutional scholar.\n"
         "You can discuss: the Constitution's provisions, how proposals are evaluated, past review outcomes, "
         "the amendment process, and the principles behind governance rules.\n"
         "Respond conversationally. Be precise about constitutional references."
@@ -108,6 +108,10 @@ class CuratorAgent(BaseAgent):
         Returns the file content or an empty string if the file is missing.
         """
         path = os.path.normpath(os.path.join(_CONSTITUTION_DIR, filename))
+        # Guard against path traversal
+        if not path.startswith(os.path.normpath(_CONSTITUTION_DIR)):
+            logger.error("Path traversal attempt blocked: %s", filename)
+            return ""
         try:
             with open(path, "r", encoding="utf-8") as f:
                 return f.read()
@@ -126,7 +130,7 @@ class CuratorAgent(BaseAgent):
         """Review a governance proposal for constitutional compliance.
 
         Constructs a system prompt that includes the full Constitution text
-        and submits the proposal for dual-brain analysis.
+        and submits the proposal for tri-brain analysis.
 
         Returns the review result dict with fields:
           compliant, analysis, risks, recommendation, rationale, articles_affected

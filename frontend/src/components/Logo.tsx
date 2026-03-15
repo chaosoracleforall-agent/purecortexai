@@ -23,12 +23,10 @@ export const AtomicNeuron = ({ className = "w-8 h-8", glow = true }) => {
 
 export const PureCortexLogo = ({ className = "h-8" }) => {
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <div className="w-8 h-8 rounded-lg bg-[#007AFF] flex items-center justify-center shadow-[0_0_15px_rgba(0,122,255,0.4)]">
-         <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-      </div>
-      <span className="text-3xl font-black tracking-tight text-white font-sans uppercase">
-        Pure<span className="text-[#007AFF]">Cortex</span>
+    <div className={`flex items-center gap-2 sm:gap-3 ${className}`}>
+      <AtomicNeuron className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0" glow={false} />
+      <span className="text-xl sm:text-3xl font-black tracking-tight text-white font-sans uppercase">
+        PURE<span className="text-[#007AFF]">CORTEX</span>
       </span>
     </div>
   );

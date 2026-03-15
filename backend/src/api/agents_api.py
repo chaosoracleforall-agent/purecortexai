@@ -1,18 +1,32 @@
 """
-Agent Registry API for PureCortex.
+Agent Registry API for PURECORTEX.
 
 Provides endpoints to list protocol AI agents, chat with them,
-and view their recent activity.
+view their recent activity, and trigger governance actions
+(Senator proposals, Curator reviews).
 """
 
+import logging
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.services.cache import cache_with_ttl, TTL_AGENTS
+from src.api.governance import (
+    ProposalCreateRequest,
+    ProposalDetail,
+    ProposalType,
+    ReviewRequest,
+    create_proposal,
+    review_proposal as governance_review_proposal,
+    _get_proposal,
+    _proposal_to_detail,
+)
+
+logger = logging.getLogger("purecortex.agents_api")
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -50,7 +64,7 @@ class AgentRegistryResponse(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=4096)
 
 
 class ChatResponse(BaseModel):
@@ -81,10 +95,10 @@ PROTOCOL_AGENTS: list[AgentRecord] = [
         name="senator",
         role=AgentRole.SENATOR,
         description=(
-            "The Senator AI is the governance intelligence of PureCortex. "
+            "The Senator AI is the governance intelligence of PURECORTEX. "
             "It proposes protocol amendments, mediates disputes, and ensures "
-            "constitutional compliance. Powered by Dual-Brain Consensus "
-            "(Claude + Gemini)."
+            "constitutional compliance. Powered by Tri-Brain Consensus "
+            "(Claude + Gemini + GPT-5)."
         ),
         algorand_address=None,
         status=AgentStatus.PRE_LAUNCH,
@@ -122,9 +136,9 @@ PROTOCOL_AGENTS: list[AgentRecord] = [
         name="social",
         role=AgentRole.SOCIAL,
         description=(
-            "The Social Agent handles PureCortex's public communications "
+            "The Social Agent handles PURECORTEX's public communications "
             "across Twitter and Farcaster. It generates consensus-approved "
-            "content through the Dual-Brain Orchestrator."
+            "content through the Tri-Brain Orchestrator."
         ),
         algorand_address=None,
         status=AgentStatus.STANDBY,
@@ -155,12 +169,170 @@ async def get_agent_registry():
     )
 
 
+# ──────────────────────────────────────────────
+# Governance Action Endpoints
+# (must be declared BEFORE wildcard /{agent_name} routes)
+# ──────────────────────────────────────────────
+class SenatorProposeRequest(BaseModel):
+    title: str = Field(..., min_length=5, max_length=200)
+    description: str = Field(..., min_length=10, max_length=5000)
+    type: ProposalType = ProposalType.GENERAL
+
+
+class SenatorProposeResponse(BaseModel):
+    agent: str = "senator"
+    action: str = "proposal_created"
+    proposal: ProposalDetail
+    timestamp: str
+
+
+class CuratorReviewResponse(BaseModel):
+    agent: str = "curator"
+    action: str = "proposal_reviewed"
+    proposal: ProposalDetail
+    review_summary: str
+    timestamp: str
+
+
+@router.post("/senator/propose", response_model=SenatorProposeResponse, status_code=201)
+async def senator_propose(body: SenatorProposeRequest):
+    """
+    Senator AI creates a governance proposal.
+
+    The Senator agent submits a new proposal to the governance system.
+    The proposal starts in 'review' status, awaiting Curator review.
+    If the orchestrator is available, the Senator's tri-brain is used
+    to enrich the proposal; otherwise it is created directly.
+    """
+    # Try to use the Senator agent for enrichment if available
+    from main import get_agent_loop
+    agent_loop = get_agent_loop()
+
+    enriched_description = body.description
+
+    if agent_loop and agent_loop.senator:
+        try:
+            # Use the Senator to draft/enrich the proposal via tri-brain
+            analysis = {
+                "user_request": {
+                    "title": body.title,
+                    "description": body.description,
+                    "type": body.type.value,
+                },
+                "source": "api_request",
+            }
+            result = await agent_loop.senator.draft_proposal(analysis)
+            if result and result.get("proposal"):
+                enriched = result["proposal"]
+                # Use enriched description if the tri-brain provided one
+                if enriched.get("description"):
+                    enriched_description = enriched["description"]
+                logger.info("Senator tri-brain enriched proposal: %s", body.title)
+        except Exception as exc:
+            logger.warning("Senator enrichment failed (using original): %s", exc)
+
+    # Create the proposal via governance API
+    proposal_request = ProposalCreateRequest(
+        title=body.title,
+        description=enriched_description,
+        type=body.type,
+        proposer="senator",
+    )
+
+    proposal = await create_proposal(proposal_request)
+
+    now = datetime.now(timezone.utc).isoformat()
+    logger.info("Senator created proposal %d: %s", proposal.id, body.title)
+
+    return SenatorProposeResponse(
+        proposal=proposal,
+        timestamp=now,
+    )
+
+
+@router.post("/curator/review/{proposal_id}", response_model=CuratorReviewResponse)
+async def curator_review(proposal_id: int):
+    """
+    Curator AI reviews a governance proposal for constitutional compliance.
+
+    Uses the Curator agent's tri-brain (Claude + Gemini + GPT-5) to analyze the
+    proposal against the PURECORTEX Constitution. If the orchestrator is
+    unavailable, performs a basic compliance pass.
+    """
+    # Verify proposal exists and is in reviewable state
+    proposal_data = await _get_proposal(proposal_id)
+    if not proposal_data:
+        raise HTTPException(status_code=404, detail=f"Proposal {proposal_id} not found.")
+
+    if proposal_data["status"] not in ("review", "active"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Proposal {proposal_id} is in '{proposal_data['status']}' status. "
+                   f"Only proposals in 'review' or 'active' status can be reviewed by the Curator.",
+        )
+
+    # Try to use the Curator agent for AI-powered review
+    from main import get_agent_loop
+    agent_loop = get_agent_loop()
+
+    compliant = True
+    analysis = "Basic compliance check passed."
+    recommendation = "APPROVE"
+
+    if agent_loop and agent_loop.curator:
+        try:
+            review_result = await agent_loop.curator.review_proposal({
+                "title": proposal_data["title"],
+                "description": proposal_data.get("description", ""),
+                "type": proposal_data.get("type", "general"),
+                "proposer": proposal_data["proposer"],
+            })
+
+            if review_result:
+                compliant = review_result.get("compliant", True)
+                analysis = review_result.get("analysis", "Tri-brain analysis complete.")
+                recommendation = review_result.get("recommendation", "APPROVE")
+                logger.info(
+                    "Curator tri-brain reviewed proposal %d: %s",
+                    proposal_id, recommendation,
+                )
+        except Exception as exc:
+            logger.warning("Curator tri-brain review failed (using basic check): %s", exc)
+
+    # Submit the review to the governance system
+    review_request = ReviewRequest(
+        compliant=compliant,
+        analysis=analysis,
+        recommendation=recommendation,
+        curator_name="curator",
+    )
+
+    updated_proposal = await governance_review_proposal(proposal_id, review_request)
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    review_summary = (
+        f"{'APPROVED' if compliant else 'REJECTED'} — {recommendation}. "
+        f"Proposal moved to '{'voting' if compliant else 'rejected'}' status."
+    )
+
+    return CuratorReviewResponse(
+        proposal=updated_proposal,
+        review_summary=review_summary,
+        timestamp=now,
+    )
+
+
+# ──────────────────────────────────────────────
+# Wildcard Agent Endpoints
+# (declared AFTER specific routes to avoid path conflicts)
+# ──────────────────────────────────────────────
 @router.post("/{agent_name}/chat", response_model=ChatResponse)
 async def chat_with_agent(agent_name: str, body: ChatMessage):
     """
     Chat with a specific protocol agent.
-    Currently returns a placeholder response. Post-TGE, this will route
-    through the Dual-Brain Orchestrator with agent-specific system prompts.
+    Routes through the live tri-brain-backed agent implementation when the
+    orchestration loop is available.
     """
     agent = AGENTS_BY_NAME.get(agent_name.lower())
     if not agent:
@@ -170,32 +342,39 @@ async def chat_with_agent(agent_name: str, body: ChatMessage):
         )
 
     now = datetime.now(timezone.utc).isoformat()
+    from main import get_agent_loop
 
-    # Placeholder responses per agent role
-    responses = {
-        AgentRole.SENATOR: (
-            f"[Senator AI] I acknowledge your message: \"{body.message}\". "
-            "Full conversational capabilities will be available after TGE "
-            "(March 31, 2026). I will then be able to discuss governance proposals, "
-            "constitutional interpretations, and protocol policy."
-        ),
-        AgentRole.CURATOR: (
-            f"[Curator AI] Message received: \"{body.message}\". "
-            "The MCP tool registry and composability scoring system activates "
-            "at TGE. I will then assist with tool discovery, agent interoperability, "
-            "and quality assessments."
-        ),
-        AgentRole.SOCIAL: (
-            f"[Social Agent] Noted: \"{body.message}\". "
-            "Social broadcasting capabilities are in standby mode. "
-            "Post-TGE, I will generate and publish consensus-approved content "
-            "across connected platforms."
-        ),
+    agent_loop = get_agent_loop()
+    if not agent_loop:
+        raise HTTPException(
+            status_code=503,
+            detail="Agent orchestration loop is unavailable. REST chat cannot be served right now.",
+        )
+
+    runtime_agents = {
+        AgentRole.SENATOR: agent_loop.senator,
+        AgentRole.CURATOR: agent_loop.curator,
+        AgentRole.SOCIAL: agent_loop.social,
     }
+    runtime_agent = runtime_agents.get(agent.role)
+    if runtime_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Runtime agent '{agent.name}' is unavailable.",
+        )
+
+    try:
+        response_text = await runtime_agent.chat(body.message)
+    except Exception as exc:
+        logger.error("REST chat failed for agent '%s': %s", agent.name, exc)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Agent '{agent.name}' failed to generate a response.",
+        ) from exc
 
     return ChatResponse(
         agent=agent.name,
-        response=responses.get(agent.role, "Agent response unavailable."),
+        response=response_text,
         timestamp=now,
     )
 

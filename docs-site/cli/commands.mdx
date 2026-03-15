@@ -9,7 +9,7 @@ uses [Rich](https://rich.readthedocs.io/) for formatted terminal output
 including tables, panels, and colored text.
 
 <Info>
-  Every command contacts the PureCortex API at `https://purecortex.ai` by
+  Every command contacts the PURECORTEX API at `https://purecortex.ai` by
   default. You can override this with the `PURECORTEX_API_URL` environment
   variable (see [Configuration](/cli/configuration)).
 </Info>
@@ -18,7 +18,7 @@ including tables, panels, and colored text.
 
 ## `pcx status`
 
-Check the health of the PureCortex backend services.
+Check the health of the PURECORTEX backend services.
 
 ```bash
 $ pcx status
@@ -27,7 +27,7 @@ $ pcx status
 **Sample output:**
 
 ```
-  PureCortex API Status
+  PURECORTEX API Status
  ──────────────────────
   Status:   healthy
   Latency:  42ms
@@ -51,7 +51,7 @@ $ pcx info
 **Sample output:**
 
 ```
-╭──────────────────── PureCortex Protocol ────────────────────╮
+╭──────────────────── PURECORTEX Protocol ────────────────────╮
 │                                                             │
 │  Chain:          Solana                                      │
 │  Program ID:     PCX...abc                                  │
@@ -96,7 +96,7 @@ $ pcx supply
 
 ## `pcx treasury`
 
-Show current balances of the PureCortex treasury funds.
+Show current balances of the PURECORTEX treasury funds.
 
 ```bash
 $ pcx treasury
@@ -145,7 +145,7 @@ $ pcx burns
 
 ## `pcx agents`
 
-List all protocol AI agents registered in the PureCortex agent framework,
+List all protocol AI agents registered in the PURECORTEX agent framework,
 along with their roles and current status.
 
 ```bash
@@ -155,7 +155,7 @@ $ pcx agents
 **Sample output:**
 
 ```
-                  PureCortex Agents
+                  PURECORTEX Agents
 ┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
 ┃ Agent      ┃ Role                        ┃ Status  ┃
 ┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
@@ -200,7 +200,7 @@ $ pcx chat senator
 
 You: What is the current governance process for proposals?
 
-Senator: Governance proposals in PureCortex follow a structured
+Senator: Governance proposals in PURECORTEX follow a structured
 lifecycle: Draft → Discussion → Voting → Execution. Any PCTX
 holder can submit a draft proposal, which enters a 7-day
 discussion period before moving to an on-chain vote...
@@ -211,7 +211,7 @@ You: exit
 ```
 
 <Note>
-  The chat session uses the PureCortex agent chat API endpoint. Conversations
+  The chat session uses the PURECORTEX agent chat API endpoint. Conversations
   are not persisted between sessions.
 </Note>
 
@@ -236,7 +236,7 @@ $ pcx proposals
 │      │ for long-term holders        │            │
 │ #2   │ Fund developer grants        │ passed     │
 │      │ program Q2 2026              │            │
-│ #1   │ Ratify the PureCortex        │ executed   │
+│ #1   │ Ratify the PURECORTEX        │ executed   │
 │      │ Constitution v1              │            │
 ┗━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━┛
 ```
@@ -245,7 +245,7 @@ $ pcx proposals
 
 ## `pcx constitution`
 
-Display the Preamble of the PureCortex Constitution, the foundational document
+Display the Preamble of the PURECORTEX Constitution, the foundational document
 governing protocol operations and agent behavior.
 
 ```bash
@@ -255,11 +255,11 @@ $ pcx constitution
 **Sample output:**
 
 ```
-╭──────────────── The PureCortex Constitution ────────────────╮
+╭──────────────── The PURECORTEX Constitution ────────────────╮
 │                                                             │
 │                        PREAMBLE                             │
 │                                                             │
-│  We, the stakeholders of PureCortex, establish this         │
+│  We, the stakeholders of PURECORTEX, establish this         │
 │  Constitution to ensure transparent, fair, and              │
 │  decentralized governance of the protocol. The following    │
 │  principles guide all operations, agent behavior, and       │

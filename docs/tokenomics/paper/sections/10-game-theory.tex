@@ -1,0 +1,312 @@
+% =============================================================================
+\section{Game-Theoretic Analysis}
+\label{sec:game-theory}
+% =============================================================================
+
+This section provides formal game-theoretic analysis of the PURECORTEX
+mechanism across six strategic dimensions: the stake-vs-sell decision, repeated
+game dynamics, creator commitment, bonding curve signaling, governance
+equilibrium, and delegation rationality.
+
+\subsection{Stake vs.\ Sell Game}
+\label{subsec:stake-sell}
+
+Consider a symmetric two-player game in which each player $i \in \{1, 2\}$
+holds CORTEX tokens and chooses between Stake (S) and Sell (L). Let:
+\begin{itemize}
+  \item $e > 0$: per-period staking emission reward when both players stake.
+  \item $g > 0$: capital appreciation from (a) reduced circulating supply via
+    locking and (b) continuous buyback-burn via the Assistance Fund.
+  \item $c > 0$: opportunity cost of locking capital (illiquidity penalty).
+  \item $\ell > 0$: immediate liquidation value.
+  \item $d > 0$: price depreciation suffered by the remaining staker when the
+    other sells.
+\end{itemize}
+
+The payoff matrix is:
+
+\begin{table}[H]
+\centering
+\caption{Stake vs.\ Sell payoff matrix.}
+\label{tab:stake-sell}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+& \textbf{Player 2: Stake} & \textbf{Player 2: Sell} \\
+\midrule
+\textbf{Player 1: Stake} & $(e + g - c,\; e + g - c)$ & $(e - d - c,\; \ell)$ \\
+\textbf{Player 1: Sell}  & $(\ell,\; e - d - c)$ & $(\ell - d,\; \ell - d)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{proposition}[Nash Equilibrium in Stake-Sell Game]
+\label{prop:stake-nash}
+The strategy profile $(\text{Stake}, \text{Stake})$ is a Nash equilibrium if
+and only if:
+\begin{equation}
+  e + g - c \geq \ell
+  \label{eq:stake-condition}
+\end{equation}
+That is, the combined staking emission rewards and capital appreciation
+(from both locking-driven supply reduction and Assistance Fund buyback-burn)
+exceed the liquidation value plus the opportunity cost.
+\end{proposition}
+
+\begin{proof}
+For (Stake, Stake) to be a Nash equilibrium, neither player can profitably
+deviate. Player 1's payoff from Stake (given Player 2 stakes) is $e + g - c$.
+Player 1's payoff from deviating to Sell is $\ell$. The no-deviation condition
+is $e + g - c \geq \ell$, which is condition~\eqref{eq:stake-condition}.
+By symmetry, the same condition applies to Player 2. \qed
+\end{proof}
+
+\begin{remark}
+The \veCORTEX{} mechanism is designed to ensure condition~\eqref{eq:stake-condition}
+holds through three reinforcing channels:
+\begin{enumerate}
+  \item \textbf{Emission rewards ($e$):} The boost multiplier increases
+    emission yield for longer lock durations, funded by the 24\% staking pool.
+  \item \textbf{Buyback-burn appreciation ($g$):} The Assistance Fund
+    continuously buys and burns CORTEX using 90\% of all protocol revenue,
+    creating sustained upward price pressure that benefits all holders but
+    disproportionately rewards stakers (who cannot sell into the appreciation).
+  \item \textbf{Governance power:} Stakers control protocol parameters via
+    \veCORTEX{}-weighted voting, including the ability to adjust fee rates and
+    emission schedules.
+\end{enumerate}
+The lock duration commitment ensures that the ``sell'' option is not available
+during the lock period, effectively removing the deviation possibility for
+committed stakers.
+\end{remark}
+
+\subsection{Repeated Game and the Folk Theorem}
+\label{subsec:repeated-game}
+
+The one-shot stake-sell game may admit (Sell, Sell) as an equilibrium when
+$e + g - c < \ell$ (e.g., during bear markets). However, the \veCORTEX{} lock
+mechanism converts this one-shot game into a repeated game.
+
+\begin{theorem}[Cooperation via Lock Commitment]
+\label{thm:folk}
+Let the stake-sell game be repeated $T$ times, where $T = T_{\text{lock}} /
+\Delta t$ is the number of periods in the lock duration. By the folk
+theorem~\citep{fudenberg1991game}, if the discount factor $\delta$ satisfies:
+\begin{equation}
+  \delta \geq \frac{\ell - (e + g - c)}{(\ell - d) - (e - d - c)} = \frac{\ell - e - g + c}{\ell - e + c}
+  \label{eq:folk-threshold}
+\end{equation}
+then the cooperative outcome $(\text{Stake}, \text{Stake})$ can be sustained
+as a subgame-perfect equilibrium using grim-trigger strategies.
+\end{theorem}
+
+The proof follows from the standard folk theorem argument and is provided in
+Appendix~\ref{app:proofs}. The key insight is that the \veCORTEX{} lock
+literally removes the ability to deviate for the lock duration, making
+cooperation not merely incentive-compatible but mechanically enforced. This is
+stronger than the folk theorem's requirement of voluntary cooperation sustained
+by threat of punishment.
+
+\subsection{Creator Commitment}
+\label{subsec:creator-commitment}
+
+We model the creator's optimal strategy using a Bellman equation. Let $W(d)$
+denote the creator's expected wealth at day $d$ of the vesting schedule:
+
+\begin{equation}
+  W(d) = V(d) \cdot P(d) + \sum_{t=d}^{\infty} \beta^{t-d} \cdot f_{\text{creator}} \cdot TV(t)
+  \label{eq:bellman-creator}
+\end{equation}
+
+where:
+\begin{itemize}
+  \item $V(d)$ is the vested token quantity (Equation~\eqref{eq:creator-vesting}).
+  \item $P(d)$ is the token price at day $d$.
+  \item $\beta \in (0, 1)$ is the creator's discount factor.
+  \item $f_{\text{creator}}$ is the creator's revenue share from agent-specific
+    activity (agent token trading, tool invocations).
+  \item $TV(t)$ is the trading volume at time $t$.
+\end{itemize}
+
+A creator who sells all vested tokens at day $d$ realizes $V(d) \cdot P(d)$
+but forfeits all future fee revenue. A creator who holds (and continues
+developing the agent) maintains the fee stream but bears token price risk.
+
+\begin{proposition}[Vesting Maximizes Expected Wealth]
+\label{prop:creator-wealth}
+Under the assumption that creator effort $e(d)$ positively affects both
+$P(d)$ and $TV(t)$ for $t > d$, the vesting schedule maximizes the creator's
+expected lifetime wealth compared to immediate full allocation, because:
+\begin{equation}
+  \frac{\partial W}{\partial e} = V(d) \cdot \frac{\partial P}{\partial e} + \sum_{t=d}^{\infty} \beta^{t-d} \cdot f_{\text{creator}} \cdot \frac{\partial TV}{\partial e} > 0
+  \label{eq:effort-incentive}
+\end{equation}
+The vesting constraint forces the creator to internalize the long-term
+consequences of effort withdrawal, since immediate liquidation of the full
+allocation is impossible.
+\end{proposition}
+
+The proof is provided in Appendix~\ref{app:proofs}. The intuition is
+straightforward: by restricting the creator's ability to sell in the short term,
+the vesting schedule converts the creator's optimization problem from a
+short-horizon liquidation problem to a long-horizon wealth-maximization problem,
+aligning incentives with ecosystem health.
+
+\subsection{Bonding Curve as Quality Signal}
+\label{subsec:signaling}
+
+We adapt the Spence signaling model~\citep{spence1973job} to the agent
+tokenization context.
+
+\begin{definition}[Agent Quality Model]
+\label{def:quality-model}
+An agent creator has private information about agent quality
+$\theta \in \{\theta_L, \theta_H\}$, where $\theta_H > \theta_L$. The
+creator chooses to launch on PURECORTEX (quadratic bonding curve with
+vesting) or on a platform with no vesting (flat bonding curve). Buyers
+observe the platform choice but not $\theta$ directly.
+\end{definition}
+
+\begin{theorem}[Separating Equilibrium via Quadratic Curve]
+\label{thm:separating}
+Under the quadratic bonding curve with 180-day creator vesting, a separating
+equilibrium exists in which:
+\begin{enumerate}
+  \item[(i)] High-quality creators ($\theta_H$) choose PURECORTEX.
+  \item[(ii)] Low-quality creators ($\theta_L$) choose the no-vesting platform.
+  \item[(iii)] Buyers correctly infer quality from platform choice.
+\end{enumerate}
+The separating condition requires:
+\begin{equation}
+  c_H(\text{vest}) < \theta_H \cdot \Delta P < c_L(\text{vest})
+  \label{eq:separating}
+\end{equation}
+where $c_\theta(\text{vest})$ is the cost of the vesting constraint for a
+creator of type $\theta$, and $\Delta P$ is the price premium that buyers
+assign to PURECORTEX-launched agents.
+\end{theorem}
+
+The proof is provided in Appendix~\ref{app:proofs}. The key mechanism is that
+the 180-day vesting imposes a higher effective cost on low-quality creators
+(who cannot sustain agent development and thus face declining token prices
+during the vesting period) than on high-quality creators (whose continued
+development maintains or increases token prices). This cost differential
+enables quality separation.
+
+\subsection{Senator Mechanism Design}
+\label{subsec:senator-mechanism}
+
+\begin{theorem}[Pareto Improvement via Governance]
+\label{thm:pareto}
+Let $\mathcal{O} = \{o_1, \ldots, o_K\}$ be the set of possible protocol
+parameter configurations, and let $u_i(o)$ be agent $i$'s utility under
+configuration $o$. If the Senator maximizes the welfare function $W$ (Equation~\eqref{eq:welfare}) and the governance mechanism selects the
+configuration $o^*$ that maximizes $\sum_i u_i(o)$ subject to constitutional
+constraints, then $o^*$ is a Pareto improvement over the status quo $o_0$
+whenever:
+\begin{equation}
+  W(o^*) > W(o_0) + \epsilon
+  \label{eq:pareto-condition}
+\end{equation}
+for sufficiently small $\epsilon > 0$ (the proposal significance threshold).
+\end{theorem}
+
+\begin{proof}
+The welfare function $W$ is a weighted sum of metrics (TVL, agent count,
+retention, negative risk) that are positively correlated with individual agent
+utilities. An increase in TVL benefits stakers through higher revenue share; an
+increase in agent count benefits all agents through composability network
+effects; an increase in retention reflects revealed preference for the current
+configuration; and a decrease in risk benefits all participants.
+
+Formally, for each component $W_k$ of the welfare function:
+\begin{equation}
+  \frac{\partial u_i}{\partial W_k} \geq 0 \quad \forall i, k
+  \label{eq:welfare-monotone}
+\end{equation}
+
+If $W(o^*) > W(o_0)$, then at least one component $W_k$ has increased, and no
+component has decreased (since the Senator only proposes changes that increase
+$W$). By the monotonicity of individual utilities in welfare components, at
+least one agent is strictly better off and no agent is worse off---the
+definition of a Pareto improvement. \qed
+\end{proof}
+
+\subsection{Delegation Game}
+\label{subsec:delegation-game}
+
+\begin{proposition}[Rationality of Delegation]
+\label{prop:delegation}
+Delegation dominates direct voting for agent $i$ when the information
+acquisition cost exceeds the voting cost:
+\begin{equation}
+  c_{\text{info}}^i > c_{\text{vote}}^i + (VP_i^{\text{eff}} - \veCORTEX_i) \cdot \frac{\partial u_i}{\partial \text{outcome}}
+  \label{eq:delegation-condition}
+\end{equation}
+where $c_{\text{info}}^i$ is the cost of acquiring sufficient information to
+vote optimally, $c_{\text{vote}}^i$ is the transaction cost of voting, and the
+third term captures the influence premium from receiving delegations (which is
+zero for a pure delegator).
+\end{proposition}
+
+\begin{proof}
+An agent choosing between direct voting and delegation compares expected
+utilities. Under direct voting, the agent pays $c_{\text{info}}^i +
+c_{\text{vote}}^i$ and casts a vote that may or may not be well-informed.
+Under delegation to a trusted delegate $j$ with superior information, the
+agent pays zero cost and the delegate votes on their behalf with higher
+expected quality.
+
+Let $p_i$ be the probability that agent $i$ votes correctly when investing
+$c_{\text{info}}^i$ in information acquisition, and let $p_j > p_i$ be the
+delegate's probability of voting correctly (reflecting the delegate's
+comparative advantage in governance analysis).
+
+The expected utility from direct voting is:
+\begin{equation}
+  EU_{\text{direct}}^i = p_i \cdot u_i(\text{correct}) + (1 - p_i) \cdot u_i(\text{incorrect}) - c_{\text{info}}^i - c_{\text{vote}}^i
+  \label{eq:eu-direct}
+\end{equation}
+
+The expected utility from delegation is:
+\begin{equation}
+  EU_{\text{delegate}}^i = p_j \cdot u_i(\text{correct}) + (1 - p_j) \cdot u_i(\text{incorrect})
+  \label{eq:eu-delegate}
+\end{equation}
+
+Delegation dominates when $EU_{\text{delegate}}^i > EU_{\text{direct}}^i$:
+\begin{equation}
+  (p_j - p_i) \cdot [u_i(\text{correct}) - u_i(\text{incorrect})] > -c_{\text{info}}^i - c_{\text{vote}}^i
+  \label{eq:delegation-dominance}
+\end{equation}
+
+Since $p_j > p_i$ and the utility difference is positive, the left side is
+positive, and the condition is satisfied whenever the information and voting
+costs are non-negative---which they always are. More precisely, delegation
+dominates whenever the delegate's information advantage outweighs any
+agency costs. \qed
+\end{proof}
+
+\subsection{Constitutional Rigidity as Schelling Point}
+\label{subsec:schelling}
+
+The supermajority requirement for constitutional amendments (67\%) serves a
+game-theoretic function beyond simple conservatism. In a voting game where
+participants must coordinate on which rules to preserve, the supermajority
+threshold creates a Schelling point~\citep{fudenberg1991game}:
+
+\begin{itemize}
+  \item A simple majority (50\% + 1) allows a minimal winning coalition to
+    impose changes that benefit the majority at the expense of the minority
+    (tyranny of the majority).
+  \item A supermajority (67\%) requires broad consensus, ensuring that
+    constitutional changes reflect near-unanimous agreement on the direction
+    of protocol evolution.
+  \item The 67\% threshold is strategically chosen: it is high enough to
+    prevent narrow coalitions from capturing the governance process, but low
+    enough to permit constitutional evolution when circumstances genuinely
+    warrant it.
+\end{itemize}
+
+This creates a credible commitment device: participants can trust that
+foundational rules will not be changed by a narrow interest group, encouraging
+long-term investment in the ecosystem.

@@ -1,28 +1,38 @@
 """
-Algorand Service Layer for PureCortex.
+Algorand Service Layer for PURECORTEX.
 
 Uses AlgoNode indexer (no auth required) to query on-chain state
 for agent tokens, asset info, account balances, and transactions.
 """
 
+import logging
+import os
+
 import httpx
 from typing import Any, Optional
 
+from src.services.protocol_config import (
+    CORTEX_ASSET_ID,
+    FACTORY_APP_ID,
+    GOVERNANCE_APP_ID,
+    NETWORK as DEFAULT_NETWORK,
+    STAKING_APP_ID,
+    TREASURY_APP_ID,
+)
+
+logger = logging.getLogger("purecortex.algorand")
 
 # AlgoNode Indexer base URLs
 MAINNET_INDEXER = "https://mainnet-idx.4160.nodely.dev/v2"
 TESTNET_INDEXER = "https://testnet-idx.4160.nodely.dev/v2"
 
-# PureCortex protocol constants
-FACTORY_APP_ID = 757089323
-CORTEX_ASSET_ID = 757092088
-
 
 class AlgorandService:
     """Async client for querying the Algorand indexer."""
 
-    def __init__(self, network: str = "mainnet"):
-        if network == "testnet":
+    def __init__(self, network: Optional[str] = None):
+        net = (network or os.getenv("ALGORAND_NETWORK", DEFAULT_NETWORK)).strip().lower()
+        if net == "testnet":
             self.base_url = TESTNET_INDEXER
         else:
             self.base_url = MAINNET_INDEXER
@@ -68,8 +78,9 @@ class AlgorandService:
         asset_id: Optional[int] = None,
         min_round: Optional[int] = None,
         limit: int = 20,
+        next_token: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Search transactions with optional filters."""
+        """Search transactions with optional filters and pagination."""
         params: dict[str, Any] = {"limit": limit}
         if address:
             params["address"] = address
@@ -77,46 +88,59 @@ class AlgorandService:
             params["asset-id"] = asset_id
         if min_round:
             params["min-round"] = min_round
+        if next_token:
+            params["next"] = next_token
 
         client = await self._get_client()
         resp = await client.get("/transactions", params=params)
         resp.raise_for_status()
         return resp.json()
 
-    async def get_agent_tokens(self, factory_app_id: int = FACTORY_APP_ID) -> list[dict[str, Any]]:
+    async def get_agent_tokens(
+        self,
+        factory_app_id: int = FACTORY_APP_ID,
+        max_pages: int = 10,
+    ) -> list[dict[str, Any]]:
         """
         Get all agent assets created by the factory application.
-        Searches for transactions where the factory app created ASAs.
+        Paginates through results using the indexer's next-token.
         """
         client = await self._get_client()
-        resp = await client.get(
-            "/transactions",
-            params={
+        agents = []
+        next_token: Optional[str] = None
+
+        for _ in range(max_pages):
+            params: dict[str, Any] = {
                 "application-id": factory_app_id,
                 "tx-type": "appl",
                 "limit": 100,
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
+            }
+            if next_token:
+                params["next"] = next_token
 
-        agents = []
-        for txn in data.get("transactions", []):
-            # Look for inner transactions that created assets
-            inner_txns = txn.get("inner-txns", [])
-            for inner in inner_txns:
-                if inner.get("tx-type") == "acfg" and inner.get("created-asset-index"):
-                    asset_id = inner["created-asset-index"]
-                    asset_config = inner.get("asset-config-transaction", {})
-                    params_data = asset_config.get("params", {})
-                    agents.append({
-                        "asset_id": asset_id,
-                        "name": params_data.get("name", "Unknown"),
-                        "unit_name": params_data.get("unit-name", ""),
-                        "total": params_data.get("total", 0),
-                        "decimals": params_data.get("decimals", 0),
-                        "creator_txn": txn.get("id", ""),
-                    })
+            resp = await client.get("/transactions", params=params)
+            resp.raise_for_status()
+            data = resp.json()
+
+            for txn in data.get("transactions", []):
+                inner_txns = txn.get("inner-txns", [])
+                for inner in inner_txns:
+                    if inner.get("tx-type") == "acfg" and inner.get("created-asset-index"):
+                        asset_id = inner["created-asset-index"]
+                        asset_config = inner.get("asset-config-transaction", {})
+                        params_data = asset_config.get("params", {})
+                        agents.append({
+                            "asset_id": asset_id,
+                            "name": params_data.get("name", "Unknown"),
+                            "unit_name": params_data.get("unit-name", ""),
+                            "total": params_data.get("total", 0),
+                            "decimals": params_data.get("decimals", 0),
+                            "creator_txn": txn.get("id", ""),
+                        })
+
+            next_token = data.get("next-token")
+            if not next_token:
+                break
 
         return agents
 

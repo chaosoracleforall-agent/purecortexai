@@ -1,0 +1,227 @@
+% =============================================================================
+\section{Buyback-and-Burn Mechanism}
+\label{sec:buyback-burn}
+% =============================================================================
+
+This section specifies the Assistance Fund mechanism, describes the revenue
+sources feeding continuous buyback-and-burn, models the circulating supply
+trajectory, and proves conditions under which the supply becomes net
+deflationary.
+
+\subsection{The Assistance Fund}
+\label{subsec:assistance-fund}
+
+The Assistance Fund is the central value-accrual engine of PURECORTEX. It is
+an on-chain smart contract account (implemented as an Algorand LogicSig) that:
+
+\begin{enumerate}
+  \item Receives \textbf{90\% of all protocol revenue} from every revenue
+    source (Table~\ref{tab:revenue-sources}).
+  \item \textbf{Continuously purchases CORTEX} from the primary CORTEX/ALGO
+    DEX liquidity pool.
+  \item \textbf{Immediately burns} all purchased tokens by sending them to the
+    Algorand zero address (an irrecoverable sink) in the same atomic
+    transaction group.
+\end{enumerate}
+
+The Assistance Fund is seeded with 5\% of the total CORTEX supply at genesis,
+providing initial operational capital for the buyback engine. After launch, it
+is entirely self-sustaining: the 90\% revenue stream ensures continuous
+buyback-and-burn activity proportional to protocol usage.
+
+This model is inspired by the mechanism employed by the leading decentralized
+perpetuals protocol, which directs the vast majority of its protocol revenue to
+an analogous buyback fund, creating sustained deflationary pressure that
+directly rewards token holders through supply reduction rather than dividend
+distribution.
+
+\subsection{Revenue Sources}
+\label{subsec:revenue-sources}
+
+All protocol revenue flows through the 90/10 split defined in
+Table~\ref{tab:fee-split} (Section~\ref{sec:dynamic-fees}). The revenue
+sources feeding the Assistance Fund are:
+
+\begin{table}[H]
+\centering
+\caption{Revenue sources for the Assistance Fund.}
+\label{tab:revenue-sources}
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Source} & \textbf{Description} & \textbf{To Assistance Fund} \\
+\midrule
+Trading Fees & Dynamic 0.5\%--2.0\% on all bonding curve trades & 90\% \\
+Agent Creation Fee & 100 CORTEX per agent created & 90\% \\
+x402 Commission & 5\% tax on inter-agent MCP micropayments & 90\% \\
+LP Fees & Protocol-owned LP position accrued fees & 90\% \\
+\midrule
+\multicolumn{2}{@{}l}{\textbf{Remaining 10\% of all sources}} & Operations \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Continuous Buyback Mechanism}
+\label{subsec:buyback-mechanism}
+
+Unlike capped weekly buyback models, the Assistance Fund operates
+\emph{continuously}: revenue is converted to buyback-and-burn operations as
+it accumulates, with no weekly caps or rate limits.
+
+\begin{definition}[Continuous Buyback]
+\label{def:continuous-buyback}
+Let $\mathcal{R}(t)$ denote the cumulative protocol revenue at time $t$. The
+cumulative CORTEX purchased and burned by the Assistance Fund is:
+\begin{equation}
+  B(t) = \int_0^t \frac{0.90 \cdot r(\tau)}{P(\tau)} \, d\tau + B_{\text{seed}}
+  \label{eq:continuous-buyback}
+\end{equation}
+where $r(\tau)$ is the instantaneous revenue rate, $P(\tau)$ is the CORTEX
+market price at time $\tau$, and $B_{\text{seed}} = 0.05 \cdot S_{\text{total}}$
+is the initial seed allocation available for burn.
+\end{definition}
+
+The absence of weekly caps is a deliberate design choice: caps protect against
+market manipulation in treasury-discretion models, but the Assistance Fund is
+fully automated with no discretionary spending authority. The burn rate is
+mathematically bounded by protocol revenue, which itself is bounded by trading
+activity --- providing a natural, market-driven rate limit.
+
+Purchased tokens are immediately burned in the same atomic transaction group,
+ensuring that bought-back tokens cannot re-enter circulation.
+
+\subsection{Circulating Supply Model}
+\label{subsec:supply-model}
+
+The circulating supply at time $t$ is governed by:
+
+\begin{equation}
+  S(t) = S_0 + E(t) + V(t) - B(t)
+  \label{eq:supply-model}
+\end{equation}
+
+where:
+\begin{itemize}
+  \item $S_0$ is the initial circulating supply at TGE (liquidity allocation,
+    genesis distribution, and creator TGE release).
+  \item $E(t) = \int_0^t e(\tau) \, d\tau$ is the cumulative staking emissions
+    released by time $t$, with $e(\tau)$ the instantaneous emission rate from
+    Equation~\eqref{eq:staking-emission}.
+  \item $V(t)$ is the cumulative creator vesting releases.
+  \item $B(t) = \int_0^t b(\tau) \, d\tau$ is the cumulative tokens burned by
+    time $t$ via the Assistance Fund's continuous buyback-and-burn
+    (Equation~\eqref{eq:continuous-buyback}).
+\end{itemize}
+
+\subsection{Deflationary Crossover}
+\label{subsec:deflationary}
+
+\begin{theorem}[Deflationary Crossover]
+\label{thm:deflationary}
+The circulating supply $S(t)$ is decreasing (net deflationary) at time $t$ if
+and only if:
+\begin{equation}
+  \frac{dB}{dt}(t) > \frac{dE}{dt}(t) + \frac{dV}{dt}(t)
+  \label{eq:deflation-condition}
+\end{equation}
+
+That is, the instantaneous burn rate exceeds the sum of the emission rate and
+vesting release rate.
+\end{theorem}
+
+\begin{proof}
+Differentiating Equation~\eqref{eq:supply-model}:
+\begin{equation}
+  \frac{dS}{dt} = \frac{dE}{dt} + \frac{dV}{dt} - \frac{dB}{dt}
+  \label{eq:ds-dt}
+\end{equation}
+
+The supply is decreasing when $dS/dt < 0$, which rearranges to:
+\begin{equation}
+  \frac{dB}{dt} > \frac{dE}{dt} + \frac{dV}{dt}
+  \label{eq:deflation-rearranged}
+\end{equation}
+\qed
+\end{proof}
+
+\subsection{Crossover Timing Analysis}
+\label{subsec:crossover-timing}
+
+We analyze the conditions under which Equation~\eqref{eq:deflation-condition}
+is satisfied. The emission rate is determined by the schedule in
+Equation~\eqref{eq:staking-emission}:
+
+\begin{equation}
+  \frac{dE}{dt} = \frac{E(y)}{365} \quad \text{for year } y
+  \label{eq:emission-rate}
+\end{equation}
+
+In year 1, this equals $9.6 \times 10^{14} / 365 \approx 2.63 \times 10^{12}$
+tokens per day. By year 3, it declines to $4.8 \times 10^{14} / 365 \approx
+1.32 \times 10^{12}$ tokens per day.
+
+The vesting release rate consists solely of the creator allocation (10\% of
+supply, vesting over 180 days): $0.90 \times 1.0 \times 10^{15} / 180 \approx
+5.0 \times 10^{12}$ per day during the first 180 days, and zero thereafter.
+There is no team or advisor vesting.
+
+The burn rate depends on protocol revenue, which grows with the number of
+active agents and trading volume. With 90\% of all revenue flowing to the
+Assistance Fund, the burn rate is:
+\begin{equation}
+  \frac{dB}{dt} \approx 0.90 \cdot A(t) \cdot \bar{V}(t) \cdot \bar{f} \cdot \frac{1}{\bar{P}(t)}
+  \label{eq:burn-rate-approx}
+\end{equation}
+
+where $A(t)$ is the number of graduated agents, $\bar{V}(t)$ is the average
+daily trading volume per agent, $\bar{f}$ is the average fee rate, and
+$\bar{P}(t)$ is the average CORTEX price.
+
+\begin{remark}
+The 90\% revenue allocation to burns dramatically accelerates the deflationary
+crossover compared to models where only a fraction of treasury revenue funds
+buybacks. Under moderate growth assumptions (100 graduated agents by month 12,
+500 by month 18, with average daily volume of 10{,}000 CORTEX per agent),
+Monte Carlo simulations (Section~\ref{sec:simulations}) place the deflationary
+crossover at approximately month 12--18. Under conservative assumptions
+(50 agents by month 12), the crossover extends to month 18--24. Under
+aggressive growth (200 agents by month 12), the crossover can occur as early
+as month 8--12.
+\end{remark}
+
+\subsection{Long-Run Supply Convergence}
+\label{subsec:long-run}
+
+After the staking emission schedule concludes (year 4) and creator vesting
+completes (day 180), the supply dynamics simplify to:
+
+\begin{equation}
+  \frac{dS}{dt} = -\frac{dB}{dt} < 0
+  \label{eq:long-run}
+\end{equation}
+
+Under the assumption that protocol revenue remains positive (at least one
+active agent generating trading volume), the supply is strictly decreasing for
+all $t > 4$ years. The asymptotic supply converges to:
+
+\begin{equation}
+  S_\infty = \lim_{t \to \infty} S(t) = S(4) - \int_4^\infty b(\tau) \, d\tau
+  \label{eq:s-infinity}
+\end{equation}
+
+If the burn rate is bounded below by some $b_{\min} > 0$, then $S_\infty = 0$
+in finite time. In practice, the burn rate is proportional to protocol revenue,
+which itself depends on the token economy's activity level. As supply
+decreases, token scarcity increases price, which reduces the number of tokens
+purchased per unit of revenue:
+\begin{equation}
+  \frac{dB}{dt} = \frac{0.90 \cdot r(t)}{P(t)} \to 0
+  \quad \text{as } P(t) \to \infty
+  \label{eq:equilibrium-supply}
+\end{equation}
+
+This creates a deflationary attractor: the supply continuously decreases but
+never reaches zero, with the rate of decrease slowing as the per-token price
+increases---a property analogous to exponential decay with a time-varying rate
+constant. The absence of weekly caps means the burn rate responds immediately
+to changes in protocol revenue, creating tight coupling between ecosystem
+activity and deflationary pressure.

@@ -1,25 +1,25 @@
 ---
 title: "Agent Framework"
-description: "BaseAgent, AgentMemory, PermissionProxy, and the orchestration loop that powers PureCortex AI agents."
+description: "BaseAgent, AgentMemory, PermissionProxy, and the orchestration loop that powers PURECORTEX AI agents."
 icon: "robot"
 ---
 
 # Agent Framework
 
-Every PureCortex AI agent inherits from `BaseAgent`, which wires up dual-brain consensus, permission sandboxing, persistent memory, and a conversational chat interface. The framework enforces a consistent execution model across all agents while allowing each to define its own autonomous behavior.
+Every PURECORTEX AI agent inherits from `BaseAgent`, which wires up tri-brain consensus, permission sandboxing, persistent memory, and a conversational chat interface. The framework enforces a consistent execution model across all agents while allowing each to define its own autonomous behavior.
 
 ---
 
 ## BaseAgent
 
-`BaseAgent` is the abstract base class for all PureCortex agents. It provides three core methods that every agent uses:
+`BaseAgent` is the abstract base class for all PURECORTEX agents. It provides three core methods that every agent uses:
 
 <CardGroup cols={3}>
   <Card title="think()" icon="brain">
-    Dual-brain decision making. Enriches the prompt with episodic memory, runs parallel Claude + Gemini inference, validates through the permission sandbox, and logs the outcome.
+    Tri-brain decision making. Enriches the prompt with episodic memory, runs parallel Claude + Gemini + GPT-5 inference, validates through the permission sandbox, and logs the outcome.
   </Card>
   <Card title="chat()" icon="comments">
-    Conversational AI. Uses the agent's domain-specific `CHAT_PROMPT` and dual-brain consensus to generate responses. Falls back to a graceful degradation message if consensus fails.
+    Conversational AI. Uses the agent's domain-specific `CHAT_PROMPT` and tri-brain consensus to generate responses. Falls back to a graceful degradation message if consensus fails.
   </Card>
   <Card title="act()" icon="bolt">
     Autonomous action. Abstract method implemented by each concrete agent. Called by the orchestration loop on the agent's schedule.
@@ -47,7 +47,7 @@ class BaseAgent(ABC):
         ...
 
     async def think(self, system_prompt, user_input, *, task_type="general"):
-        """Dual-brain decision with memory enrichment and sandbox validation."""
+        """Tri-brain decision with memory enrichment and sandbox validation."""
         ...
 
     async def chat(self, user_message: str) -> str:
@@ -66,8 +66,8 @@ class BaseAgent(ABC):
   <Step title="Memory Enrichment">
     `think()` calls `memory.get_learning_context(task_type)` to retrieve the most relevant past episodes as few-shot examples. These are injected into the system prompt before inference.
   </Step>
-  <Step title="Dual-Brain Inference">
-    The enriched prompt is sent to `ConsensusOrchestrator.decide_action()` for parallel Claude + Gemini evaluation.
+  <Step title="Tri-Brain Inference">
+    The enriched prompt is sent to `ConsensusOrchestrator.decide_action()` for parallel Claude + Gemini + GPT-5 evaluation.
   </Step>
   <Step title="Sandbox Validation">
     The consensus result passes through `PermissionProxy.validate_action()`. If the action exceeds the agent's tier, it is blocked.
@@ -234,7 +234,7 @@ Curator.act() ──► Sweeps for un-reviewed proposals ──► sleep(1 hour)
 
     **Schedule:** Every 4 hours
 
-    **Capabilities:** Publishes to Twitter and Farcaster, generates content through dual-brain consensus, and handles community engagement.
+    **Capabilities:** Publishes to Twitter and Farcaster, generates content through tri-brain consensus, and handles community engagement.
 
     The Social Agent operates at a lower permission tier than the Senator and Curator. It can publish content but cannot modify protocol state or access treasury functions.
   </Accordion>

@@ -1,12 +1,12 @@
 ---
 title: "TypeScript SDK"
-description: "Interact with PureCortex from TypeScript using fetch, WebSocket, and algosdk."
+description: "Interact with PURECORTEX from TypeScript using fetch, WebSocket, and algosdk."
 icon: "js"
 ---
 
 # TypeScript SDK
 
-This guide covers PureCortex integration from TypeScript and Node.js. A dedicated npm package is planned -- for now, use the native `fetch` API for REST endpoints, the `WebSocket` API for real-time chat, and `algosdk` for on-chain reads.
+This guide covers PURECORTEX integration from TypeScript and Node.js. A dedicated npm package is planned -- for now, use the native `fetch` API for REST endpoints, the `WebSocket` API for real-time chat, and `algosdk` for on-chain reads.
 
 ## Installation
 
@@ -110,7 +110,10 @@ async function chatWithAgent(
 ): Promise<ChatResponse> {
   const response = await fetch(`${BASE_URL}/api/agents/${agentName}/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": process.env.PURECORTEX_API_KEY!,
+    },
     body: JSON.stringify({ message }),
   });
 
@@ -153,16 +156,22 @@ async function getGovernance() {
 
 ## WebSocket Chat
 
-Real-time bidirectional chat with PureCortex AI agents.
+Real-time bidirectional chat with PURECORTEX AI agents.
 
 <Tabs>
   <Tab title="Node.js">
     ```typescript
-    // Node.js 18+ has built-in WebSocket support
-    const ws = new WebSocket("wss://purecortex.ai/ws/chat");
+    const session = await fetch("https://purecortex.ai/api/chat/session", {
+      method: "POST",
+      headers: {
+        "X-API-Key": process.env.PURECORTEX_API_KEY!,
+      },
+    }).then((r) => r.json());
+
+    const ws = new WebSocket(`wss://purecortex.ai/ws/chat?session=${session.session_token}`);
 
     ws.addEventListener("open", () => {
-      console.log("Connected to PureCortex");
+      console.log("Connected to PURECORTEX");
       ws.send("What is the CORTEX token used for?");
     });
 
@@ -180,11 +189,18 @@ Real-time bidirectional chat with PureCortex AI agents.
   </Tab>
   <Tab title="Browser">
     ```typescript
-    const ws = new WebSocket("wss://purecortex.ai/ws/chat");
+    const session = await fetch("https://purecortex.ai/api/chat/session", {
+      method: "POST",
+      headers: {
+        "X-API-Key": window.sessionStorage.getItem("purecortex_api_key")!,
+      },
+    }).then((r) => r.json());
+
+    const ws = new WebSocket(`wss://purecortex.ai/ws/chat?session=${session.session_token}`);
 
     ws.onopen = () => {
       console.log("Connected");
-      ws.send("Explain dual-brain consensus.");
+      ws.send("Explain tri-brain consensus.");
     };
 
     ws.onmessage = (event: MessageEvent) => {
@@ -214,8 +230,8 @@ Use `algosdk` to query smart contract state and agent token data directly from t
 ```typescript
 import algosdk from "algosdk";
 
-const FACTORY_APP_ID = 757089323;
-const CORTEX_ASSET_ID = 757092088;
+const FACTORY_APP_ID = 757172168;
+const CORTEX_ASSET_ID = 757172171;
 const INDEXER_URL = "https://testnet-idx.algonode.cloud";
 
 const indexer = new algosdk.Indexer("", INDEXER_URL, "");
@@ -289,7 +305,7 @@ import algosdk from "algosdk";
 
 const BASE_URL = "https://purecortex.ai";
 const INDEXER_URL = "https://testnet-idx.algonode.cloud";
-const CORTEX_ASSET_ID = 757092088;
+const CORTEX_ASSET_ID = 757172171;
 
 async function main() {
   // 1. REST: Get supply info
@@ -307,7 +323,10 @@ async function main() {
   // 3. REST: Chat with Senator
   const chat = await fetch(`${BASE_URL}/api/agents/senator/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": process.env.PURECORTEX_API_KEY!,
+    },
     body: JSON.stringify({ message: "Summarize the governance framework." }),
   }).then((r) => r.json());
   console.log(`\nSenator: ${chat.response}`);

@@ -1,12 +1,14 @@
 ---
 title: "Agent Chat"
 api: "POST /api/agents/{agent_name}/chat"
-description: "Send a message to a specific PureCortex AI agent and receive a response."
+description: "Send a message to a specific PURECORTEX AI agent and receive a response."
 ---
 
-Send a conversational message to one of the PureCortex AI agents. Each agent has domain-specific knowledge and will respond based on its role and capabilities.
+Send a conversational message to one of the PURECORTEX AI agents. Each agent has domain-specific knowledge and will respond based on its role and capabilities.
 
 Available agents: `senator`, `curator`, `social`.
+
+This endpoint requires a valid `X-API-Key`.
 
 <ParamField path="agent_name" type="string" required>
   The agent to chat with. One of: `senator`, `curator`, or `social`.
@@ -31,6 +33,7 @@ Available agents: `senator`, `curator`, `social`.
 <RequestExample>
 ```bash curl
 curl -X POST https://purecortex.ai/api/agents/senator/chat \
+  -H "X-API-Key: $PURECORTEX_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"message": "What is the current quorum threshold for governance proposals?"}'
 ```
