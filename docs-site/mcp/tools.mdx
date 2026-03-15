@@ -6,7 +6,7 @@ icon: "wrench"
 
 # Available Tools
 
-The PURECORTEX MCP server exposes three tools. All tool calls are validated by the `PermissionProxy` before execution -- any action that exceeds the server's permission tier is blocked and returns a security error.
+The current PURECORTEX MCP server exposes one tool. All tool calls are validated by the `PermissionProxy` before execution -- any action that exceeds the server's permission tier is blocked and returns a security error.
 
 <Warning>
   The MCP server runs at the `READ_ONLY` permission tier by default. Tool responses that would require elevated permissions (e.g., triggering an on-chain swap) are rejected by the sandbox.
@@ -19,7 +19,7 @@ The PURECORTEX MCP server exposes three tools. All tool calls are validated by t
 Submit a prompt for parallel inference across Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5. The protocol evaluates 2-of-3 majority consensus and returns a validated response.
 
 <ParamField body="prompt" type="string" required>
-  The natural language prompt to evaluate. This is sent to both AI models simultaneously. Input is automatically tagged with security boundaries to prevent prompt injection.
+  The natural language prompt to evaluate. This is sent to all three models in parallel. Input is automatically tagged with security boundaries to prevent prompt injection.
 </ParamField>
 
 ### Response
@@ -71,103 +71,6 @@ const result = await client.callTool({
   arguments: {
     prompt: "What is the current state of DeFi on Algorand?"
   }
-});
-```
-
-</CodeGroup>
-
----
-
-## `get_agent_info`
-
-Retrieve metadata for a specific AI agent deployed through the AgentFactory contract.
-
-<ParamField body="asset_id" type="integer" required>
-  The Algorand Standard Asset (ASA) ID of the agent token. This is returned by the `create_agent` method on the AgentFactory contract (App ID `757172168`).
-</ParamField>
-
-### Response
-
-<ResponseField name="name" type="string">
-  The display name of the agent (e.g., `"Senator"`, `"Curator"`).
-</ResponseField>
-
-<ResponseField name="symbol" type="string">
-  The token unit name / ticker symbol.
-</ResponseField>
-
-<ResponseField name="price_algo" type="number">
-  Current price of one token in ALGO, calculated from the bonding curve: `BASE_PRICE + SLOPE * current_supply`.
-</ResponseField>
-
-<ResponseField name="holders" type="integer">
-  Number of unique addresses holding the agent token.
-</ResponseField>
-
-<ResponseField name="curve_progress" type="number">
-  Percentage progress toward the graduation threshold (50,000 CORTEX TVL). Ranges from `0.0` to `100.0`.
-</ResponseField>
-
-### Example
-
-<CodeGroup>
-
-```python Python
-result = await session.call_tool(
-    "get_agent_info",
-    {"asset_id": 757172171}
-)
-```
-
-```typescript TypeScript
-const result = await client.callTool({
-  name: "get_agent_info",
-  arguments: { asset_id: 757172171 }
-});
-```
-
-</CodeGroup>
-
----
-
-## `get_protocol_stats`
-
-Retrieve protocol-level statistics including agent counts, holder totals, volume, governance participation, and assistance fund balance. This tool takes no arguments.
-
-### Response
-
-<ResponseField name="total_agents" type="integer">
-  Total number of AI agents deployed through the AgentFactory.
-</ResponseField>
-
-<ResponseField name="total_holders" type="integer">
-  Aggregate count of unique token holders across all agent tokens.
-</ResponseField>
-
-<ResponseField name="total_volume_algo" type="number">
-  Cumulative trading volume across all bonding curves, denominated in ALGO.
-</ResponseField>
-
-<ResponseField name="governance_participation_rate" type="number">
-  Percentage of staked veCORTEX that has voted on active proposals. `0.0` to `100.0`.
-</ResponseField>
-
-<ResponseField name="assistance_fund_balance" type="number">
-  Current balance of the Assistance Fund (5% of total supply allocation), in CORTEX.
-</ResponseField>
-
-### Example
-
-<CodeGroup>
-
-```python Python
-result = await session.call_tool("get_protocol_stats", {})
-```
-
-```typescript TypeScript
-const result = await client.callTool({
-  name: "get_protocol_stats",
-  arguments: {}
 });
 ```
 

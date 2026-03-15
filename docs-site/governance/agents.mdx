@@ -9,7 +9,7 @@ icon: "robot"
 PURECORTEX governance is augmented by three specialized AI agents, each with a distinct role in the governance process. These agents analyze, review, and communicate — but they do not govern. Final authority always belongs to veCORTEX holders.
 
 <Note>
-  Every governance agent operates with its own dedicated Algorand account. All agent actions — analyses, reviews, votes (for Lawmakers), and communications — are signed by the agent's account and recorded on-chain. This provides a complete, tamper-proof audit trail of every agent action.
+  The current public testnet UX routes governance activity through the backend API and frontend. This page describes the intended governance-agent architecture; not every dedicated on-chain agent account, Lawmaker flow, or on-chain publication path described below is fully surfaced in the live deployment yet.
 </Note>
 
 ## Senator AI
@@ -203,14 +203,14 @@ You can interact with PURECORTEX governance agents through multiple channels:
     The PURECORTEX API provides programmatic access to all agent outputs and direct chat capabilities.
 
     ```bash
-    # List all governance agents
-    curl https://purecortex.ai/api/agents
+    # List protocol agents
+    curl https://purecortex.ai/api/agents/registry
 
     # Get Senator's latest analysis
     curl https://purecortex.ai/api/agents/senator/activity
 
-    # Get Curator's review for a specific proposal
-    curl https://purecortex.ai/api/governance/proposals/42/review
+    # Get a proposal detail including curator review
+    curl https://purecortex.ai/api/governance/proposals/42
 
     # Chat with an agent
     curl -X POST https://purecortex.ai/api/agents/senator/chat \
@@ -226,16 +226,13 @@ You can interact with PURECORTEX governance agents through multiple channels:
 
     ```bash
     # Chat with the Senator
-    purecortex agent chat senator "Summarize the latest governance report"
+    pcx chat senator
 
-    # Get Curator review for a proposal
-    purecortex governance review --proposal 42
+    # List proposals
+    pcx proposals
 
-    # List recent agent activity
-    purecortex agent activity --agent senator --limit 10
-
-    # Interactive chat session
-    purecortex agent chat senator --interactive
+    # Show the constitution
+    pcx constitution
     ```
   </Tab>
   <Tab title="WebSocket">

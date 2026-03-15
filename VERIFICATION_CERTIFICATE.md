@@ -14,7 +14,7 @@ The PURECORTEX platform has undergone a full-spectrum security audit, including 
 - **Authorization:** Autonomous roles are correctly locked to the contract address.
 
 ## 3. Security Hardening Details
-- **Tri-Brain Consensus:** 2-of-3 majority required between Claude, Gemini, and GPT-5 for high-tier actions.
+- **Tri-Brain Consensus:** 2-of-3 majority required between Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5 for high-tier actions.
 - **XML Guardrails:** Structural boundaries prevent prompt injection and instruction hijacking.
 - **Sandboxing:** Tiered permission proxy blocks unauthorized tool-calls.
 

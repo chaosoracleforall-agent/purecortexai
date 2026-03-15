@@ -23,7 +23,7 @@ Fund the generated `trader` wallet with at least `5 ALGO` before running the smo
 ## Prepare Disposable Wallets
 
 ```bash
-cd /Users/davidgarcia/PureCortex/contracts
+cd contracts
 PYTHONPATH=. .venv/bin/python tests/live_testnet_verify.py prepare
 ```
 
@@ -32,7 +32,7 @@ That command writes a wallet bundle at `contracts/tests/.testnet-smoke-wallets.j
 ## Run Smoke Test
 
 ```bash
-cd /Users/davidgarcia/PureCortex/contracts
+cd contracts
 export DEPLOYER_MNEMONIC="..."
 export PURECORTEX_API_KEY="ctx_..."
 PYTHONPATH=. .venv/bin/python tests/live_testnet_verify.py smoke

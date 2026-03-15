@@ -1,69 +1,66 @@
-# PURECORTEX: Master Development Context & Migration Guide 🦞
+# PURECORTEX: Master Development Context & Migration Guide
 
-**Project Vision:** Build a superior, hardened, and sovereign alternative to Virtuals.io on the Algorand Blockchain.
-**Status:** Testnet Production Live | Hardened Security Certified.
-**Date:** March 13, 2026
-
----
-
-## 1. Project Background & Strategy
-PURECORTEX is a launchpad for autonomous AI agents. Unlike EVM-based alternatives, it leverages Algorand’s sub-second finality and a "Tri-Brain" consensus engine (Claude Opus 4.6 + Gemini 2.5 Pro + GPT-5) orchestrated via OpenClaw. The project focuses on "Agent Emancipation"—where code becomes an independent economic actor.
-
-## 2. Technical Architecture
-
-### 2.1. Blockchain Layer (Algorand/Puya)
-- **Master Factory:** `AgentFactory` (App ID: `757172168`).
-- **Governance Contract:** `GovernanceContract` (App ID: `757157787`).
-- **Protocol Token:** `$CORTEX` (Asset ID: `757172171`).
-- **Bonding Curve:** Custom hybrid quadratic integral.
-- **Sovereignty:** All administrative roles (Manager/Freeze/Clawback) are locked to the contract address itself.
-
-### 2.2. Intelligence Layer (The Tri-Brain)
-- **Engine:** Python 3.12 + FastAPI + OpenClaw.
-- **Consensus:** Every critical action requires JSON-alignment between Claude and Gemini.
-- **Sandboxing:** A `PermissionProxy` enforcing 4 tiers of escalation:
-    - Tier 0: Read-Only (Basic Chat)
-    - Tier 1: Social (Twitter/Farcaster)
-    - Tier 2: Asset Management (Deploying Agents)
-    - Tier 3: Treasury (ALGO/CORTEX Swaps)
-
-### 2.3. Infrastructure (GCP)
-- **Compute:** GCP VM `purecortex-master` (e2-standard-4: 4 vCPU, 16GB RAM).
-- **Security:** Secret Manager for all keys; Cloud KMS for HSM-backed signing (Ready for implementation).
-- **Reverse Proxy:** Nginx + Certbot (HTTPS live at https://purecortex.ai).
-
-## 3. Completed Milestones (What We Built)
-- [x] **Hardened Smart Contracts:** Precision-engineered Puya contracts with box-storage fixes.
-- [x] **$CORTEX Tokenomics:** Bootstrap protocol and utility fee enforcement (100 $CORTEX/launch).
-- [x] **Social Identity:** Programmatic Twitter integration for `@purecortexai`.
-- [x] **High-Fidelity UI:** Next.js 15 interface with "Modern Tech" branding.
-- [x] **Documentation Hub:** API, MCP, and CLI docs served statically.
-- [x] **Formal Verification:** Internal audit of bonding curve monotonicity and precision.
-
-## 4. Key Security Fixes (The Hardening Log)
-1. **Mathematical Truncation:** Fixed integer division in bonding curve that allowed "free" tokens.
-2. **Prompt Injection:** Implemented XML-tagged structural guardrails to prevent instruction hijacking.
-3. **Unrestricted Execution:** Introduced `PermissionProxy` to stop AI from making unauthorized on-chain or social moves.
-4. **Credential Safety:** Migrated all secrets from `.env` to GCP Secret Manager.
-
-## 5. Brand Identity
-- **Typography:** Inter Bold (Primary), JetBrains Mono (Technical).
-- **Palette:** Obsidian (#050505) and Neural Blue (#007AFF).
-- **Logo:** Atomic Neuron mark with typographic "PURECORTEX" ("Pure" in white, "Cortex" in Neural Blue).
-- **Assets:** `branding/final/` — primary logo, icon, token icon, social PFPs.
-
-## 6. Challenge Log (Obstacles Encountered)
-- **Twitter API Permissions:** Encountered "Read-only" blocks; required upgrade to "Read and Write" and token rotation.
-- **Twitter PFP Validation:** Automated PFP uploads failed initially due to low entropy; required high-resolution, textured images to pass filters.
-- **Algokit SDK Versioning:** Navigation of positional vs keyword arguments in `AccountManager` during deployment scripts.
-- **DNS Multicasting:** Domain initially resolved to GoDaddy parked IPs, blocking Let's Encrypt SSL issuance. Resolved by purging old A-records.
-
-## 7. Pending & Future Roadmap (Next Steps for Claude Code)
-1. **Cortex Points System:** Implement an off-chain/on-chain hybrid to track Testnet engagement for the Genesis Airdrop.
-2. **Testnet Hardening:** Complete the final readiness checklist on the canonical testnet deployment before any mainnet transition is considered.
-3. **KMS Signing:** Replace mnemonic-based signing in `AgentFactory` with GCP Cloud KMS for institutional security.
-4. **Advanced MCP Tools:** Implement `get_alpha_score` and `audit_contract_bytecode` as tools for the agents.
-5. **UI Interactivity:** Enable full "Neural Search" and "Filter" logic in the Marketplace.
+**Project vision:** Build a hardened sovereign AI agent platform on Algorand.
+**Current status:** Public testnet deployment live at `https://purecortex.ai`.
+**Repository:** `https://github.com/chaosoracleforall-agent/purecortexai`
+**Last updated:** March 15, 2026
 
 ---
-*PURECORTEX: Documented for the next level of intelligence.*
+
+## 1. Current Snapshot
+PURECORTEX is currently organized around a canonical Algorand Testnet deployment and a VM-hosted web stack. The project includes:
+
+- A Next.js frontend for marketplace, governance, transparency, docs, and chat.
+- A FastAPI backend for protocol APIs, agent routing, health, auth, and chat session minting.
+- Redis-backed API key validation and short-lived WebSocket chat sessions.
+- Algorand smart contracts for agent creation, governance, staking, and treasury flows.
+- A tri-brain orchestration layer powered by Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5.
+
+## 2. Canonical Testnet Identifiers
+- **AgentFactory app ID:** `757172168`
+- **CORTEX asset ID:** `757172171`
+- **Governance app ID:** `757157787`
+- **Staking app ID:** `757172306`
+- **Treasury app ID:** `757172354`
+- **App / API URL:** `https://purecortex.ai`
+
+These values should come from `deployment.testnet.json` and generated protocol config modules, not from ad hoc hardcoded constants.
+
+## 3. Architecture
+
+### 3.1. Intelligence Layer
+- **Claude model:** `claude-opus-4-6`
+- **Gemini model:** `gemini-2.5-pro`
+- **OpenAI model:** `gpt-5`
+- **OpenAI fallback:** `gpt-4.1`
+- **High-risk consensus:** 2-of-3 majority
+- **Low-risk behavior:** soft consensus when one valid answer is enough
+
+### 3.2. API/Auth Layer
+- Public transparency and governance reads stay unauthenticated.
+- Protected REST endpoints require `X-API-Key`.
+- WebSocket chat uses `POST /api/chat/session` to mint short-lived session tokens.
+- Auth fails closed when the API key service is unavailable.
+
+### 3.3. Infrastructure Layer
+- **Deployment model:** GCP VM `purecortex-master`
+- **Runtime:** Docker Compose + Nginx
+- **TLS:** `purecortex.ai` terminated at Nginx with Let's Encrypt
+- **Project ID:** `purecortexai`
+
+## 4. What Landed Recently
+- Canonicalized deployment constants via `deployment.testnet.json`.
+- Switched governance UI to the live backend API until fully on-chain flows are ready.
+- Added authenticated chat bootstrap and short-lived WebSocket sessions.
+- Replaced placeholder REST agent chat with orchestrator-backed responses.
+- Repaired the testnet smoke harness and expanded backend, contract, and Playwright coverage.
+- Standardized deployment around the current VM model and cleaned stale public docs.
+
+## 5. Remaining Priorities
+1. Finish deployment/runbook polish around the VM model and operational monitoring.
+2. Continue trimming stale planning-era documents that no longer reflect the active stack.
+3. Improve marketplace and governance depth on top of the canonical testnet deployment.
+4. Decide whether MCP will remain stdio-only or gain a documented remote transport.
+
+---
+*PURECORTEX: Keep the repo aligned with the testnet reality, not the planning-era architecture.*

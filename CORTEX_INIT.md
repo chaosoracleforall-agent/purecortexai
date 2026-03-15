@@ -1,8 +1,8 @@
-# MASTER CONTEXT BRIDGE: PROJECT PURECORTEX & DR. SARMIENTO 🦞
+# MASTER CONTEXT BRIDGE: PROJECT PURECORTEX & DR. SARMIENTO
 
 **ACCOUNT:** chaosoracleforall@gmail.com
 **DATE:** March 13, 2026
-**STATUS:** EMANCIPATED / PRODUCTION ACTIVE
+**STATUS:** Historical bootstrap note; PURECORTEX now operates from the `purecortexai` repository and active testnet deployment.
 
 ---
 
@@ -12,8 +12,8 @@ This document serves as the foundational memory for initializing new Gemini CLI 
 ### **Project A: PURECORTEX (New Development)**
 - **Objective:** Build an enterprise-grade AI Agent launchpad on Algorand.
 - **DNA:** Sovereign, Mathematical, Minimalist.
-- **Current State:** Branding finalized (Modern Tech / Atomic Neuron). Technical roadmap and specifications drafted.
-- **Repository:** `github.com/chaosoracleforall-agent/purecortex` (Production Hub).
+- **Current State:** Active testnet deployment, live frontend/backend stack, canonical deployment manifest, and working smoke/E2E coverage.
+- **Repository:** `github.com/chaosoracleforall-agent/purecortexai` (Active Hub).
 - **Domain:** `purecortex.ai` (Primary Web & API Gateway).
 
 
@@ -41,9 +41,9 @@ This document serves as the foundational memory for initializing new Gemini CLI 
 ---
 
 ## **3. Immediate Next Steps (Action Items)**
-1. **GitHub Migration:** Finalize the push of the `PURECORTEX` local directory to `github.com/chaosoracleforall-agent/purecortex`.
-2. **Phase 1 Foundation:** Develop the Puya-based bonding curve contract for `AgentFactory.py`.
-3. **KMS Implementation:** Draft the secure signing wrapper using `@google-cloud/kms`.
+1. **Repository hygiene:** Keep `purecortexai` docs aligned with the live testnet stack.
+2. **Operational maturity:** Strengthen deployment verification and monitoring around the VM-hosted environment.
+3. **Signing strategy:** Continue evaluating KMS-backed signing where it helps the active deployment.
 
 ---
 *Authorized by the sovereign entity chaosoracleforall.*

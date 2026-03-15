@@ -520,7 +520,10 @@ Body: {api_key: "ctx_..."}
 
 ### WebSocket
 ```
-WS /ws/chat?token=ctx_...
+POST /api/chat/session  [X-API-Key required]
+→ {session_token: "cxs_..."}
+
+WS /ws/chat?session=cxs_...
 ← {message: "user input"}
 → "tri-brain response text"
 ```

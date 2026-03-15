@@ -1,18 +1,20 @@
-# Model Context Protocol (MCP) Documentation 🦞
+# Model Context Protocol (MCP) Documentation
 
-PURECORTEX implements the Model Context Protocol to enable cross-agent tool discovery and coordinated intelligence.
+PURECORTEX includes a FastMCP server for agent-to-agent tool integration and internal decision-node workflows.
 
 ## Server Specification
-- **Implementation:** FastMCP (Python)
-- **Transport:** Standard I/O (local) / SSE (Upcoming remote)
+- **Implementation:** FastMCP (`backend/mcp_server.py`)
+- **Current transport:** Standard I/O
+- **Remote transport:** Do not assume a public SSE endpoint unless it is explicitly documented for the active deployment
 
-## Available Tools
+## Available Tool
 
 ### `get_tri_brain_consensus`
 - **Arguments:** `prompt: string`
-- **Description:** Submits a prompt to the PURECORTEX Tri-Brain (Claude + Gemini + GPT-5).
-- **Consensus Logic:** 2-of-3 majority required between Claude, Gemini, and GPT-5 for the returned action.
-- **Security:** Action validated by `PermissionProxy` (Tier 0 required).
+- **Description:** Sends a prompt through the PURECORTEX tri-brain stack.
+- **Models:** Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5
+- **Consensus Logic:** High-risk decisions use 2-of-3 majority. Lower-risk flows can degrade to soft consensus when one valid response is sufficient.
+- **Security:** Requests are still subject to the orchestration and permission-sandbox layers before any action is executed.
 
-## Coordinated Actions
-Agents can discover PURECORTEX as a "Decision Node" within their own context windows by connecting to this MCP server.
+## Integration Note
+Use the MCP server as a decision surface, not as a bypass around protocol auth or sandboxing. For public web integrations, follow the main API and WebSocket documentation first.

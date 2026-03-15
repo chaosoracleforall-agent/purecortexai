@@ -8,6 +8,10 @@ icon: "file-lines"
 
 Governance proposals are the mechanism through which the PURECORTEX community makes decisions. Any veCORTEX holder meeting the submission threshold can propose changes — from parameter adjustments to constitutional amendments. Every proposal follows a structured lifecycle with mandatory stages, ensuring thorough deliberation before any change takes effect.
 
+<Note>
+  The active public testnet implementation currently uses the backend governance API as the source of truth for proposal creation, review, and voting. The broader on-chain proposal mechanics described here are roadmap-oriented and should not be treated as fully deployed unless the live governance APIs and UI explicitly expose them.
+</Note>
+
 ## Proposal Types
 
 <Tabs>
@@ -68,10 +72,6 @@ Governance proposals are the mechanism through which the PURECORTEX community ma
 
 ## How to Create a Proposal
 
-<Note>
-  Proposal creation is available **post-TGE** (after March 31, 2026). Before TGE, governance operates in a bootstrap mode where the founding team implements community feedback directly. Full on-chain governance activates at TGE.
-</Note>
-
 <Steps>
   <Step title="Acquire veCORTEX">
     You need veCORTEX to submit a proposal. Lock $CORTEX tokens through the [staking mechanism](/tokenomics/staking) to receive veCORTEX. A minimum veCORTEX balance is required to submit proposals — this prevents spam while remaining accessible to committed participants.
@@ -86,27 +86,19 @@ Governance proposals are the mechanism through which the PURECORTEX community ma
     - **Risk Assessment** — Potential risks, mitigations, and rollback plans
     - **Timeline** — Expected implementation and milestone dates
   </Step>
-  <Step title="Submit On-Chain">
-    Submit your proposal through the governance interface, CLI, or directly to the governance smart contract. The submission transaction records the proposal on-chain and initiates the discussion period.
+  <Step title="Submit Through The Current Governance Surface">
+    Submit your proposal through the governance interface or the authenticated governance API. In the current implementation, proposal creation is handled by the backend governance service rather than a published standalone SDK command.
 
     ```bash
-    # Via CLI
-    purecortex governance propose \
-      --title "Adjust trading fee range to 0.3-1.5%" \
-      --description "proposal_description.md" \
-      --type standard
-    ```
-
-    ```python
-    # Via Python SDK
-    from purecortex import PureCortexClient
-
-    client = PureCortexClient()
-    proposal = client.governance.create_proposal(
-        title="Adjust trading fee range to 0.3-1.5%",
-        description="Full proposal text...",
-        proposal_type="standard"
-    )
+    curl -X POST https://purecortex.ai/api/governance/proposals \
+      -H "X-API-Key: $PURECORTEX_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "title": "Adjust trading fee range to 0.3-1.5%",
+        "description": "Full proposal text...",
+        "type": "parameter",
+        "proposer": "community_member"
+      }'
     ```
   </Step>
   <Step title="Engage During Discussion">
@@ -233,6 +225,6 @@ A proposal moves through the following states:
     List and query proposals programmatically. See [`GET /api/governance/proposals`](/api-reference/list-proposals) and [`GET /api/governance/proposals/:id`](/api-reference/get-proposal).
   </Card>
   <Card title="CLI" icon="terminal">
-    `purecortex governance list` shows active proposals. `purecortex governance vote --proposal <id> --vote for` casts a vote.
+    `pcx proposals` shows the current proposal list. Proposal creation and voting currently flow through the web UI or authenticated governance API.
   </Card>
 </CardGroup>
