@@ -1,0 +1,241 @@
+---
+title: "Agent Framework"
+description: "BaseAgent, AgentMemory, PermissionProxy, and the orchestration loop that powers PureCortex AI agents."
+icon: "robot"
+---
+
+# Agent Framework
+
+Every PureCortex AI agent inherits from `BaseAgent`, which wires up dual-brain consensus, permission sandboxing, persistent memory, and a conversational chat interface. The framework enforces a consistent execution model across all agents while allowing each to define its own autonomous behavior.
+
+---
+
+## BaseAgent
+
+`BaseAgent` is the abstract base class for all PureCortex agents. It provides three core methods that every agent uses:
+
+<CardGroup cols={3}>
+  <Card title="think()" icon="brain">
+    Dual-brain decision making. Enriches the prompt with episodic memory, runs parallel Claude + Gemini inference, validates through the permission sandbox, and logs the outcome.
+  </Card>
+  <Card title="chat()" icon="comments">
+    Conversational AI. Uses the agent's domain-specific `CHAT_PROMPT` and dual-brain consensus to generate responses. Falls back to a graceful degradation message if consensus fails.
+  </Card>
+  <Card title="act()" icon="bolt">
+    Autonomous action. Abstract method implemented by each concrete agent. Called by the orchestration loop on the agent's schedule.
+  </Card>
+</CardGroup>
+
+### Class Structure
+
+```python
+class BaseAgent(ABC):
+    # Subclasses must override
+    SYSTEM_PROMPT: str = ""
+    CHAT_PROMPT: str = ""
+
+    def __init__(
+        self,
+        name: str,
+        role: str,
+        orchestrator: ConsensusOrchestrator,
+        memory: AgentMemory,
+        algorand_address: str = "",
+        permission_tier: PermissionTier = PermissionTier.READ_ONLY,
+    ):
+        self.proxy = PermissionProxy(current_tier=permission_tier)
+        ...
+
+    async def think(self, system_prompt, user_input, *, task_type="general"):
+        """Dual-brain decision with memory enrichment and sandbox validation."""
+        ...
+
+    async def chat(self, user_message: str) -> str:
+        """Conversational AI scoped to the agent's domain."""
+        ...
+
+    @abstractmethod
+    async def act(self) -> Optional[Dict[str, Any]]:
+        """Primary autonomous action -- called by the orchestration loop."""
+        ...
+```
+
+### Decision Flow
+
+<Steps>
+  <Step title="Memory Enrichment">
+    `think()` calls `memory.get_learning_context(task_type)` to retrieve the most relevant past episodes as few-shot examples. These are injected into the system prompt before inference.
+  </Step>
+  <Step title="Dual-Brain Inference">
+    The enriched prompt is sent to `ConsensusOrchestrator.decide_action()` for parallel Claude + Gemini evaluation.
+  </Step>
+  <Step title="Sandbox Validation">
+    The consensus result passes through `PermissionProxy.validate_action()`. If the action exceeds the agent's tier, it is blocked.
+  </Step>
+  <Step title="Episodic Logging">
+    The outcome is recorded via `memory.log_episode()` with a score of `1.0` (success), or `0.0` (consensus failure or permission denial). Future decisions learn from this history.
+  </Step>
+</Steps>
+
+---
+
+## AgentMemory
+
+`AgentMemory` provides three tiers of Redis-backed persistent memory with a built-in feedback loop:
+
+| Tier | TTL | Purpose | Key Pattern |
+|------|-----|---------|-------------|
+| **Short-term** | 1 hour | Current context, scratchpad data | `purecortex:{agent}:short:{key}` |
+| **Long-term** | Permanent | Learned preferences, patterns, strategies | `purecortex:{agent}:long:{key}` |
+| **Episodic** | 90 days | Timestamped action logs for feedback learning | `purecortex:{agent}:episodes` |
+
+### Memory Operations
+
+```python
+# Short-term (1h TTL)
+await memory.remember_short("current_task", {"status": "analyzing"})
+context = await memory.recall_short("current_task")
+
+# Long-term (permanent)
+await memory.remember_long("preferred_strategy", "conservative")
+strategy = await memory.recall_long("preferred_strategy")
+
+# Episodic (feedback loop)
+await memory.log_episode(
+    action="PROPOSE",
+    context={"topic": "fee reduction"},
+    outcome={"proposal_id": 42, "status": "submitted"},
+    score=1.0,
+)
+```
+
+### Feedback Loop
+
+The feedback loop enables agents to learn from their own history:
+
+1. **Episode logging** -- Every `think()` call records the action, context, outcome, and a reward score (0.0 to 1.0).
+2. **Episode retrieval** -- `get_learning_context(task_type)` filters the most relevant past episodes and formats them as few-shot examples.
+3. **Prompt enrichment** -- These examples are appended to the system prompt under a `### RELEVANT PAST EXPERIENCE` header before the next decision.
+4. **Performance tracking** -- `get_performance_metrics()` computes success rate, average score, action counts, and recent trends across up to 1,000 stored episodes.
+
+<Info>
+  AgentMemory degrades gracefully when Redis is unavailable. All memory operations are wrapped in try/except blocks and return `None` or empty values on failure. Agents continue to function without memory -- they just lose the learning context.
+</Info>
+
+---
+
+## PermissionProxy
+
+The `PermissionProxy` implements tiered sandboxing that restricts which actions each agent can execute. Every agent receives its own proxy instance at initialization, locked to its declared permission tier.
+
+### Permission Tiers
+
+```python
+class PermissionTier(IntEnum):
+    READ_ONLY = 0        # Info queries, basic chat
+    SOCIAL_POST = 1      # Tweeting, Farcaster casting
+    ASSET_MANAGEMENT = 2 # Creating agents, governance proposals
+    TREASURY_SWAP = 3    # Major ALGO/USDC swaps, execution
+```
+
+### Action-to-Tier Mapping
+
+| Action | Required Tier |
+|--------|--------------|
+| `REPLY`, `RESPOND`, `MONITOR`, `ANALYZE` | `READ_ONLY` (0) |
+| `POST` | `SOCIAL_POST` (1) |
+| `PROPOSE`, `APPROVE`, `REJECT`, `CREATE_AGENT` | `ASSET_MANAGEMENT` (2) |
+| `SWAP`, `EXECUTE` | `TREASURY_SWAP` (3) |
+
+Unknown actions default to `TREASURY_SWAP` (maximum security). Tier escalation requires a hardened authorization token and is intended for multi-sig verification in production.
+
+<Warning>
+  The `PermissionProxy` is an application-level sandbox. It does not replace on-chain access controls. Smart contract methods have their own `assert Txn.sender == Global.creator_address` checks independent of the proxy.
+</Warning>
+
+---
+
+## Orchestration Loop
+
+The `AgentOrchestrationLoop` manages background asyncio tasks for all protocol agents. It integrates with FastAPI's lifespan so agent loops start at server boot and shut down cleanly on stop.
+
+### Agent Schedules
+
+| Agent | Schedule | Trigger |
+|-------|----------|---------|
+| **Senator** | Every 2 weeks | Time-based. When a proposal is generated, the Curator is immediately triggered for review. |
+| **Curator** | Event-driven + 1h sweep | Primary: triggered by Senator proposals. Secondary: hourly sweep for un-reviewed proposals submitted via API. |
+| **Social** | Every 4 hours | Time-based. Generates and publishes consensus-approved content. |
+
+### Lifecycle
+
+```python
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await loop.start()   # Connect memories, create asyncio tasks
+    yield
+    await loop.stop()    # Cancel tasks, disconnect memories
+
+app = FastAPI(lifespan=lifespan)
+```
+
+### Agent Interaction Pattern
+
+The orchestration loop implements an event-driven pattern between agents:
+
+```
+Senator.act()
+    │
+    ├── Produces proposal? ──► Curator.review_proposal(proposal)
+    │                              │
+    │                              └── Returns recommendation
+    │
+    └── No proposal ──► sleep(14 days)
+
+Social.act()  ──► Generates content ──► sleep(4 hours)
+
+Curator.act() ──► Sweeps for un-reviewed proposals ──► sleep(1 hour)
+```
+
+---
+
+## Current Protocol Agents
+
+<AccordionGroup>
+  <Accordion title="Senator Agent" icon="gavel">
+    **Role:** Governance intelligence layer.
+
+    **Permission Tier:** `ASSET_MANAGEMENT` (2)
+
+    **Schedule:** Biweekly (every 14 days)
+
+    **Capabilities:** Proposes protocol amendments, mediates disputes, ensures constitutional compliance, performs governance analysis, and can initiate emergency cancellations.
+
+    When the Senator generates a proposal, the orchestration loop immediately triggers the Curator for review -- creating a proposal-review pipeline without manual intervention.
+  </Accordion>
+  <Accordion title="Curator Agent" icon="magnifying-glass">
+    **Role:** Quality and safety layer.
+
+    **Permission Tier:** `ASSET_MANAGEMENT` (2)
+
+    **Schedule:** Event-driven (triggered by Senator proposals) + 1-hour sweep
+
+    **Capabilities:** Manages the MCP tool registry, evaluates agent composability scores, assesses agent tier eligibility, routes x402 micropayments, and enforces quality standards.
+
+    The Curator has a dual trigger model: it activates immediately when the Senator produces a proposal, and also runs a periodic sweep to catch proposals submitted through the API.
+  </Accordion>
+  <Accordion title="Social Agent" icon="share-nodes">
+    **Role:** Public communications layer.
+
+    **Permission Tier:** `SOCIAL_POST` (1)
+
+    **Schedule:** Every 4 hours
+
+    **Capabilities:** Publishes to Twitter and Farcaster, generates content through dual-brain consensus, and handles community engagement.
+
+    The Social Agent operates at a lower permission tier than the Senator and Curator. It can publish content but cannot modify protocol state or access treasury functions.
+  </Accordion>
+</AccordionGroup>

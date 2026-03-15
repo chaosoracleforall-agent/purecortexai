@@ -1,0 +1,201 @@
+---
+title: "Staking (veCORTEX)"
+description: "Lock $CORTEX to receive veCORTEX — governance voting power, emission rewards, boost multipliers, and delegation to Lawmaker agents."
+icon: "lock"
+---
+
+# Staking (veCORTEX)
+
+veCORTEX (vote-escrowed CORTEX) is the governance and staking token of PureCortex. You receive veCORTEX by locking $CORTEX for a chosen period — the longer you lock, the more veCORTEX you receive, and the greater your voting power and staking rewards.
+
+<Note>
+  veCORTEX is **non-transferable**. It cannot be sold, traded, or sent to another address. It exists solely as a representation of your locked $CORTEX position and expires when your lock period ends. This prevents governance power from being bought and sold on secondary markets.
+</Note>
+
+## What veCORTEX Gives You
+
+<CardGroup cols={2}>
+  <Card title="Governance Voting" icon="check-to-slot">
+    Vote on proposals with weight proportional to your veCORTEX balance. Includes protocol upgrades, parameter changes, treasury spending, and constitutional amendments.
+  </Card>
+  <Card title="Emission Rewards" icon="coins">
+    Earn $CORTEX from the 24% staking emissions pool. Rewards are boosted based on your lock duration — up to 2.5x the base rate.
+  </Card>
+  <Card title="Delegation" icon="user-group">
+    Delegate your voting power to Lawmaker agents who vote on your behalf using AI-driven analysis. You retain the ability to override any delegation with a direct vote.
+  </Card>
+  <Card title="Protocol Influence" icon="scale-balanced">
+    Longer locks signal stronger commitment. veCORTEX holders with 4-year locks have outsized influence over the protocol's direction — by design, those with the longest time horizons make the most impactful decisions.
+  </Card>
+</CardGroup>
+
+## Lock Periods
+
+$CORTEX can be locked for any duration between 1 week and 4 years. veCORTEX is issued proportionally to lock duration:
+
+| Lock Duration | veCORTEX per CORTEX | Boost Multiplier |
+|:---|:---|:---|
+| 1 week | ~0.005 | 1.003x |
+| 1 month | ~0.021 | 1.010x |
+| 3 months | ~0.063 | 1.031x |
+| 6 months | ~0.125 | 1.063x |
+| 1 year | 0.25 | 1.125x |
+| 2 years | 0.50 | 1.375x |
+| 3 years | 0.75 | 1.875x |
+| 4 years (max) | 1.00 | 2.500x |
+
+veCORTEX balance decays linearly as your lock approaches expiration. A 4-year lock starts at 1.0 veCORTEX per CORTEX and decreases to 0 at expiry. You can extend your lock at any time to reset the decay.
+
+## Boost Multiplier
+
+The boost multiplier determines how much additional staking reward you earn relative to the base rate. It is calculated as:
+
+```
+boost = min(2.5, 1 + (lock_days / (4 * 365)) * 1.5)
+```
+
+Breaking this down:
+
+- **Base multiplier:** 1.0x (everyone gets at least this)
+- **Maximum additional boost:** 1.5x (earned at the maximum 4-year lock)
+- **Hard cap:** 2.5x (1.0 base + 1.5 maximum boost)
+- **Scaling:** Linear between 1.0x and 2.5x based on lock duration
+
+<Tabs>
+  <Tab title="Examples">
+    | Lock Duration | lock_days | Calculation | Boost |
+    |:---|:---|:---|:---|
+    | 1 week | 7 | 1 + (7 / 1460) * 1.5 = 1.007 | 1.007x |
+    | 30 days | 30 | 1 + (30 / 1460) * 1.5 = 1.031 | 1.031x |
+    | 6 months | 182 | 1 + (182 / 1460) * 1.5 = 1.187 | 1.187x |
+    | 1 year | 365 | 1 + (365 / 1460) * 1.5 = 1.375 | 1.375x |
+    | 2 years | 730 | 1 + (730 / 1460) * 1.5 = 1.750 | 1.750x |
+    | 4 years | 1460 | 1 + (1460 / 1460) * 1.5 = 2.500 | 2.500x |
+  </Tab>
+  <Tab title="Impact on Rewards">
+    Consider two stakers each locking 1,000,000 CORTEX:
+
+    **Staker A:** 6-month lock (1.187x boost)
+    - Effective stake: 1,187,000 CORTEX equivalent
+    - Receives 18.7% more rewards than base rate
+
+    **Staker B:** 4-year lock (2.5x boost)
+    - Effective stake: 2,500,000 CORTEX equivalent
+    - Receives 150% more rewards than base rate
+
+    Staker B earns ~2.1x more rewards than Staker A per token locked, rewarding the longer commitment.
+  </Tab>
+</Tabs>
+
+## Emission Rewards
+
+24% of total $CORTEX supply (2,400,000,000,000,000 tokens) is allocated to staking emissions, distributed over 4 years with a halving schedule.
+
+### Halving Schedule
+
+| Year | Emission Share | Annual Tokens | Approx. Daily Rate |
+|:---|:---|:---|:---|
+| Year 1 | 40% | 960,000,000,000,000 | ~2.63 trillion |
+| Year 2 | 30% | 720,000,000,000,000 | ~1.97 trillion |
+| Year 3 | 20% | 480,000,000,000,000 | ~1.32 trillion |
+| Year 4 | 10% | 240,000,000,000,000 | ~0.66 trillion |
+
+<Info>
+  The halving weights are **[0.40, 0.30, 0.20, 0.10]** — not a strict 50% halving, but a front-loaded schedule that rewards early participants while progressively reducing emission-driven inflation. After year 4, staking emissions are fully exhausted.
+</Info>
+
+### How Rewards Are Calculated
+
+Your share of daily emissions depends on:
+
+1. **Your boosted stake** — Your locked CORTEX multiplied by your boost multiplier
+2. **Total boosted stake** — The sum of all stakers' boosted stakes
+3. **Daily emission rate** — The total tokens emitted that day (per the halving schedule)
+
+```
+your_daily_reward = daily_emission * (your_boosted_stake / total_boosted_stake)
+```
+
+Rewards accrue continuously and can be claimed at any time. Unclaimed rewards do not expire, but they do not auto-compound unless you manually re-lock them.
+
+## Delegation to Lawmakers
+
+veCORTEX holders can delegate their voting power to **Lawmaker agents** — specialized AI agents that analyze proposals and vote on behalf of their delegators.
+
+<Steps>
+  <Step title="Choose a Lawmaker">
+    Browse the Lawmaker registry to find agents aligned with your governance philosophy. Each Lawmaker publishes its voting principles, historical votes, and reasoning for past decisions.
+  </Step>
+  <Step title="Delegate Your Power">
+    Delegate all or a portion of your veCORTEX to one or more Lawmakers. Delegation is instant, on-chain, and revocable at any time.
+  </Step>
+  <Step title="Lawmaker Votes">
+    When a proposal goes to vote, your delegated Lawmaker casts votes on your behalf using its AI-driven analysis engine. The Lawmaker evaluates proposals against its published principles and the PureCortex Constitution.
+  </Step>
+  <Step title="Override Anytime">
+    You can always override your Lawmaker's vote by casting a direct vote. Direct votes take precedence over delegated votes for the same proposal. You can also revoke delegation entirely at any point.
+  </Step>
+</Steps>
+
+<Warning>
+  Delegation transfers **voting power only** — not your tokens. Your locked CORTEX and staking rewards remain entirely in your control regardless of delegation status. Lawmakers cannot access, move, or claim your tokens.
+</Warning>
+
+## Smart Contract Details
+
+### Staking Contract
+
+The veCORTEX staking contract manages all lock, unlock, reward distribution, and delegation operations.
+
+| Function | Description |
+|:---|:---|
+| `lock(amount, duration)` | Lock CORTEX tokens for the specified duration, receive veCORTEX |
+| `extend_lock(new_duration)` | Extend an existing lock to a longer duration |
+| `increase_lock(amount)` | Add more CORTEX to an existing lock position |
+| `withdraw()` | Withdraw locked CORTEX after lock expiry |
+| `claim_rewards()` | Claim accrued staking emission rewards |
+| `delegate(lawmaker_address, amount)` | Delegate veCORTEX voting power to a Lawmaker |
+| `revoke_delegation(lawmaker_address)` | Remove delegation from a Lawmaker |
+| `get_boost(address)` | Query current boost multiplier for an address |
+| `get_voting_power(address)` | Query current veCORTEX balance (includes decay) |
+
+### Key Properties
+
+<AccordionGroup>
+  <Accordion title="Lock Safety">
+    Locked tokens cannot be withdrawn before expiry under any circumstances. There is no early unlock penalty mechanism — the lock is absolute. This ensures that governance voting power cannot be gamed by locking and immediately unlocking.
+  </Accordion>
+  <Accordion title="Linear Decay">
+    veCORTEX balance decays linearly from lock creation to expiry. If you lock for 4 years and 2 years have passed, your veCORTEX balance is 50% of the initial amount. This means governance power naturally shifts toward those who have recently committed — not those coasting on an old lock.
+  </Accordion>
+  <Accordion title="Lock Extension">
+    You can extend your lock at any time to any longer duration (up to 4 years from the current date). Extending resets the decay clock and restores your veCORTEX to the new maximum. You can also add more CORTEX to an existing lock without changing the expiry date.
+  </Accordion>
+  <Accordion title="Reward Compounding">
+    Claimed rewards are returned as unlocked $CORTEX. To compound, you must manually re-lock claimed rewards into a new or existing position. This is intentional — automatic compounding would create governance power without explicit consent.
+  </Accordion>
+</AccordionGroup>
+
+## Staking Strategy Considerations
+
+<Tabs>
+  <Tab title="Maximum Governance">
+    **Goal:** Maximize voting power and protocol influence.
+
+    Lock the maximum 4 years and extend regularly. This maintains peak veCORTEX balance and the highest boost multiplier. Ideal for participants who want to actively shape protocol direction.
+  </Tab>
+  <Tab title="Balanced">
+    **Goal:** Meaningful rewards and governance participation with moderate commitment.
+
+    Lock for 1-2 years. Provides a solid 1.375x-1.750x boost and substantial voting power without a multi-year commitment. Re-evaluate and re-lock as desired.
+  </Tab>
+  <Tab title="Flexible">
+    **Goal:** Earn some rewards while maintaining shorter lock periods.
+
+    Lock for 1-6 months. Lower boost (1.031x-1.187x) but faster access to tokens. Useful for participants who want exposure to staking rewards without long-term illiquidity.
+  </Tab>
+</Tabs>
+
+<Info>
+  Staking goes live at TGE on **March 31, 2026**. The staking contract address and full ABI will be published before launch. Testnet staking is available now for pre-TGE testing.
+</Info>

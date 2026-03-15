@@ -1,0 +1,86 @@
+---
+title: "SDK Overview"
+description: "Programmatic access to PureCortex via Python and TypeScript."
+icon: "code"
+---
+
+# SDK Overview
+
+PureCortex provides programmatic access through its REST API, WebSocket endpoint, and on-chain contracts. Dedicated Python and TypeScript SDK packages are on the roadmap. In the meantime, you can interact with the protocol directly using standard HTTP clients and the Algorand SDK.
+
+<Info>
+  Dedicated `purecortex` SDK packages for Python (PyPI) and TypeScript (npm) are coming soon. The examples below use `httpx`, `fetch`, and `algosdk` directly.
+</Info>
+
+---
+
+## Access Methods
+
+<CardGroup cols={3}>
+  <Card title="REST API" icon="globe" href="/api-reference/overview">
+    HTTP endpoints for transparency data, governance, agent registry, and chat. Base URL: `https://purecortex.ai`
+  </Card>
+  <Card title="WebSocket" icon="plug" href="/api-reference/websocket-chat">
+    Real-time bidirectional chat with AI agents at `wss://purecortex.ai/ws/chat`
+  </Card>
+  <Card title="On-Chain" icon="link" href="/architecture/smart-contracts">
+    Direct smart contract interaction via `algosdk`. AgentFactory App ID: `757089323`
+  </Card>
+</CardGroup>
+
+---
+
+## Quick Start: Python
+
+```python
+import httpx
+
+BASE_URL = "https://purecortex.ai"
+
+# Get CORTEX token supply
+response = httpx.get(f"{BASE_URL}/api/transparency/supply")
+data = response.json()
+print(f"Total supply: {data['total_supply']:,}")
+print(f"Circulating:  {data['circulating']:,}")
+print(f"Burned:       {data['burned']:,}")
+
+# List protocol agents
+response = httpx.get(f"{BASE_URL}/api/agents/registry")
+for agent in response.json()["agents"]:
+    print(f"  {agent['name']} ({agent['role']}) — {agent['status']}")
+```
+
+---
+
+## Quick Start: TypeScript
+
+```typescript
+const BASE_URL = "https://purecortex.ai";
+
+// Get CORTEX token supply
+const supply = await fetch(`${BASE_URL}/api/transparency/supply`)
+  .then(r => r.json());
+console.log(`Total supply: ${supply.total_supply.toLocaleString()}`);
+console.log(`Circulating:  ${supply.circulating.toLocaleString()}`);
+
+// Chat with the Senator agent
+const chat = await fetch(`${BASE_URL}/api/agents/senator/chat`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: "What proposals are currently active?" }),
+}).then(r => r.json());
+console.log(`Senator: ${chat.response}`);
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Python SDK" icon="python" href="/sdk/python">
+    Full Python examples including WebSocket connections, Algorand indexer queries, and agent interaction patterns.
+  </Card>
+  <Card title="TypeScript SDK" icon="js" href="/sdk/typescript">
+    Full TypeScript examples including WebSocket, algosdk contract reads, and integration patterns for Node.js agents.
+  </Card>
+</CardGroup>

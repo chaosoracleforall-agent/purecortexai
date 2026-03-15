@@ -1,0 +1,322 @@
+---
+title: "TypeScript SDK"
+description: "Interact with PureCortex from TypeScript using fetch, WebSocket, and algosdk."
+icon: "js"
+---
+
+# TypeScript SDK
+
+This guide covers PureCortex integration from TypeScript and Node.js. A dedicated npm package is planned -- for now, use the native `fetch` API for REST endpoints, the `WebSocket` API for real-time chat, and `algosdk` for on-chain reads.
+
+## Installation
+
+```bash
+npm install algosdk
+```
+
+No additional packages are needed for REST and WebSocket -- the built-in `fetch` and `WebSocket` APIs are sufficient in modern Node.js (v18+) and all browsers.
+
+---
+
+## REST API
+
+### Fetch CORTEX Supply
+
+```typescript
+const BASE_URL = "https://purecortex.ai";
+
+interface SupplyResponse {
+  total_supply: number;
+  circulating: number;
+  burned: number;
+  vesting: {
+    released: number;
+    remaining: number;
+    pct_released: number;
+    tge_date: string;
+    vest_days: number;
+  };
+  allocation: Array<{
+    label: string;
+    pct: number;
+    amount: number;
+  }>;
+}
+
+async function getSupply(): Promise<SupplyResponse> {
+  const response = await fetch(`${BASE_URL}/api/transparency/supply`);
+  const data: SupplyResponse = await response.json();
+
+  console.log(`Total supply:  ${data.total_supply.toLocaleString()}`);
+  console.log(`Circulating:   ${data.circulating.toLocaleString()}`);
+  console.log(`Burned:        ${data.burned.toLocaleString()}`);
+
+  console.log("\nAllocation:");
+  for (const item of data.allocation) {
+    console.log(`  ${item.label}: ${item.pct}% (${item.amount.toLocaleString()})`);
+  }
+
+  return data;
+}
+```
+
+### Fetch Protocol Agents
+
+```typescript
+interface AgentRecord {
+  name: string;
+  role: string;
+  description: string;
+  algorand_address: string | null;
+  status: string;
+  permission_tier: number;
+  capabilities: string[];
+  created_at: string;
+}
+
+interface AgentRegistryResponse {
+  total_agents: number;
+  agents: AgentRecord[];
+}
+
+async function getAgents(): Promise<AgentRegistryResponse> {
+  const response = await fetch(`${BASE_URL}/api/agents/registry`);
+  const data: AgentRegistryResponse = await response.json();
+
+  console.log(`Total agents: ${data.total_agents}`);
+  for (const agent of data.agents) {
+    console.log(`\n  ${agent.name} (${agent.role})`);
+    console.log(`  Status: ${agent.status}`);
+    console.log(`  Tier: ${agent.permission_tier}`);
+    console.log(`  Capabilities: ${agent.capabilities.join(", ")}`);
+  }
+
+  return data;
+}
+```
+
+### Chat with an Agent
+
+```typescript
+interface ChatResponse {
+  agent: string;
+  response: string;
+  timestamp: string;
+}
+
+async function chatWithAgent(
+  agentName: string,
+  message: string
+): Promise<ChatResponse> {
+  const response = await fetch(`${BASE_URL}/api/agents/${agentName}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+
+  const data: ChatResponse = await response.json();
+  console.log(`[${data.agent}] ${data.response}`);
+  return data;
+}
+
+// Usage
+await chatWithAgent("senator", "What governance proposals are active?");
+await chatWithAgent("curator", "Explain the composability scoring system.");
+```
+
+### Query Treasury and Governance
+
+```typescript
+async function getTreasury() {
+  const response = await fetch(`${BASE_URL}/api/transparency/treasury`);
+  const data = await response.json();
+
+  console.log(
+    `Revenue split: ${data.revenue_split.buyback_burn_pct}% buyback ` +
+    `/ ${data.revenue_split.operations_pct}% operations`
+  );
+  return data;
+}
+
+async function getGovernance() {
+  const response = await fetch(`${BASE_URL}/api/transparency/governance`);
+  const data = await response.json();
+
+  console.log(`Total proposals: ${data.total_proposals}`);
+  console.log(`Participation rate: ${data.participation_rate}%`);
+  console.log(`Total veCORTEX: ${data.total_vecortex}`);
+  return data;
+}
+```
+
+---
+
+## WebSocket Chat
+
+Real-time bidirectional chat with PureCortex AI agents.
+
+<Tabs>
+  <Tab title="Node.js">
+    ```typescript
+    // Node.js 18+ has built-in WebSocket support
+    const ws = new WebSocket("wss://purecortex.ai/ws/chat");
+
+    ws.addEventListener("open", () => {
+      console.log("Connected to PureCortex");
+      ws.send("What is the CORTEX token used for?");
+    });
+
+    ws.addEventListener("message", (event) => {
+      console.log(`Agent: ${event.data}`);
+
+      // Send a follow-up
+      ws.send("How does veCORTEX staking work?");
+    });
+
+    ws.addEventListener("close", () => {
+      console.log("Disconnected");
+    });
+    ```
+  </Tab>
+  <Tab title="Browser">
+    ```typescript
+    const ws = new WebSocket("wss://purecortex.ai/ws/chat");
+
+    ws.onopen = () => {
+      console.log("Connected");
+      ws.send("Explain dual-brain consensus.");
+    };
+
+    ws.onmessage = (event: MessageEvent) => {
+      const agentResponse = event.data;
+      document.getElementById("chat")!.innerText += `\nAgent: ${agentResponse}`;
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  WebSocket messages are limited to 4,096 characters. Messages exceeding this limit are rejected with an error response.
+</Warning>
+
+---
+
+## Algorand On-Chain Reads
+
+Use `algosdk` to query smart contract state and agent token data directly from the Algorand indexer.
+
+### Query the Algorand Indexer
+
+```typescript
+import algosdk from "algosdk";
+
+const FACTORY_APP_ID = 757089323;
+const CORTEX_ASSET_ID = 757092088;
+const INDEXER_URL = "https://testnet-idx.algonode.cloud";
+
+const indexer = new algosdk.Indexer("", INDEXER_URL, "");
+
+async function getFactoryInfo() {
+  const appInfo = await indexer.lookupApplications(FACTORY_APP_ID).do();
+  const app = appInfo.application;
+
+  console.log(`App ID: ${app.id}`);
+  console.log(`Creator: ${app.params.creator}`);
+
+  // Read global state
+  const globalState = app.params["global-state"] || [];
+  for (const state of globalState) {
+    const key = Buffer.from(state.key, "base64").toString();
+    console.log(`  ${key}: ${JSON.stringify(state.value)}`);
+  }
+
+  return appInfo;
+}
+```
+
+### Query CORTEX Asset
+
+```typescript
+async function getCortexInfo() {
+  const assetInfo = await indexer.lookupAssetByID(CORTEX_ASSET_ID).do();
+  const asset = assetInfo.asset;
+  const params = asset.params;
+
+  console.log(`Asset ID:  ${asset.index}`);
+  console.log(`Name:      ${params.name}`);
+  console.log(`Unit:      ${params["unit-name"]}`);
+  console.log(`Total:     ${params.total.toLocaleString()}`);
+  console.log(`Decimals:  ${params.decimals}`);
+  console.log(`URL:       ${params.url || "N/A"}`);
+
+  return assetInfo;
+}
+```
+
+### Search for Agent Tokens
+
+```typescript
+async function findAgentTokens() {
+  const txns = await indexer
+    .searchForTransactions()
+    .applicationID(FACTORY_APP_ID)
+    .txType("acfg")
+    .do();
+
+  const agentIds: number[] = [];
+  for (const txn of txns.transactions || []) {
+    const acfg = txn["asset-config-transaction"];
+    if (acfg && acfg["created-asset-index"]) {
+      agentIds.push(acfg["created-asset-index"]);
+      console.log(`Agent token found: ASA ${acfg["created-asset-index"]}`);
+    }
+  }
+
+  return agentIds;
+}
+```
+
+---
+
+## Full Example
+
+```typescript
+import algosdk from "algosdk";
+
+const BASE_URL = "https://purecortex.ai";
+const INDEXER_URL = "https://testnet-idx.algonode.cloud";
+const CORTEX_ASSET_ID = 757092088;
+
+async function main() {
+  // 1. REST: Get supply info
+  const supply = await fetch(`${BASE_URL}/api/transparency/supply`)
+    .then((r) => r.json());
+  console.log(`CORTEX Total Supply: ${supply.total_supply.toLocaleString()}\n`);
+
+  // 2. REST: List agents
+  const registry = await fetch(`${BASE_URL}/api/agents/registry`)
+    .then((r) => r.json());
+  for (const agent of registry.agents) {
+    console.log(`Agent: ${agent.name} (${agent.status})`);
+  }
+
+  // 3. REST: Chat with Senator
+  const chat = await fetch(`${BASE_URL}/api/agents/senator/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: "Summarize the governance framework." }),
+  }).then((r) => r.json());
+  console.log(`\nSenator: ${chat.response}`);
+
+  // 4. On-chain: Query CORTEX asset
+  const indexer = new algosdk.Indexer("", INDEXER_URL, "");
+  const asset = await indexer.lookupAssetByID(CORTEX_ASSET_ID).do();
+  console.log(`\nOn-chain CORTEX decimals: ${asset.asset.params.decimals}`);
+}
+
+main().catch(console.error);
+```

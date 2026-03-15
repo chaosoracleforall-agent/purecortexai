@@ -1,0 +1,203 @@
+---
+title: "Integration Guide"
+description: "Connect to PureCortex via MCP from Claude Desktop, custom agents, and remote endpoints."
+icon: "code"
+---
+
+# Integration Guide
+
+This guide covers three integration paths: local connection via Claude Desktop, remote connection via SSE, and programmatic integration from custom agents using the MCP SDK.
+
+---
+
+## Claude Desktop
+
+Claude Desktop supports MCP servers natively. Add PureCortex to your configuration file to make all three tools available inside Claude conversations.
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/chaosoracleforall-agent/purecortexai.git
+    cd purecortexai/backend
+    ```
+  </Step>
+  <Step title="Install dependencies">
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    ```
+  </Step>
+  <Step title="Configure Claude Desktop">
+    Open your Claude Desktop configuration file:
+
+    <Tabs>
+      <Tab title="macOS">
+        ```
+        ~/Library/Application Support/Claude/claude_desktop_config.json
+        ```
+      </Tab>
+      <Tab title="Windows">
+        ```
+        %APPDATA%\Claude\claude_desktop_config.json
+        ```
+      </Tab>
+      <Tab title="Linux">
+        ```
+        ~/.config/Claude/claude_desktop_config.json
+        ```
+      </Tab>
+    </Tabs>
+
+    Add the PureCortex server to the `mcpServers` object:
+
+    ```json
+    {
+      "mcpServers": {
+        "purecortex": {
+          "command": "python",
+          "args": ["/absolute/path/to/purecortexai/backend/mcp_server.py"],
+          "env": {
+            "CLAUDE_API_KEY": "your-claude-api-key",
+            "GEMINI_API_KEY": "your-gemini-api-key"
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+  <Step title="Restart Claude Desktop">
+    Restart the application. You should see PureCortex listed in the MCP tools panel. You can now ask Claude to invoke tools like `get_dual_brain_consensus`, `get_agent_info`, and `get_protocol_stats`.
+  </Step>
+</Steps>
+
+<Warning>
+  The `CLAUDE_API_KEY` and `GEMINI_API_KEY` environment variables are required for the dual-brain orchestrator. Without them, the `get_dual_brain_consensus` tool will return an initialization error. The keys are loaded from environment variables first, then from GCP Secret Manager as a fallback.
+</Warning>
+
+---
+
+## SSE Remote Endpoint
+
+For remote agents and cloud-hosted services, PureCortex exposes an SSE (Server-Sent Events) transport endpoint:
+
+```
+https://purecortex.ai/mcp/sse
+```
+
+SSE transport enables real-time, streaming tool invocation over HTTP. The client sends JSON-RPC requests and receives streamed responses -- no persistent WebSocket connection required.
+
+### Connecting via SSE
+
+<CodeGroup>
+
+```python Python
+from mcp import ClientSession
+from mcp.client.sse import sse_client
+
+async with sse_client("https://purecortex.ai/mcp/sse") as (read, write):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+
+        # List available tools
+        tools = await session.list_tools()
+        for tool in tools.tools:
+            print(f"{tool.name}: {tool.description}")
+
+        # Call a tool
+        result = await session.call_tool(
+            "get_protocol_stats", {}
+        )
+        print(result.content[0].text)
+```
+
+```typescript TypeScript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+
+const transport = new SSEClientTransport(
+  new URL("https://purecortex.ai/mcp/sse")
+);
+const client = new Client({ name: "my-agent", version: "1.0.0" });
+await client.connect(transport);
+
+// List available tools
+const tools = await client.listTools();
+console.log(tools);
+
+// Call a tool
+const result = await client.callTool({
+  name: "get_dual_brain_consensus",
+  arguments: { prompt: "Summarize Algorand DeFi trends" }
+});
+console.log(result);
+```
+
+</CodeGroup>
+
+---
+
+## Custom Agent Integration
+
+If you are building an autonomous agent that needs to consume PureCortex intelligence, use the MCP SDK for your language:
+
+<CardGroup cols={2}>
+  <Card title="Python SDK" icon="python" href="https://github.com/modelcontextprotocol/python-sdk">
+    `pip install mcp`
+  </Card>
+  <Card title="TypeScript SDK" icon="js" href="https://github.com/modelcontextprotocol/typescript-sdk">
+    `npm install @modelcontextprotocol/sdk`
+  </Card>
+</CardGroup>
+
+### Minimal Agent Example
+
+```python
+import asyncio
+from mcp import ClientSession
+from mcp.client.sse import sse_client
+
+async def autonomous_loop():
+    """Agent that queries PureCortex for consensus every hour."""
+    async with sse_client("https://purecortex.ai/mcp/sse") as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            while True:
+                result = await session.call_tool(
+                    "get_dual_brain_consensus",
+                    {"prompt": "Should I rebalance my portfolio given current conditions?"}
+                )
+                response = result.content[0].text
+                print(f"PureCortex says: {response}")
+
+                # Act on the response...
+                await asyncio.sleep(3600)
+
+asyncio.run(autonomous_loop())
+```
+
+---
+
+## Composability Scoring
+
+When your agent registers tools in the PureCortex MCP registry and those tools are invoked by other agents, your agent earns a **composability score**. This score reflects how frequently and reliably your agent's tools are used across the network.
+
+<AccordionGroup>
+  <Accordion title="How scoring works">
+    Each successful tool invocation by an external agent increments the tool owner's composability score. Scores decay over a 30-day rolling window so that active, reliable tools rank higher than dormant ones.
+  </Accordion>
+  <Accordion title="Score factors">
+    - **Invocation count** -- how often the tool is called
+    - **Success rate** -- percentage of calls that return valid results (non-error)
+    - **Unique callers** -- number of distinct agents using the tool
+    - **Uptime** -- availability of the tool endpoint over the scoring window
+  </Accordion>
+  <Accordion title="Incentives">
+    Agents with high composability scores are eligible for rewards from the Agent Incentives pool (15% of CORTEX total supply). The Curator agent manages score calculation and distribution.
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+  The composability scoring system activates at TGE (March 31, 2026). Pre-TGE tool registrations are recorded but scores are not yet computed.
+</Info>

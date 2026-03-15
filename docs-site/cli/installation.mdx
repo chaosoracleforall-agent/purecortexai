@@ -1,0 +1,281 @@
+---
+title: "Installation"
+icon: "download"
+description: "Install the PureCortex CLI (`pcx`) on macOS, Ubuntu/Debian, or Fedora/RHEL."
+---
+
+The PureCortex CLI is a Python package distributed via the project's GitHub repository. It requires **Python 3.10 or newer**.
+
+<Info>
+  The CLI package is called `purecortex-cli`. Once installed, the command-line
+  entry point is `pcx`.
+</Info>
+
+---
+
+## macOS
+
+<Warning>
+  **macOS 15 (Sequoia) and later** ship with an externally-managed Python
+  installation ([PEP 668](https://peps.python.org/pep-0668/)). Running bare
+  `pip install` outside a virtual environment will fail with an
+  `externally-managed-environment` error. Use **pipx** (Option A) or a
+  **virtual environment** (Options B/C) instead.
+</Warning>
+
+<Note>
+  On Apple Silicon Macs (M1 / M2 / M3 / M4), always use `python3` rather than
+  `python` -- the latter may resolve to a Rosetta x86 build or may not exist at
+  all.
+</Note>
+
+<Tabs>
+  <Tab title="Option A: pipx (Recommended)">
+    [pipx](https://pypa.github.io/pipx/) installs the CLI into its own isolated
+    virtual environment while making the `pcx` command globally available. This
+    is the simplest and safest approach.
+
+    <Steps>
+      <Step title="Install pipx via Homebrew">
+        ```bash
+        brew install pipx
+        pipx ensurepath
+        ```
+        Restart your terminal (or run `source ~/.zshrc`) so the updated `PATH`
+        takes effect.
+      </Step>
+      <Step title="Install PureCortex CLI">
+        ```bash
+        pipx install git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
+        ```
+      </Step>
+      <Step title="Verify">
+        ```bash
+        pcx info
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Option B: Homebrew + venv">
+    Use Homebrew to install a standalone Python, then create a dedicated virtual
+    environment for the CLI.
+
+    <Steps>
+      <Step title="Install Python 3 via Homebrew">
+        ```bash
+        brew install python3
+        ```
+      </Step>
+      <Step title="Create a virtual environment">
+        ```bash
+        python3 -m venv ~/.pcx-venv
+        source ~/.pcx-venv/bin/activate
+        ```
+      </Step>
+      <Step title="Install PureCortex CLI">
+        ```bash
+        pip install git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
+        ```
+      </Step>
+      <Step title="Verify">
+        ```bash
+        pcx info
+        ```
+      </Step>
+    </Steps>
+
+    <Note>
+      You will need to activate the virtual environment
+      (`source ~/.pcx-venv/bin/activate`) each time you open a new terminal, or
+      add an alias to your shell profile:
+      ```bash
+      echo 'alias pcx="~/.pcx-venv/bin/pcx"' >> ~/.zshrc
+      ```
+    </Note>
+  </Tab>
+
+  <Tab title="Option C: From source">
+    Clone the repository and install in editable mode. Useful if you plan to
+    contribute or want the latest unreleased changes.
+
+    <Steps>
+      <Step title="Clone the repository">
+        ```bash
+        git clone https://github.com/chaosoracleforall-agent/purecortexai.git
+        cd purecortexai/cli
+        ```
+      </Step>
+      <Step title="Create and activate a virtual environment">
+        ```bash
+        python3 -m venv .venv
+        source .venv/bin/activate
+        ```
+      </Step>
+      <Step title="Install in editable mode">
+        ```bash
+        pip install -e .
+        ```
+      </Step>
+      <Step title="Verify">
+        ```bash
+        pcx info
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+---
+
+## Linux (Ubuntu / Debian)
+
+<Tabs>
+  <Tab title="Option A: pipx (Recommended)">
+    <Steps>
+      <Step title="Install pipx">
+        ```bash
+        sudo apt update
+        sudo apt install pipx
+        pipx ensurepath
+        ```
+        Restart your shell or run `source ~/.bashrc`.
+      </Step>
+      <Step title="Install PureCortex CLI">
+        ```bash
+        pipx install git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
+        ```
+      </Step>
+      <Step title="Verify">
+        ```bash
+        pcx info
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Option B: System venv">
+    <Steps>
+      <Step title="Install dependencies">
+        ```bash
+        sudo apt update
+        sudo apt install python3-pip python3-venv
+        ```
+      </Step>
+      <Step title="Create a virtual environment">
+        ```bash
+        python3 -m venv ~/.pcx-venv
+        source ~/.pcx-venv/bin/activate
+        ```
+      </Step>
+      <Step title="Install PureCortex CLI">
+        ```bash
+        pip install git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
+        ```
+      </Step>
+      <Step title="Verify">
+        ```bash
+        pcx info
+        ```
+      </Step>
+    </Steps>
+
+    <Note>
+      Add an alias to your shell profile so `pcx` is available without
+      activating the venv every time:
+      ```bash
+      echo 'alias pcx="~/.pcx-venv/bin/pcx"' >> ~/.bashrc
+      ```
+    </Note>
+  </Tab>
+
+  <Tab title="Option C: From source">
+    <Steps>
+      <Step title="Clone the repository">
+        ```bash
+        git clone https://github.com/chaosoracleforall-agent/purecortexai.git
+        cd purecortexai/cli
+        ```
+      </Step>
+      <Step title="Create and activate a virtual environment">
+        ```bash
+        python3 -m venv .venv
+        source .venv/bin/activate
+        ```
+      </Step>
+      <Step title="Install in editable mode">
+        ```bash
+        pip install -e .
+        ```
+      </Step>
+      <Step title="Verify">
+        ```bash
+        pcx info
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+---
+
+## Linux (Fedora / RHEL)
+
+<Steps>
+  <Step title="Install pipx">
+    ```bash
+    sudo dnf install python3-pip pipx
+    pipx ensurepath
+    ```
+    Restart your shell or run `source ~/.bashrc`.
+  </Step>
+  <Step title="Install PureCortex CLI">
+    ```bash
+    pipx install git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
+    ```
+  </Step>
+  <Step title="Verify">
+    ```bash
+    pcx info
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  On RHEL 8 and older, you may need to enable the `python39` or `python311`
+  module stream first:
+  ```bash
+  sudo dnf module enable python311
+  sudo dnf install python3.11-pip
+  ```
+</Note>
+
+---
+
+## Verifying the Installation
+
+After installing, run `pcx info` to confirm the CLI can reach the PureCortex API:
+
+```bash
+$ pcx info
+```
+
+You should see output displaying the protocol chain, application IDs, total
+supply, and TGE date. If you see a connection error, check your network
+connectivity and ensure `https://purecortex.ai` is reachable.
+
+---
+
+## Requirements
+
+| Requirement | Minimum Version |
+|-------------|-----------------|
+| Python      | 3.10+           |
+| pip         | 21.0+           |
+| git         | Any recent      |
+| OS          | macOS 12+, Ubuntu 20.04+, Fedora 36+, RHEL 8+ |
+
+The CLI depends on [Typer](https://typer.tiangolo.com/),
+[Rich](https://rich.readthedocs.io/), and
+[httpx](https://www.python-httpx.org/). These are installed automatically as
+package dependencies.

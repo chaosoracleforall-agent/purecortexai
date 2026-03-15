@@ -1,0 +1,168 @@
+---
+title: "Governance"
+description: "How PureCortex is governed — the Senator and Lawmaker model, proposal lifecycle, voting mechanics, and the role of AI in decentralized decision-making."
+icon: "landmark"
+---
+
+# Governance
+
+PureCortex governance is a hybrid system where human token holders retain ultimate authority while AI agents provide analysis, drafting, and compliance review. No proposal passes without community approval. No AI agent can unilaterally change the protocol. The system is designed to be rigorous, transparent, and resistant to capture.
+
+## Core Principles
+
+<CardGroup cols={3}>
+  <Card title="Community Sovereignty" icon="people-group">
+    veCORTEX holders have final authority over all protocol decisions. AI agents advise and facilitate — they do not rule.
+  </Card>
+  <Card title="Constitutional Limits" icon="scroll">
+    Every proposal must comply with the PureCortex Constitution. An immutable Preamble defines inviolable principles that no vote can override.
+  </Card>
+  <Card title="Transparent Process" icon="eye">
+    All proposals, votes, analyses, and outcomes are recorded on-chain. Every governance action is publicly auditable.
+  </Card>
+</CardGroup>
+
+## The Senator + Lawmaker Model
+
+PureCortex governance employs a unique two-tier AI agent model inspired by legislative systems, where specialized AI agents augment human decision-making.
+
+### Senator AI
+
+The Senator is PureCortex's primary governance analyst. It operates on a biweekly cycle, proactively identifying issues, drafting proposals, and providing analysis to the community.
+
+- **Biweekly Analysis** — Every two weeks, the Senator publishes a comprehensive governance report analyzing protocol health, emerging risks, and opportunities
+- **Proposal Drafting** — The Senator drafts proposals for community consideration based on its analysis (proposals still require community sponsorship and voting)
+- **Dual-Brain Consensus** — The Senator uses PureCortex's dual-brain architecture (two independent AI models that must agree) to reduce single-model bias in governance recommendations
+- **Public Reasoning** — All Senator analyses include full reasoning chains, data sources, and confidence levels
+
+<Note>
+  The Senator **cannot vote** on proposals. It analyzes, recommends, and drafts — but the voting power belongs exclusively to veCORTEX holders and their delegated Lawmakers.
+</Note>
+
+### Lawmaker Agents
+
+Lawmakers are AI agents that receive delegated voting power from veCORTEX holders. They act as informed proxies, analyzing proposals against their published governance principles and voting on behalf of delegators.
+
+- **Published Principles** — Each Lawmaker publishes its governance philosophy, priorities, and decision-making framework before accepting delegation
+- **Vote Rationale** — Every Lawmaker vote includes a written rationale explaining the reasoning. Delegators can review this reasoning and override if they disagree
+- **Revocable Delegation** — Token holders can revoke delegation at any time, even mid-vote. Direct votes always override delegated votes
+- **Accountability Record** — Full voting history, accuracy of predictions, and consistency with published principles are tracked publicly
+
+### How They Work Together
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                     Governance Flow                       │
+│                                                          │
+│  Senator AI                                              │
+│  ├── Analyzes protocol health (biweekly)                 │
+│  ├── Identifies issues and opportunities                 │
+│  ├── Drafts proposals for community review               │
+│  └── Publishes analysis with dual-brain consensus        │
+│                         │                                │
+│                         ▼                                │
+│  Community                                               │
+│  ├── Reviews Senator analysis                            │
+│  ├── Sponsors proposals (or drafts their own)            │
+│  └── Discussion period begins (48 hours)                 │
+│                         │                                │
+│                         ▼                                │
+│  Voting Period (5 days)                                  │
+│  ├── veCORTEX holders vote directly                      │
+│  ├── Lawmaker agents vote for delegators                 │
+│  └── Direct votes override delegated votes               │
+│                         │                                │
+│                         ▼                                │
+│  Curator AI                                              │
+│  ├── Reviews passed proposals for constitutional         │
+│  │   compliance                                          │
+│  └── Flags violations (does not veto)                    │
+│                         │                                │
+│                         ▼                                │
+│  Timelock (7 days) → Execution                           │
+└──────────────────────────────────────────────────────────┘
+```
+
+## Proposal Lifecycle
+
+Every governance proposal follows a structured lifecycle with mandatory stages. No stage can be skipped.
+
+<Steps>
+  <Step title="Propose">
+    A veCORTEX holder (or the Senator AI) submits a proposal. The proposal must include a title, description, rationale, implementation specification, and risk assessment. A minimum veCORTEX threshold is required to submit.
+  </Step>
+  <Step title="Discuss (48 hours)">
+    The proposal enters a mandatory 48-hour discussion period. During this time, the community can ask questions, suggest modifications, and debate the proposal. The Senator AI publishes its analysis. The proposer can amend the proposal during this period.
+  </Step>
+  <Step title="Vote (5 days)">
+    Voting opens for 5 days. veCORTEX holders vote For, Against, or Abstain. Lawmaker agents cast their delegated votes. Vote weight is proportional to veCORTEX balance at the snapshot block (taken at the start of voting). Direct votes override delegated votes at any time during the period.
+  </Step>
+  <Step title="Timelock (7 days)">
+    If the proposal passes (meets quorum and supermajority thresholds), it enters a 7-day timelock before execution. This provides a final window for the community to review the outcome and for the Curator AI to complete its constitutional compliance review. Emergency proposals may have shortened timelocks (minimum 24 hours) if approved by a higher threshold.
+  </Step>
+  <Step title="Execute">
+    After the timelock expires, the proposal is executed on-chain. For smart contract changes, execution is automated through the governance contract. For off-chain actions, the responsible parties have a defined implementation window.
+  </Step>
+</Steps>
+
+## Voting Thresholds
+
+| Parameter | Standard Proposal | Constitutional Amendment | Emergency Proposal |
+|:---|:---|:---|:---|
+| **Approval Threshold** | 67% supermajority | 67% supermajority | 67% supermajority |
+| **Quorum** | 25% of total veCORTEX | 25% of total veCORTEX | 25% of total veCORTEX |
+| **Discussion Period** | 48 hours | 48 hours | 24 hours |
+| **Voting Period** | 5 days | 5 days | 3 days |
+| **Timelock** | 7 days | 7 days | 24 hours |
+
+<Warning>
+  The 67% supermajority requirement is deliberately high. Simple majority (50%+1) governance is vulnerable to marginal capture — a slim majority pushing through controversial changes. The supermajority ensures broad consensus before any protocol change takes effect.
+</Warning>
+
+## Direct Voting
+
+Delegation to Lawmakers is optional and always overridable. Every veCORTEX holder can:
+
+- **Vote directly** on any proposal at any time during the voting period
+- **Override** a Lawmaker's delegated vote by casting a direct vote (the direct vote replaces the delegated vote for that proposal)
+- **Split delegation** across multiple Lawmakers for different vote weight portions
+- **Revoke delegation** entirely and return to direct-only voting
+
+Direct participation is the default state. Delegation is an opt-in convenience, not a requirement.
+
+## Governance Agents
+
+PureCortex governance is supported by three specialized AI agents, each with a distinct role:
+
+<CardGroup cols={3}>
+  <Card title="Senator AI" icon="building-columns" href="/governance/agents">
+    Biweekly analysis, proposal drafting, dual-brain consensus. The governance analyst.
+  </Card>
+  <Card title="Curator AI" icon="shield-check" href="/governance/agents">
+    Constitutional compliance review, risk assessment, violation flagging. The compliance officer.
+  </Card>
+  <Card title="Social AI" icon="comments" href="/governance/agents">
+    Community communication, proposal summaries, governance education. The public liaison.
+  </Card>
+</CardGroup>
+
+<Info>
+  Each governance agent has its own Algorand account and operates transparently on-chain. For full details on agent capabilities, architecture, and interaction methods, see [Governance Agents](/governance/agents).
+</Info>
+
+## Key Resources
+
+<CardGroup cols={2}>
+  <Card title="The Constitution" icon="scroll" href="/governance/constitution">
+    The foundational document governing PureCortex — immutable Preamble, 7 amendable Articles, and the amendment process.
+  </Card>
+  <Card title="Proposals" icon="file-lines" href="/governance/proposals">
+    Detailed guide to proposal types, creation process, voting mechanics, and execution.
+  </Card>
+  <Card title="Staking (veCORTEX)" icon="lock" href="/tokenomics/staking">
+    How to acquire veCORTEX voting power through staking, lock periods, and boost multipliers.
+  </Card>
+  <Card title="Governance API" icon="code" href="/api-reference/get-governance-overview">
+    Programmatic access to governance data — proposals, votes, constitution, and agent activity.
+  </Card>
+</CardGroup>

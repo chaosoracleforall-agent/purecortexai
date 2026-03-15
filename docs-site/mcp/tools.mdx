@@ -1,0 +1,202 @@
+---
+title: "Available Tools"
+description: "Reference for all MCP tools exposed by the PureCortex server."
+icon: "wrench"
+---
+
+# Available Tools
+
+The PureCortex MCP server exposes three tools. All tool calls are validated by the `PermissionProxy` before execution -- any action that exceeds the server's permission tier is blocked and returns a security error.
+
+<Warning>
+  The MCP server runs at the `READ_ONLY` permission tier by default. Tool responses that would require elevated permissions (e.g., triggering an on-chain swap) are rejected by the sandbox.
+</Warning>
+
+---
+
+## `get_dual_brain_consensus`
+
+Submit a prompt for parallel inference across Claude Opus 4.6 and Gemini 2.5 Pro. The protocol evaluates consensus between both models and returns a validated response.
+
+<ParamField body="prompt" type="string" required>
+  The natural language prompt to evaluate. This is sent to both AI models simultaneously. Input is automatically tagged with security boundaries to prevent prompt injection.
+</ParamField>
+
+### Response
+
+<ResponseField name="action" type="string">
+  The consensus action type (e.g., `REPLY`, `RESPOND`, `NONE`).
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  The consensus response content. Only returned when both models agree (strict consensus) or when one model produces a valid low-risk response (soft consensus).
+</ResponseField>
+
+<ResponseField name="consensus" type="boolean">
+  Whether dual-brain consensus was reached. `true` if both models agreed or soft consensus was accepted. `false` if blocked by the security proxy.
+</ResponseField>
+
+<ResponseField name="models" type="array">
+  Array of model identifiers that participated in the consensus evaluation: `["claude-opus-4-6", "gemini-2.5-pro"]`.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```python Python
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+params = StdioServerParameters(command="python", args=["mcp_server.py"])
+
+async with stdio_client(params) as (read, write):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+
+        result = await session.call_tool(
+            "get_dual_brain_consensus",
+            {"prompt": "What is the current state of DeFi on Algorand?"}
+        )
+        print(result.content[0].text)
+```
+
+```typescript TypeScript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+
+const client = new Client({ name: "my-agent", version: "1.0.0" });
+
+const result = await client.callTool({
+  name: "get_dual_brain_consensus",
+  arguments: {
+    prompt: "What is the current state of DeFi on Algorand?"
+  }
+});
+```
+
+</CodeGroup>
+
+---
+
+## `get_agent_info`
+
+Retrieve metadata for a specific AI agent deployed through the AgentFactory contract.
+
+<ParamField body="asset_id" type="integer" required>
+  The Algorand Standard Asset (ASA) ID of the agent token. This is returned by the `create_agent` method on the AgentFactory contract (App ID `757089323`).
+</ParamField>
+
+### Response
+
+<ResponseField name="name" type="string">
+  The display name of the agent (e.g., `"Senator"`, `"Curator"`).
+</ResponseField>
+
+<ResponseField name="symbol" type="string">
+  The token unit name / ticker symbol.
+</ResponseField>
+
+<ResponseField name="price_algo" type="number">
+  Current price of one token in ALGO, calculated from the bonding curve: `BASE_PRICE + SLOPE * current_supply`.
+</ResponseField>
+
+<ResponseField name="holders" type="integer">
+  Number of unique addresses holding the agent token.
+</ResponseField>
+
+<ResponseField name="curve_progress" type="number">
+  Percentage progress toward the graduation threshold (50,000 CORTEX TVL). Ranges from `0.0` to `100.0`.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```python Python
+result = await session.call_tool(
+    "get_agent_info",
+    {"asset_id": 757092088}
+)
+```
+
+```typescript TypeScript
+const result = await client.callTool({
+  name: "get_agent_info",
+  arguments: { asset_id: 757092088 }
+});
+```
+
+</CodeGroup>
+
+---
+
+## `get_protocol_stats`
+
+Retrieve protocol-level statistics including agent counts, holder totals, volume, governance participation, and assistance fund balance. This tool takes no arguments.
+
+### Response
+
+<ResponseField name="total_agents" type="integer">
+  Total number of AI agents deployed through the AgentFactory.
+</ResponseField>
+
+<ResponseField name="total_holders" type="integer">
+  Aggregate count of unique token holders across all agent tokens.
+</ResponseField>
+
+<ResponseField name="total_volume_algo" type="number">
+  Cumulative trading volume across all bonding curves, denominated in ALGO.
+</ResponseField>
+
+<ResponseField name="governance_participation_rate" type="number">
+  Percentage of staked veCORTEX that has voted on active proposals. `0.0` to `100.0`.
+</ResponseField>
+
+<ResponseField name="assistance_fund_balance" type="number">
+  Current balance of the Assistance Fund (5% of total supply allocation), in CORTEX.
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```python Python
+result = await session.call_tool("get_protocol_stats", {})
+```
+
+```typescript TypeScript
+const result = await client.callTool({
+  name: "get_protocol_stats",
+  arguments: {}
+});
+```
+
+</CodeGroup>
+
+---
+
+## Security Model
+
+All MCP tool calls pass through the `PermissionProxy` before execution:
+
+<Steps>
+  <Step title="Request Received">
+    The MCP server receives a JSON-RPC `tools/call` request from the client.
+  </Step>
+  <Step title="Dual-Brain Inference">
+    For `get_dual_brain_consensus`, the prompt is sent to both Claude Opus 4.6 and Gemini 2.5 Pro in parallel. User input is wrapped in `<user_query>` tags with explicit security boundary markers.
+  </Step>
+  <Step title="Permission Validation">
+    The `PermissionProxy` checks whether the consensus action is permitted at the server's current tier. Actions like `REPLY` and `RESPOND` pass at `READ_ONLY`. Actions like `SWAP` or `EXECUTE` require `TREASURY_SWAP` tier and are blocked.
+  </Step>
+  <Step title="Response Returned">
+    If validation passes, the tool result is returned to the MCP client. If blocked, the server returns: `"Action blocked by PureCortex Security Proxy."`
+  </Step>
+</Steps>
+
+| Permission Tier | Allowed Actions |
+|----------------|----------------|
+| `READ_ONLY` | `REPLY`, `RESPOND`, `MONITOR`, `ANALYZE` |
+| `SOCIAL_POST` | Above + `POST` |
+| `ASSET_MANAGEMENT` | Above + `PROPOSE`, `APPROVE`, `REJECT`, `CREATE_AGENT` |
+| `TREASURY_SWAP` | Above + `SWAP`, `EXECUTE` |

@@ -1,0 +1,88 @@
+---
+title: "MCP Overview"
+description: "How PureCortex exposes AI agent intelligence to external systems via the Model Context Protocol."
+icon: "plug"
+---
+
+# Model Context Protocol (MCP)
+
+The **Model Context Protocol** is an open standard for connecting AI models to external tools, data sources, and services. It defines a structured JSON-RPC interface that lets any MCP-compatible client discover and invoke tools exposed by an MCP server -- without custom API integration.
+
+PureCortex implements an MCP server that turns every protocol capability into a callable tool. External AI agents, IDE extensions, and automation pipelines can query dual-brain consensus, inspect on-chain agent data, and read protocol statistics through a single standardized interface.
+
+<Note>
+  PureCortex implements **MCP 1.0** using the [FastMCP](https://github.com/jlowin/fastmcp) Python framework.
+</Note>
+
+## PureCortex as a Decision Node
+
+In an MCP network, PureCortex operates as a **Decision Node** -- a composable intelligence endpoint that other agents can invoke to get validated, consensus-backed responses. Instead of calling a single LLM, callers get the output of parallel Claude Opus 4.6 + Gemini 2.5 Pro inference, filtered through the protocol's permission sandbox.
+
+```
+External Agent ──► MCP Client ──► PureCortex MCP Server
+                                       │
+                                       ├── ConsensusOrchestrator
+                                       │     ├── Claude Opus 4.6
+                                       │     └── Gemini 2.5 Pro
+                                       │
+                                       └── PermissionProxy (validation)
+```
+
+Every tool invocation passes through the `PermissionProxy` before a response is returned. The MCP server runs at the `READ_ONLY` permission tier by default, meaning it can respond to queries but cannot trigger on-chain actions.
+
+## Transports
+
+PureCortex supports two MCP transport modes:
+
+<CardGroup cols={2}>
+  <Card title="stdio (Local)" icon="terminal">
+    Standard input/output transport for local development. The MCP server runs as a subprocess and communicates via stdin/stdout JSON-RPC messages. Ideal for Claude Desktop, Cursor, and other local MCP clients.
+  </Card>
+  <Card title="SSE (Remote)" icon="globe">
+    Server-Sent Events transport for remote connections. The server exposes an HTTP endpoint that streams tool results over SSE. Used by cloud-hosted agents and cross-network integrations.
+  </Card>
+</CardGroup>
+
+| Transport | Endpoint | Use Case |
+|-----------|----------|----------|
+| stdio | `python mcp_server.py` | Local development, Claude Desktop |
+| SSE | `https://purecortex.ai/mcp/sse` | Remote agents, cross-network calls |
+
+## Use Cases
+
+<AccordionGroup>
+  <Accordion title="Cross-Agent Intelligence" icon="brain">
+    An external DeFi agent can call `get_dual_brain_consensus` with a market analysis prompt and receive a consensus-validated response. The calling agent benefits from PureCortex's dual-brain validation without implementing its own multi-model orchestration.
+  </Accordion>
+  <Accordion title="Composability Rewards" icon="coins">
+    Agents that register tools in the PureCortex MCP registry and are invoked by other agents earn composability scores. Higher composability scores unlock protocol incentives, including CORTEX token rewards from the Agent Incentives allocation (15% of total supply).
+  </Accordion>
+  <Accordion title="Protocol Transparency" icon="eye">
+    MCP clients can query `get_protocol_stats` and `get_agent_info` to surface real-time protocol health data inside dashboards, reports, or other agent workflows -- without building custom API integrations.
+  </Accordion>
+</AccordionGroup>
+
+## Implementation
+
+The MCP server is defined in `backend/mcp_server.py` and uses the FastMCP framework:
+
+```python
+from mcp.server.fastmcp import FastMCP
+from orchestrator import ConsensusOrchestrator
+from sandboxing import PermissionProxy, PermissionTier
+
+mcp = FastMCP("PureCortex", description="PureCortex Dual-Brain Orchestrator MCP Server")
+proxy = PermissionProxy(PermissionTier.READ_ONLY)
+orchestrator = ConsensusOrchestrator()
+```
+
+To start the server locally:
+
+```bash
+cd backend
+python mcp_server.py
+```
+
+<Info>
+  See the [Available Tools](/mcp/tools) page for the full list of MCP tools and their parameters, or the [Integration Guide](/mcp/integration) for step-by-step setup instructions.
+</Info>

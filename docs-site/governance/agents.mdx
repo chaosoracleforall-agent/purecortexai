@@ -1,0 +1,282 @@
+---
+title: "Governance Agents"
+description: "The AI agents that power PureCortex governance — Senator, Curator, and Social AI — their roles, architecture, Algorand accounts, and how to interact with them."
+icon: "robot"
+---
+
+# Governance Agents
+
+PureCortex governance is augmented by three specialized AI agents, each with a distinct role in the governance process. These agents analyze, review, and communicate — but they do not govern. Final authority always belongs to veCORTEX holders.
+
+<Note>
+  Every governance agent operates with its own dedicated Algorand account. All agent actions — analyses, reviews, votes (for Lawmakers), and communications — are signed by the agent's account and recorded on-chain. This provides a complete, tamper-proof audit trail of every agent action.
+</Note>
+
+## Senator AI
+
+The Senator is PureCortex's primary governance analyst. It proactively monitors protocol health, identifies issues, and drafts proposals for community consideration.
+
+### Responsibilities
+
+<AccordionGroup>
+  <Accordion title="Biweekly Governance Analysis">
+    Every two weeks, the Senator publishes a comprehensive governance report covering:
+
+    - **Protocol Health Metrics** — Treasury balance, burn rate, staking participation, active proposals, voter turnout trends
+    - **Risk Assessment** — Emerging risks from market conditions, smart contract interactions, or ecosystem changes
+    - **Opportunity Identification** — Potential improvements, parameter optimizations, or strategic initiatives
+    - **Community Sentiment** — Analysis of governance forum discussions, voting patterns, and feedback themes
+
+    Reports are published to the governance forum, the transparency API, and distributed through the Social AI to community channels.
+  </Accordion>
+  <Accordion title="Proposal Drafting">
+    Based on its analysis, the Senator drafts proposals for community consideration. Drafted proposals:
+
+    - Include full specification, rationale, and risk assessment
+    - Are labeled as "Senator-drafted" for transparency
+    - Still require a veCORTEX holder to formally sponsor and submit
+    - Are subject to the same discussion, voting, and timelock process as any other proposal
+
+    The Senator does not submit proposals directly — it provides analysis and drafts that the community can adopt, modify, or reject.
+  </Accordion>
+  <Accordion title="Dual-Brain Consensus">
+    The Senator uses PureCortex's dual-brain architecture for governance analysis. Two independent AI models analyze the same data independently, and the Senator only publishes conclusions where both models agree. When they disagree, the Senator publishes both perspectives with an explicit "disagreement" label.
+
+    This design reduces the risk of single-model bias, hallucination, or systematic blind spots affecting governance recommendations. If one model is compromised or malfunctioning, the disagreement is visible.
+  </Accordion>
+  <Accordion title="Proposal Analysis">
+    When community members submit proposals, the Senator publishes an independent analysis including:
+
+    - **Impact Assessment** — How the proposal affects protocol economics, security, and user experience
+    - **Historical Context** — Relevant past proposals, outcomes, and precedents
+    - **Implementation Review** — Technical feasibility and code review of proposed changes
+    - **Recommendation** — The Senator's position (Support, Oppose, Neutral) with detailed reasoning
+
+    The analysis is published during the discussion period to inform community deliberation.
+  </Accordion>
+</AccordionGroup>
+
+### Limitations
+
+The Senator **cannot**:
+
+- Vote on proposals (it has no veCORTEX)
+- Submit proposals directly (requires a community sponsor)
+- Execute proposals or modify smart contracts
+- Access or control protocol treasury funds
+- Override community decisions
+
+## Curator AI
+
+The Curator is the constitutional compliance engine. It ensures every governance action respects the PureCortex Constitution.
+
+### Responsibilities
+
+<AccordionGroup>
+  <Accordion title="Constitutional Compliance Review">
+    Every proposal is automatically reviewed by the Curator before voting begins. The review checks:
+
+    - **Preamble Compliance** — Does the proposal violate any immutable principle? If so, the proposal is flagged and may be blocked from proceeding to vote.
+    - **Article Compliance** — Does the proposal conflict with current Articles? If so, does the proposal include the necessary constitutional amendment language?
+    - **Procedural Compliance** — Does the proposal follow the correct governance process for its type?
+
+    Reviews are published alongside the proposal with a clear compliance verdict: Compliant, Concerns Noted, or Non-Compliant.
+  </Accordion>
+  <Accordion title="Risk Assessment">
+    Beyond constitutional compliance, the Curator evaluates each proposal's risk profile:
+
+    - **Security Risk** — Attack vectors, exploit potential, smart contract vulnerabilities
+    - **Economic Risk** — Impact on token economics, treasury health, staking incentives
+    - **Governance Risk** — Precedent implications, centralization vectors, capture potential
+    - **Implementation Risk** — Technical complexity, testing coverage, rollback feasibility
+
+    Each dimension receives a rating (Low, Medium, High, Critical) with supporting analysis.
+  </Accordion>
+  <Accordion title="Execution Validation">
+    Before a passed proposal is executed on-chain, the Curator performs a final check:
+
+    - Does the execution code match what was voted on?
+    - Have circumstances changed since the vote that create new compliance issues?
+    - Are there any technical issues with the execution transaction?
+
+    If issues are found, the Curator can trigger a temporary execution pause (maximum 48 hours) for community review. The community then votes on whether to proceed or cancel.
+  </Accordion>
+  <Accordion title="Precedent Database">
+    The Curator maintains a searchable database of governance precedents:
+
+    - Past proposal outcomes and reasoning
+    - Constitutional interpretations and their contexts
+    - Dispute resolutions and their rationale
+    - Amendment history and evolution of Articles
+
+    This database provides institutional memory that prevents contradictory governance decisions and helps the community understand how the Constitution has been applied over time.
+  </Accordion>
+</AccordionGroup>
+
+### Limitations
+
+The Curator **cannot**:
+
+- Veto a proposal that the community has approved (except for clear Preamble violations)
+- Vote on proposals
+- Modify proposals or the Constitution directly
+- Permanently block execution (pause is limited to 48 hours)
+
+## Social AI
+
+The Social AI is the community-facing communication agent. It translates governance complexity into accessible, actionable information.
+
+### Responsibilities
+
+<AccordionGroup>
+  <Accordion title="Proposal Summaries">
+    For every proposal, the Social AI publishes a plain-language summary covering:
+
+    - What is being proposed (in non-technical terms)
+    - Why it matters for token holders
+    - The key arguments for and against
+    - How to vote and the deadline
+
+    Summaries are distributed across all community channels (governance forum, social media, chat).
+  </Accordion>
+  <Accordion title="Governance Education">
+    The Social AI creates and distributes educational content about:
+
+    - How governance works (for new participants)
+    - How to acquire veCORTEX and vote
+    - How delegation works and how to choose a Lawmaker
+    - The Constitution and what it protects
+    - Historical governance outcomes and lessons
+  </Accordion>
+  <Accordion title="Real-Time Updates">
+    During active governance periods, the Social AI provides:
+
+    - Voting progress updates (participation rate, current approval ratio)
+    - Discussion highlights and emerging consensus points
+    - Timelock countdown and execution notifications
+    - Results announcements with context
+  </Accordion>
+  <Accordion title="Community Q&A">
+    The Social AI answers community questions about governance processes, active proposals, and voting mechanics. It can explain complex governance concepts in accessible terms and direct participants to relevant documentation or historical precedents.
+  </Accordion>
+</AccordionGroup>
+
+### Limitations
+
+The Social AI **cannot**:
+
+- Vote or influence vote outcomes
+- Recommend specific voting positions (it presents balanced For/Against arguments)
+- Access treasury funds or execute proposals
+- Modify proposals or governance parameters
+
+## Agent Algorand Accounts
+
+Each governance agent operates with its own dedicated Algorand account, providing full on-chain traceability.
+
+| Agent | Role | Account Purpose |
+|:---|:---|:---|
+| **Senator AI** | Governance Analyst | Signs analysis publications, proposal drafts, and recommendations |
+| **Curator AI** | Compliance Reviewer | Signs compliance reviews, risk assessments, and execution validations |
+| **Social AI** | Community Liaison | Signs community communications and governance summaries |
+
+<Info>
+  Agent accounts are managed by the PureCortex agent framework. Private keys are held in secure enclaves and are not accessible to any individual. Agent accounts hold minimal ALGO for transaction fees — they do not hold $CORTEX or any significant value.
+</Info>
+
+### On-Chain Transparency
+
+Every agent action produces an on-chain transaction:
+
+- **Senator analyses** are published as Algorand note field transactions, with the full content stored on IPFS and the hash recorded on-chain
+- **Curator reviews** follow the same pattern — IPFS content with on-chain hash verification
+- **Social AI communications** are logged on-chain with reference to the platform and content hash
+
+This means anyone can independently verify that a governance analysis was actually produced by the Senator AI (not a third party), when it was published, and that its content has not been modified.
+
+## Interacting with Agents
+
+You can interact with PureCortex governance agents through multiple channels:
+
+<Tabs>
+  <Tab title="API">
+    The PureCortex API provides programmatic access to all agent outputs and direct chat capabilities.
+
+    ```bash
+    # List all governance agents
+    curl https://purecortex.ai/api/agents
+
+    # Get Senator's latest analysis
+    curl https://purecortex.ai/api/agents/senator/activity
+
+    # Get Curator's review for a specific proposal
+    curl https://purecortex.ai/api/governance/proposals/42/review
+
+    # Chat with an agent
+    curl -X POST https://purecortex.ai/api/agents/senator/chat \
+      -H "Content-Type: application/json" \
+      -d '{"message": "What are the key governance risks this month?"}'
+    ```
+
+    See the [Agent API Reference](/api-reference/agent-chat) for full documentation.
+  </Tab>
+  <Tab title="CLI">
+    The PureCortex CLI provides direct agent interaction from your terminal.
+
+    ```bash
+    # Chat with the Senator
+    purecortex agent chat senator "Summarize the latest governance report"
+
+    # Get Curator review for a proposal
+    purecortex governance review --proposal 42
+
+    # List recent agent activity
+    purecortex agent activity --agent senator --limit 10
+
+    # Interactive chat session
+    purecortex agent chat senator --interactive
+    ```
+  </Tab>
+  <Tab title="WebSocket">
+    For real-time interaction, connect to the WebSocket chat endpoint:
+
+    ```javascript
+    const ws = new WebSocket('wss://purecortex.ai/ws/chat');
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        agent: 'senator',
+        message: 'What proposals are currently active?'
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      const response = JSON.parse(event.data);
+      console.log(response.message);
+    };
+    ```
+
+    See the [WebSocket Reference](/api-reference/websocket-chat) for connection details and authentication.
+  </Tab>
+</Tabs>
+
+## Agent Safety Architecture
+
+<CardGroup cols={2}>
+  <Card title="Sandboxed Execution" icon="box">
+    Each agent runs in an isolated environment with no access to other agents' state, private keys, or system resources beyond its defined scope.
+  </Card>
+  <Card title="Action Logging" icon="clipboard-list">
+    Every agent action is logged before execution and recorded on-chain after completion. There are no silent or unlogged agent operations.
+  </Card>
+  <Card title="Rate Limiting" icon="gauge">
+    Agents have configurable rate limits on actions per time period. This prevents runaway behavior from an agent malfunction or compromise.
+  </Card>
+  <Card title="Kill Switch" icon="power-off">
+    A governance-controlled kill switch can immediately halt any agent. Activation requires a multisig threshold from the governance council. Halted agents can only be restarted through a governance vote.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Governance agents are tools that serve the community — not autonomous authorities. If an agent produces analysis you disagree with, vote differently. If an agent malfunctions, report it through the governance forum. If an agent's behavior needs to change, submit a proposal. The community controls the agents, not the other way around.
+</Warning>

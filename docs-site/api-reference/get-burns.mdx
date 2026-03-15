@@ -1,0 +1,68 @@
+---
+title: "Get Burns"
+api: "GET /api/transparency/burns"
+description: "Retrieve the total burned supply and full burn transaction history."
+---
+
+Returns the cumulative amount of CORTEX tokens burned and a chronological history of each burn event.
+
+<ResponseField name="total_burned" type="number" required>
+  Total CORTEX tokens burned to date.
+</ResponseField>
+
+<ResponseField name="burn_history" type="array" required>
+  Array of individual burn transactions, ordered by most recent first.
+  <Expandable title="burn_history item properties">
+    <ResponseField name="txn_id" type="string" required>
+      Algorand transaction ID for the burn.
+    </ResponseField>
+    <ResponseField name="amount" type="number" required>
+      Number of CORTEX tokens burned in this transaction.
+    </ResponseField>
+    <ResponseField name="round" type="integer" required>
+      Algorand round (block number) in which the burn was confirmed.
+    </ResponseField>
+    <ResponseField name="timestamp" type="string" required>
+      ISO 8601 timestamp of the burn transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="note" type="string">
+  Optional note with additional context about the burn mechanism.
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl https://purecortex.ai/api/transparency/burns
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "total_burned": 120000000000000,
+  "burn_history": [
+    {
+      "txn_id": "BURN3...XYZ9",
+      "amount": 50000000000000,
+      "round": 48120345,
+      "timestamp": "2026-03-10T14:30:00Z"
+    },
+    {
+      "txn_id": "BURN2...ABC7",
+      "amount": 40000000000000,
+      "round": 47890123,
+      "timestamp": "2026-02-15T09:00:00Z"
+    },
+    {
+      "txn_id": "BURN1...DEF5",
+      "amount": 30000000000000,
+      "round": 47450000,
+      "timestamp": "2026-01-20T12:00:00Z"
+    }
+  ],
+  "note": "Burns are executed from the 90% buyback-and-burn revenue allocation."
+}
+```
+</ResponseExample>

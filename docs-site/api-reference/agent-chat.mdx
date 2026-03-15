@@ -1,0 +1,47 @@
+---
+title: "Agent Chat"
+api: "POST /api/agents/{agent_name}/chat"
+description: "Send a message to a specific PureCortex AI agent and receive a response."
+---
+
+Send a conversational message to one of the PureCortex AI agents. Each agent has domain-specific knowledge and will respond based on its role and capabilities.
+
+Available agents: `senator`, `curator`, `social`.
+
+<ParamField path="agent_name" type="string" required>
+  The agent to chat with. One of: `senator`, `curator`, or `social`.
+</ParamField>
+
+<ParamField body="message" type="string" required>
+  The message to send to the agent. Maximum 4096 characters.
+</ParamField>
+
+<ResponseField name="agent" type="string" required>
+  Name of the agent that responded.
+</ResponseField>
+
+<ResponseField name="response" type="string" required>
+  The agent's response text.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string" required>
+  ISO 8601 timestamp of when the response was generated.
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl -X POST https://purecortex.ai/api/agents/senator/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What is the current quorum threshold for governance proposals?"}'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "agent": "senator",
+  "response": "The current quorum threshold for governance proposals is 10% of total veCORTEX supply. This means at least 85,000,000,000,000 veCORTEX must participate in a vote for the result to be binding. This threshold was established in Article III, Section 3.2 of the constitution.",
+  "timestamp": "2026-03-14T15:30:00Z"
+}
+```
+</ResponseExample>

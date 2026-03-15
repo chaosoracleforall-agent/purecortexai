@@ -1,0 +1,119 @@
+---
+title: "Privacy Policy"
+description: "How PureCortex collects, uses, and protects your data."
+icon: "shield-halved"
+---
+
+# Privacy Policy
+
+**Last updated:** March 14, 2026
+
+This Privacy Policy explains what data PureCortex (the "Protocol") collects, how it is used, and your rights regarding that data.
+
+---
+
+## Data We Collect
+
+<AccordionGroup>
+  <Accordion title="Blockchain Transaction Data" icon="link">
+    All transactions on the Algorand blockchain are **public by design**. When you interact with PureCortex smart contracts (staking, voting, buying/selling agent tokens), the transaction data -- including your Algorand address, amounts, and timestamps -- is permanently recorded on the public ledger. PureCortex does not control or store this data; it is accessible to anyone through the Algorand indexer.
+  </Accordion>
+  <Accordion title="AI Interaction Logs" icon="brain">
+    When you interact with PureCortex AI agents (via the API, WebSocket chat, or MCP tools), your messages and the agent's responses are logged for system reliability and improvement purposes. These logs are **anonymized** -- they are not linked to your identity, wallet address, or any personally identifiable information.
+  </Accordion>
+  <Accordion title="Standard Web Analytics" icon="chart-simple">
+    The PureCortex website uses standard cookies and analytics to understand usage patterns. This includes:
+    - Browser type and version
+    - Pages visited and time spent
+    - Referral source
+    - Device type and screen resolution
+
+    No personally identifiable information is collected through web analytics.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Third-Party Services
+
+PureCortex integrates with the following third-party services that may process data according to their own privacy policies:
+
+| Service | Provider | Purpose | Privacy Policy |
+|---------|----------|---------|---------------|
+| Claude API | Anthropic | Primary AI brain (Dual-Brain Consensus) | [anthropic.com/privacy](https://www.anthropic.com/privacy) |
+| Gemini API | Google | Secondary AI brain (Dual-Brain Consensus) | [policies.google.com/privacy](https://policies.google.com/privacy) |
+| AlgoNode | AlgoNode | Algorand indexer and node access | [algonode.io](https://algonode.io) |
+| Redis | Self-hosted | Agent memory and caching (internal) | N/A (self-hosted) |
+
+<Info>
+  AI interaction data sent to Anthropic and Google is subject to their respective data processing terms. PureCortex does not send personally identifiable information to these providers -- only the content of your messages and the agent's system prompts.
+</Info>
+
+---
+
+## How We Use Data
+
+- **Service operation:** To process your requests, execute smart contract interactions, and deliver AI agent responses.
+- **System reliability:** To monitor uptime, detect errors, and improve the Protocol's performance.
+- **Security:** To detect and prevent abuse, prompt injection attacks, and unauthorized access.
+- **Analytics:** To understand aggregate usage patterns and prioritize feature development.
+
+---
+
+## What We Do Not Do
+
+- **No data monetization.** We do not sell, rent, or trade your data to third parties for advertising or any other commercial purpose.
+- **No personal data sales.** We do not sell personal information under any circumstances.
+- **No behavioral profiling.** We do not build individual user profiles for targeted advertising or content personalization.
+- **No cross-service tracking.** We do not track your activity across other websites or services.
+
+---
+
+## Data Retention
+
+| Data Type | Retention Period |
+|-----------|-----------------|
+| Blockchain transactions | Permanent (public ledger) |
+| AI interaction logs (anonymized) | 90 days |
+| Agent episodic memory | 90 days |
+| Web analytics | 30 days |
+| Redis cache | 1 hour (short-term) to permanent (long-term memory) |
+
+---
+
+## Your Rights
+
+Depending on your jurisdiction, you may have the right to:
+
+- **Access** the data we hold about you
+- **Deletion** of non-blockchain data (blockchain data is immutable and cannot be deleted)
+- **Correction** of inaccurate data
+- **Objection** to certain data processing activities
+
+To exercise any of these rights, contact us at the address below.
+
+---
+
+## Security
+
+PureCortex implements multiple security layers to protect data:
+
+- API keys and secrets are stored in GCP Secret Manager
+- All API traffic is encrypted via TLS
+- The PermissionProxy enforces tiered access control for all agent actions
+- User input is tagged and sandboxed before AI processing to prevent prompt injection
+- WebSocket connections enforce message size limits (4,096 characters)
+
+---
+
+## Changes to This Policy
+
+We may update this Privacy Policy from time to time. Changes will be posted at [purecortex.ai/legal/privacy](https://purecortex.ai/legal/privacy) with an updated "Last updated" date. Your continued use of the Protocol after changes are posted constitutes acceptance.
+
+---
+
+## Contact
+
+For privacy-related questions or to exercise your data rights:
+
+**Email:** [hello@purecortex.ai](mailto:hello@purecortex.ai)

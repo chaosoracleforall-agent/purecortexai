@@ -1,0 +1,99 @@
+---
+title: "Get Proposal"
+api: "GET /api/governance/proposals/{proposal_id}"
+description: "Retrieve full details for a single governance proposal."
+---
+
+Returns the complete proposal record, including the summary fields from the list endpoint plus the full description, rationale, amendment text, and risk analysis.
+
+<ParamField path="proposal_id" type="string" required>
+  The unique proposal identifier (e.g., `PCP-001`).
+</ParamField>
+
+<ResponseField name="id" type="string" required>
+  Unique proposal identifier.
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  Proposal title.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current proposal status. One of: `discussion`, `voting`, `passed`, `rejected`, `executed`, `cancelled`.
+</ResponseField>
+
+<ResponseField name="proposer" type="string" required>
+  Algorand address of the proposal author.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp of when the proposal was created.
+</ResponseField>
+
+<ResponseField name="voting_ends" type="string" required>
+  ISO 8601 timestamp of when the voting period ends.
+</ResponseField>
+
+<ResponseField name="votes_for" type="number" required>
+  Total veCORTEX weight voting in favor.
+</ResponseField>
+
+<ResponseField name="votes_against" type="number" required>
+  Total veCORTEX weight voting against.
+</ResponseField>
+
+<ResponseField name="quorum_reached" type="boolean" required>
+  Whether the proposal has reached the required quorum threshold.
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  Full proposal description in Markdown format.
+</ResponseField>
+
+<ResponseField name="rationale" type="string" required>
+  Explanation of why this proposal is being put forward.
+</ResponseField>
+
+<ResponseField name="affected_articles" type="array" required>
+  List of constitution article identifiers affected by this proposal (e.g., `["Article IV", "Article VII"]`). Empty array if no articles are affected.
+</ResponseField>
+
+<ResponseField name="amendment_text" type="string">
+  The proposed amendment text in Markdown diff format. `null` if the proposal does not amend the constitution.
+</ResponseField>
+
+<ResponseField name="risk_analysis" type="string" required>
+  Assessment of potential risks or side effects of the proposal.
+</ResponseField>
+
+<ResponseField name="discussion_url" type="string">
+  URL to the community discussion thread for this proposal.
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl https://purecortex.ai/api/governance/proposals/PCP-001
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "PCP-001",
+  "title": "Increase burn allocation to 95%",
+  "status": "passed",
+  "proposer": "ALGO...WXYZ",
+  "created_at": "2026-02-01T10:00:00Z",
+  "voting_ends": "2026-02-08T10:00:00Z",
+  "votes_for": 450000000000000,
+  "votes_against": 120000000000000,
+  "quorum_reached": true,
+  "description": "This proposal increases the revenue buyback-and-burn allocation from 90% to 95%, reducing the operations allocation to 5%.",
+  "rationale": "The current operations fund has accumulated a sufficient runway. Increasing the burn rate will accelerate deflation and benefit long-term holders.",
+  "affected_articles": ["Article III"],
+  "amendment_text": "## Article III — Revenue Allocation\n\n- Buyback and burn: ~~90%~~ **95%**\n- Operations: ~~10%~~ **5%**",
+  "risk_analysis": "Reducing operations funding to 5% may constrain future development budgets. Mitigation: the existing operations balance provides 18+ months of runway at current spend rates.",
+  "discussion_url": "https://forum.purecortex.ai/t/pcp-001-increase-burn-allocation/42"
+}
+```
+</ResponseExample>

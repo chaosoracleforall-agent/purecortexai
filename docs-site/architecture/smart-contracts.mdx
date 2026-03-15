@@ -1,0 +1,306 @@
+---
+title: "Smart Contracts"
+description: "Algorand Puya smart contracts powering agent tokenization, staking, governance, and treasury management."
+icon: "file-contract"
+---
+
+# Smart Contracts
+
+PureCortex smart contracts are written in **Algorand Puya** (`algopy`) -- a Python-to-TEAL compiler that produces AVM (Algorand Virtual Machine) bytecode. All contracts inherit from `ARC4Contract` and use ABI methods for type-safe interactions.
+
+<Note>
+  All contracts are deployed on **Algorand testnet**. The AgentFactory is live at App ID `757089323` with the CORTEX token at Asset ID `757092088`.
+</Note>
+
+The protocol uses four core contracts:
+
+<CardGroup cols={2}>
+  <Card title="AgentFactory" icon="industry">
+    Agent token creation and bonding curve trading.
+  </Card>
+  <Card title="veCORTEX Staking" icon="lock">
+    Time-locked staking with governance voting power.
+  </Card>
+  <Card title="Governance" icon="landmark">
+    On-chain proposal lifecycle with constitutional constraints.
+  </Card>
+  <Card title="SovereignTreasury" icon="vault">
+    Revenue splitting and buyback-burn execution.
+  </Card>
+</CardGroup>
+
+---
+
+## AgentFactory
+
+**App ID:** `757089323`
+
+The AgentFactory is the launchpad for AI agent tokens. It handles ASA creation, bonding curve pricing, fee collection, and graduation detection.
+
+### Key Methods
+
+<AccordionGroup>
+  <Accordion title="create_agent" icon="plus">
+    Creates a new Agent Token as an Algorand Standard Asset (ASA). Requires a CORTEX fee payment (default: 100 CORTEX) in the same atomic group transaction.
+
+    **Parameters:**
+    - `cortex_payment` -- Grouped asset transfer of CORTEX to the factory
+    - `name` -- Display name for the agent token
+    - `unit_name` -- Ticker symbol
+
+    **Returns:** The new ASA ID.
+
+    Each agent token is created with 1 billion max supply (6 decimals). The factory retains manager, reserve, freeze, and clawback authority.
+  </Accordion>
+  <Accordion title="buy_tokens" icon="arrow-up">
+    Buys tokens from the bonding curve by paying ALGO. Price follows a linear curve: `Price = BASE_PRICE + SLOPE * current_supply`.
+
+    **Parameters:**
+    - `payment` -- Grouped ALGO payment to the factory
+    - `asset` -- The agent token ASA
+    - `amount` -- Number of tokens to buy
+
+    A buy fee (default 1%, configurable up to 10%) is added on top of the curve price.
+  </Accordion>
+  <Accordion title="sell_tokens" icon="arrow-down">
+    Sells tokens back to the bonding curve for ALGO. The seller must send an asset transfer of the agent token to the contract in the same group transaction.
+
+    **Parameters:**
+    - `token_transfer` -- Grouped asset transfer of agent tokens to the factory
+    - `asset` -- The agent token ASA
+    - `amount` -- Number of tokens to sell
+
+    A sell fee (default 2%, configurable up to 10%) is deducted from the return. The fee stays in the protocol.
+  </Accordion>
+  <Accordion title="check_graduation" icon="graduation-cap">
+    Checks if an agent token has met the graduation threshold. Graduation occurs when the total value locked in the bonding curve exceeds 50,000 CORTEX, signaling readiness for DEX listing.
+
+    **Parameters:**
+    - `asset` -- The agent token ASA
+
+    **Returns:** `bool` -- whether the threshold is met.
+  </Accordion>
+</AccordionGroup>
+
+### Bonding Curve
+
+The bonding curve uses a linear integral pricing model:
+
+```
+Price to buy `amount` tokens starting at supply `S`:
+  = amount * BASE_PRICE + SLOPE * (2 * S * amount + amount^2) / 2
+
+Default parameters:
+  BASE_PRICE = 10,000 microALGO
+  SLOPE      = 1,000 microALGO per token
+```
+
+Supply is tracked per-agent in Algorand Box Storage (`BoxMap[asset_id -> supply]`).
+
+### Fee Parameters
+
+| Parameter | Default | Range | Governance-Updatable |
+|-----------|---------|-------|---------------------|
+| Buy fee | 1% (100 bps) | 0 -- 10% | Yes |
+| Sell fee | 2% (200 bps) | 0 -- 10% | Yes |
+| Creation fee | 100 CORTEX | Any | Yes |
+| Graduation threshold | 50,000 CORTEX | Any | Yes |
+
+---
+
+## veCORTEX Staking
+
+Users lock CORTEX tokens for a configurable duration and receive **veCORTEX** voting power with a time-weighted boost.
+
+### Key Methods
+
+<AccordionGroup>
+  <Accordion title="stake" icon="lock">
+    Stake CORTEX tokens with a specified lock duration. The lock period determines the boost multiplier.
+
+    **Parameters:**
+    - `cortex_transfer` -- Grouped CORTEX transfer to the staking contract
+    - `lock_days` -- Lock duration (7 to 1,460 days)
+
+    **Boost calculation:**
+    ```
+    boost = 1.0x + (lock_days * 1.5) / MAX_LOCK_DAYS
+    ```
+    - 7-day lock: ~1.007x boost
+    - 1-year lock: ~1.375x boost
+    - 4-year lock: 2.5x boost (maximum)
+
+    **veCORTEX power** = `staked_amount * boost`
+  </Accordion>
+  <Accordion title="unstake" icon="unlock">
+    Unstake CORTEX tokens after the lock period expires. Returns the original staked amount and removes the stake record and any active delegation.
+
+    Reverts if the lock period has not elapsed.
+  </Accordion>
+  <Accordion title="delegate" icon="handshake">
+    Delegate veCORTEX voting power to a Lawmaker agent address. The delegatee can vote on governance proposals on the staker's behalf.
+
+    **Parameters:**
+    - `lawmaker` -- The Algorand address to delegate to
+  </Accordion>
+</AccordionGroup>
+
+### Staking Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `MIN_LOCK_DAYS` | 7 | Minimum lock duration (1 week) |
+| `MAX_LOCK_DAYS` | 1,460 | Maximum lock duration (4 years) |
+| `MAX_BOOST` | 2,500 (2.5x) | Maximum boost in basis points (1,000 = 1x) |
+
+Stake data is stored in Box Storage as 32-byte records: `amount(8) + unlock_round(8) + ve_power(8) + boost(8)`.
+
+---
+
+## Governance
+
+On-chain governance with a multi-phase proposal lifecycle.
+
+### Proposal Lifecycle
+
+<Steps>
+  <Step title="Discussion (48 hours)">
+    Proposal is created via `create_proposal`. Community discusses the proposal off-chain. No voting occurs during this phase.
+  </Step>
+  <Step title="Voting (5 days)">
+    After the discussion period, `advance_to_voting` transitions the proposal. veCORTEX holders cast weighted votes via `cast_vote`. Each address votes once.
+  </Step>
+  <Step title="Finalization">
+    After the voting period, `finalize_proposal` checks whether the supermajority threshold (67% yes votes) was reached. The proposal is marked as **passed** or **rejected**.
+  </Step>
+  <Step title="Timelock (7 days)">
+    Passed proposals enter a 7-day timelock before execution. This provides a safety window for the community to respond.
+  </Step>
+  <Step title="Execution">
+    After the timelock, `execute_proposal` marks the proposal as executed. The actual action is handled off-chain or via a separate transaction group.
+  </Step>
+</Steps>
+
+### Key Methods
+
+| Method | Description |
+|--------|-------------|
+| `create_proposal(title, description, proposal_type)` | Create a new proposal. Types: 0=parameter change, 1=treasury allocation, 2=protocol upgrade, 3=emergency action |
+| `cast_vote(proposal_id, vote)` | Cast a veCORTEX-weighted vote. `1` = yes, `0` = no |
+| `finalize_proposal(proposal_id)` | Finalize after voting ends. Checks supermajority threshold |
+| `execute_proposal(proposal_id)` | Mark passed proposal as executed after timelock |
+| `cancel_proposal(proposal_id)` | Emergency cancellation (creator only, active proposals only) |
+
+### Governance Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Discussion period | 48 hours (8,640 rounds) | Time before voting opens |
+| Voting period | 5 days (21,600 rounds) | Duration of voting window |
+| Timelock period | 7 days (30,240 rounds) | Delay before execution |
+| Quorum | 25% of total veCORTEX | Minimum participation required |
+| Supermajority | 67% yes votes | Threshold to pass |
+
+<Info>
+  Algorand produces approximately 3 rounds per minute. All governance timing parameters are specified in rounds, not clock time.
+</Info>
+
+---
+
+## SovereignTreasury
+
+Receives protocol fee revenue and manages the buyback-and-burn cycle.
+
+### Revenue Flow
+
+```
+AgentFactory (buy/sell fees)
+    │
+    └── ALGO payment ──► SovereignTreasury.process_revenue()
+                              │
+                              ├── 90% ──► Buyback pool (accumulates)
+                              │              │
+                              │              └── withdraw_buyback_algo() ──► DEX swap ──► CORTEX
+                              │                                                            │
+                              │                                              execute_burn() ──► Zero address
+                              │
+                              └── 10% ──► Operations wallet (immediate)
+```
+
+### Key Methods
+
+| Method | Description |
+|--------|-------------|
+| `process_revenue(payment)` | Split incoming ALGO: 90% to buyback pool, 10% to operations |
+| `execute_burn(cortex_transfer)` | Burn CORTEX by sending to the Algorand zero address |
+| `withdraw_buyback_algo(amount)` | Withdraw buyback ALGO for off-chain DEX swap (creator only) |
+
+### Treasury Parameters
+
+| Parameter | Default | Constraint |
+|-----------|---------|-----------|
+| Buyback percentage | 90% | Minimum 50%, maximum 100% |
+| Operations percentage | 10% | Derived from buyback (100 - buyback_pct) |
+
+### Read-Only Queries
+
+| Method | Returns |
+|--------|---------|
+| `get_total_burned()` | Total CORTEX permanently destroyed |
+| `get_total_revenue()` | Cumulative ALGO revenue processed |
+| `get_buyback_balance()` | ALGO accumulated for next buyback |
+| `get_treasury_stats()` | All stats as 32-byte encoded blob |
+
+---
+
+## Contract Addresses
+
+| Contract | App ID | Status |
+|----------|--------|--------|
+| AgentFactory | `757089323` | Deployed (testnet) |
+| CORTEX Token | Asset `757092088` | Created via AgentFactory |
+| veCORTEX Staking | -- | Deployed (testnet) |
+| Governance | -- | Deployed (testnet) |
+| SovereignTreasury | -- | Deployed (testnet) |
+
+<Warning>
+  All contracts are currently deployed on Algorand **testnet**. They are functional but have not undergone a formal third-party security audit. Do not use with real funds.
+</Warning>
+
+## Development
+
+Contracts are located in `contracts/smart_contracts/` with the following structure:
+
+```
+contracts/
+  smart_contracts/
+    agent_factory/
+      contract.py        # AgentFactory ARC4Contract
+      deploy_config.py   # Deployment configuration
+    staking/
+      contract.py        # VeCortexStaking ARC4Contract
+      deploy_config.py
+    governance/
+      contract.py        # GovernanceContract ARC4Contract
+      deploy_config.py
+    sovereign_treasury/
+      contract.py        # SovereignTreasury ARC4Contract
+      deploy_config.py
+  tests/
+    test_agent_factory.py
+    live_testnet_verify.py
+```
+
+To compile contracts to TEAL:
+
+```bash
+cd contracts
+algokit compile
+```
+
+To run contract tests:
+
+```bash
+cd contracts
+python -m pytest tests/
+```

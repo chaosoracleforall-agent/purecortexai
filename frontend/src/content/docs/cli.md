@@ -11,21 +11,31 @@ The PureCortex CLI (`pcx`) provides administrative control and monitoring for th
 
 **Requires Python 3.10+**
 
-Install from source:
+### Option A: pipx (recommended for macOS)
+
+```bash
+brew install pipx
+pipx ensurepath
+pipx install git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
+```
+
+### Option B: From source with venv
 
 ```bash
 git clone https://github.com/chaosoracleforall-agent/purecortexai.git
 cd purecortexai/cli
-python3 -m pip install -e .
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
-This installs the `pcx` command globally. Verify:
+Verify the installation:
 
 ```bash
 pcx info
 ```
 
-> **Note:** On macOS, use `python3` and `pip3` (not `pip`). If you get "command not found", install Python 3 via [python.org](https://www.python.org/downloads/) or `brew install python3`.
+> **Note:** macOS 15+ uses an externally-managed Python. Use `pipx` (Option A) or a virtual environment (Option B) — do not use `pip install` directly.
 
 ---
 

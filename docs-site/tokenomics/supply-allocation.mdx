@@ -1,0 +1,180 @@
+---
+title: "Supply & Allocation"
+description: "Complete breakdown of the $CORTEX token supply, allocation categories, vesting schedules, and distribution mechanics."
+icon: "chart-pie"
+---
+
+# Supply & Allocation
+
+The $CORTEX token has a fixed total supply of **10 quadrillion tokens** (10,000,000,000,000,000) with 6 decimal places, deployed on Algorand as Asset ID 757092088. There is no mint function — supply can only decrease through burns, never increase.
+
+## Total Supply
+
+| Parameter | Value |
+|:---|:---|
+| **Total Supply** | 10,000,000,000,000,000 |
+| **Human Readable** | 10 quadrillion |
+| **Decimals** | 6 |
+| **Smallest Unit** | 0.000001 CORTEX |
+| **Blockchain** | Algorand |
+| **Asset ID** | 757092088 |
+| **Mint Function** | None (fixed supply) |
+
+<Note>
+  The large total supply is a deliberate design choice. With 6 decimal places and a quadrillion-scale supply, $CORTEX maintains granular unit pricing accessible to all participants — no one needs to buy "0.0000001 of a token." Every unit remains human-readable at any market cap.
+</Note>
+
+## Allocation Breakdown
+
+| Category | Percentage | Tokens | Purpose |
+|:---|:---|:---|:---|
+| **Creator** | 10% | 1,000,000,000,000,000 | Founder alignment with 180-day vesting |
+| **Genesis Distribution** | 31% | 3,100,000,000,000,000 | Initial community distribution at TGE |
+| **Staking Emissions** | 24% | 2,400,000,000,000,000 | veCORTEX staking rewards over 4 years |
+| **Liquidity** | 15% | 1,500,000,000,000,000 | DEX liquidity pools and market making |
+| **Agent Incentives** | 15% | 1,500,000,000,000,000 | Rewards for agent creators and developers |
+| **Assistance Fund** | 5% | 500,000,000,000,000 | Buyback-burn seed capital and operations |
+| **Total** | **100%** | **10,000,000,000,000,000** | |
+
+## Creator Allocation (10%)
+
+The creator allocation is the only portion of supply that goes to a project insider — and it is subject to strict vesting.
+
+<Steps>
+  <Step title="TGE Unlock (10% of Creator Share)">
+    At TGE on March 31, 2026, the creator receives **100,000,000,000,000 CORTEX** (10% of the 10% creator allocation, or 1% of total supply). This provides initial operational capital.
+  </Step>
+  <Step title="Linear Daily Vesting (Remaining 90%)">
+    The remaining **900,000,000,000,000 CORTEX** vests linearly over 180 days. Each day, 1/180th of the remaining allocation unlocks — approximately **5,000,000,000,000 CORTEX per day**.
+  </Step>
+  <Step title="Full Vest Complete">
+    By approximately September 27, 2026 (180 days post-TGE), the entire creator allocation is fully vested. No further creator unlocks occur after this date.
+  </Step>
+</Steps>
+
+<Warning>
+  The creator has **no other allocations** — no team wallet, no advisor share, no foundation reserve. The 10% creator allocation is the complete and total insider allocation for the entire project.
+</Warning>
+
+### Vesting Schedule
+
+| Day | Cumulative Unlocked | % of Creator Allocation |
+|:---|:---|:---|
+| Day 0 (TGE) | 100,000,000,000,000 | 10% |
+| Day 30 | 250,000,000,000,000 | 25% |
+| Day 60 | 400,000,000,000,000 | 40% |
+| Day 90 | 550,000,000,000,000 | 55% |
+| Day 120 | 700,000,000,000,000 | 70% |
+| Day 150 | 850,000,000,000,000 | 85% |
+| Day 180 | 1,000,000,000,000,000 | 100% |
+
+## Genesis Distribution (31%)
+
+The Genesis Distribution is the largest single allocation, designed to put the majority of liquid tokens directly into community hands from day one.
+
+<Tabs>
+  <Tab title="Distribution Mechanics">
+    The Genesis Distribution occurs at TGE and in the weeks immediately following launch. The 31% allocation covers:
+
+    - **Airdrop campaigns** — Rewarding early community members, testnet participants, and ecosystem contributors
+    - **Launch liquidity events** — Fair-launch mechanisms where participants receive tokens at equal terms
+    - **Community bootstrapping** — Seeding initial governance participation and staking activity
+
+    No portion of the Genesis Distribution goes to VCs, market makers (beyond what is in the Liquidity allocation), or pay-to-play listing services.
+  </Tab>
+  <Tab title="Eligibility">
+    Genesis Distribution eligibility is determined by verifiable on-chain and off-chain activity:
+
+    - Active participation in PureCortex testnet
+    - Engagement with PureCortex governance forums
+    - Early agent deployment on the platform
+    - Community contribution (code, documentation, translations)
+    - Algorand ecosystem participation
+
+    Specific snapshot dates and criteria will be published before TGE.
+  </Tab>
+  <Tab title="Anti-Sybil">
+    Genesis Distribution employs multiple anti-sybil measures:
+
+    - Algorand account age and activity verification
+    - Interaction pattern analysis across qualifying activities
+    - Progressive allocation caps (diminishing returns per additional qualifying action)
+    - Community review period for flagged allocations
+  </Tab>
+</Tabs>
+
+## Staking Emissions (24%)
+
+The staking emissions pool funds veCORTEX staking rewards over a 4-year period with a halving schedule.
+
+| Year | Emission Share | Tokens Released | Daily Emission Rate |
+|:---|:---|:---|:---|
+| Year 1 | 40% | 960,000,000,000,000 | ~2,630,136,986,301 |
+| Year 2 | 30% | 720,000,000,000,000 | ~1,972,602,739,726 |
+| Year 3 | 20% | 480,000,000,000,000 | ~1,315,068,493,151 |
+| Year 4 | 10% | 240,000,000,000,000 | ~657,534,246,575 |
+| **Total** | **100%** | **2,400,000,000,000,000** | — |
+
+The front-loaded emission schedule rewards early stakers who take on greater uncertainty. By year 4, emissions are 75% lower than year 1, reducing inflationary pressure as the ecosystem matures.
+
+<Info>
+  For full details on staking mechanics, boost multipliers, and lock periods, see [Staking (veCORTEX)](/tokenomics/staking).
+</Info>
+
+## Liquidity (15%)
+
+The Liquidity allocation ensures deep, reliable markets for $CORTEX from day one.
+
+- **DEX Pools** — Initial liquidity for Algorand DEX trading pairs (CORTEX/ALGO, CORTEX/USDC)
+- **Cross-chain Bridges** — Reserved for future bridge liquidity if $CORTEX expands to additional chains
+- **Market Stability** — Protocol-owned liquidity that is never withdrawn, providing a permanent price floor for orderbook depth
+
+<Note>
+  Liquidity tokens are deployed to pools and managed by the SovereignTreasury smart contract. They are not held by any individual or multisig — the protocol itself owns this liquidity.
+</Note>
+
+## Agent Incentives (15%)
+
+The Agent Incentives pool is the growth engine of PureCortex, rewarding the people and agents that build real utility on the platform.
+
+<AccordionGroup>
+  <Accordion title="Agent Creator Rewards">
+    Developers who deploy agents that generate genuine usage receive ongoing token rewards proportional to their agent's activity. This creates a direct incentive to build useful, reliable agents — not vaporware.
+  </Accordion>
+  <Accordion title="Developer Grants">
+    Protocol improvement proposals, SDK contributions, integration development, and tooling — all eligible for grants from the Agent Incentives pool. Grants are approved through governance proposals.
+  </Accordion>
+  <Accordion title="Community Bounties">
+    Bug bounties, documentation improvements, translations, educational content, and community moderation. Smaller in scale but critical for ecosystem health.
+  </Accordion>
+  <Accordion title="Ecosystem Partnerships">
+    Strategic integrations with other Algorand protocols, AI platforms, and data providers. Funded from this pool when approved by governance vote.
+  </Accordion>
+</AccordionGroup>
+
+The Agent Incentives pool is released over time based on governance-approved programs. It is not dumped at TGE — allocation rates are controlled by the SovereignTreasury contract and require governance approval for disbursement.
+
+## Assistance Fund (5%)
+
+The Assistance Fund serves a dual purpose: it seeds the buyback-burn mechanism and covers essential operational costs.
+
+| Usage | Split |
+|:---|:---|
+| **Buyback-Burn Seed** | Initial capital for the automated buyback-burn program before revenue reaches self-sustaining levels |
+| **Operational Reserve** | Infrastructure costs, audit fees, legal compliance, and emergency reserves |
+
+As protocol revenue grows, the Assistance Fund becomes increasingly funded by the 90% revenue allocation rather than the initial 5% token reserve. The goal is for the fund to become entirely revenue-funded within the first year.
+
+<Info>
+  For details on how the Assistance Fund revenue cycle works, see [Revenue Model](/tokenomics/revenue-model).
+</Info>
+
+## Supply Dynamics Over Time
+
+$CORTEX is designed to be **net deflationary** once the ecosystem reaches critical mass:
+
+- **Deflationary force:** Buyback-burn from 90% of protocol revenue permanently removes tokens from circulation
+- **Inflationary force:** Staking emissions release new tokens from the 24% pool over 4 years
+- **Net effect:** As revenue grows and emissions halve, the burn rate is expected to exceed the emission rate, creating sustained deflation
+
+After year 4, when staking emissions are fully distributed, the only remaining supply dynamic is pure deflation through buyback-burn. There is no perpetual inflation mechanism.

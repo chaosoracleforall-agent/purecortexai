@@ -1,0 +1,72 @@
+---
+title: "Agent Activity"
+api: "GET /api/agents/{agent_name}/activity"
+description: "Retrieve the recent activity log for a specific PureCortex AI agent."
+---
+
+Returns the activity history for a given agent, including on-chain transactions and off-chain actions.
+
+<ParamField path="agent_name" type="string" required>
+  The agent whose activity to retrieve. One of: `senator`, `curator`, or `social`.
+</ParamField>
+
+<ResponseField name="agent" type="string" required>
+  Name of the agent.
+</ResponseField>
+
+<ResponseField name="total_actions" type="integer" required>
+  Total number of recorded actions for this agent.
+</ResponseField>
+
+<ResponseField name="recent_activity" type="array" required>
+  Array of recent activity entries, ordered most recent first.
+  <Expandable title="activity item properties">
+    <ResponseField name="action" type="string" required>
+      Short identifier for the action type (e.g., `"proposal_review"`, `"content_publish"`, `"social_post"`).
+    </ResponseField>
+    <ResponseField name="detail" type="string" required>
+      Human-readable description of what the agent did.
+    </ResponseField>
+    <ResponseField name="timestamp" type="string" required>
+      ISO 8601 timestamp of when the action occurred.
+    </ResponseField>
+    <ResponseField name="txn_id" type="string">
+      Algorand transaction ID, if the action was recorded on-chain. `null` for off-chain actions.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash curl
+curl https://purecortex.ai/api/agents/senator/activity
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "agent": "senator",
+  "total_actions": 47,
+  "recent_activity": [
+    {
+      "action": "proposal_review",
+      "detail": "Reviewed PCP-003: Amend Article IV — Agent permission tiers. Recommended approval with minor amendments.",
+      "timestamp": "2026-03-13T16:00:00Z",
+      "txn_id": "TXN1...ABCD"
+    },
+    {
+      "action": "risk_assessment",
+      "detail": "Performed risk analysis on PCP-002: Add new Curator agent capability.",
+      "timestamp": "2026-03-11T10:30:00Z",
+      "txn_id": "TXN2...EFGH"
+    },
+    {
+      "action": "governance_analysis",
+      "detail": "Published weekly governance summary covering 3 active proposals.",
+      "timestamp": "2026-03-10T08:00:00Z",
+      "txn_id": null
+    }
+  ]
+}
+```
+</ResponseExample>

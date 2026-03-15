@@ -1,0 +1,198 @@
+---
+title: "Configuration"
+icon: "gear"
+description: "Configure the PureCortex CLI with environment variables, shell completion, and upgrade instructions."
+---
+
+The PureCortex CLI is designed to work out of the box with zero configuration.
+All settings are optional and have sensible defaults.
+
+---
+
+## Environment Variables
+
+### `PURECORTEX_API_URL`
+
+Override the base URL that the CLI uses for all API requests.
+
+| Property | Value |
+|----------|-------|
+| Default  | `https://purecortex.ai` |
+| Required | No |
+
+<CodeGroup>
+```bash bash / zsh
+export PURECORTEX_API_URL="https://purecortex.ai"
+```
+
+```fish fish
+set -gx PURECORTEX_API_URL "https://purecortex.ai"
+```
+
+```powershell PowerShell
+$env:PURECORTEX_API_URL = "https://purecortex.ai"
+```
+</CodeGroup>
+
+To make this permanent, add the export to your shell profile (`~/.bashrc`,
+`~/.zshrc`, or `~/.config/fish/config.fish`).
+
+<Info>
+  Per-command URL overrides (e.g., `pcx status --api-url ...`) are not
+  currently supported. Use the environment variable to configure the endpoint
+  for all commands in a session.
+</Info>
+
+<Note>
+  This is primarily useful during local development against a staging API or
+  when self-hosting the PureCortex backend. Most users do not need to change
+  this value.
+</Note>
+
+---
+
+## Shell Completion
+
+The CLI is built with [Typer](https://typer.tiangolo.com/), which supports
+tab-completion for commands and options in bash, zsh, and fish.
+
+<Tabs>
+  <Tab title="bash">
+    Generate and install the completion script:
+
+    ```bash
+    pcx --install-completion bash
+    ```
+
+    This appends the completion function to `~/.bashrc`. Restart your shell or
+    run:
+
+    ```bash
+    source ~/.bashrc
+    ```
+  </Tab>
+
+  <Tab title="zsh">
+    Generate and install the completion script:
+
+    ```bash
+    pcx --install-completion zsh
+    ```
+
+    This appends the completion function to `~/.zshrc`. Restart your shell or
+    run:
+
+    ```bash
+    source ~/.zshrc
+    ```
+  </Tab>
+
+  <Tab title="fish">
+    Generate and install the completion script:
+
+    ```bash
+    pcx --install-completion fish
+    ```
+
+    This writes a completion file to `~/.config/fish/completions/`. It will be
+    picked up automatically in new fish sessions.
+  </Tab>
+</Tabs>
+
+After installation, press `Tab` to autocomplete commands:
+
+```
+$ pcx st<Tab>
+$ pcx status
+```
+
+To view the generated completion script without installing it:
+
+```bash
+pcx --show-completion bash   # or zsh / fish
+```
+
+---
+
+## Upgrading
+
+How you upgrade depends on how you installed the CLI.
+
+<Tabs>
+  <Tab title="pipx">
+    ```bash
+    pipx upgrade purecortex-cli
+    ```
+
+    To upgrade to a specific version or reinstall from scratch:
+
+    ```bash
+    pipx reinstall purecortex-cli
+    ```
+  </Tab>
+
+  <Tab title="pip (venv)">
+    Activate your virtual environment first, then upgrade:
+
+    <CodeGroup>
+    ```bash macOS / Linux
+    source ~/.pcx-venv/bin/activate
+    pip install --upgrade git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
+    ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="From source (editable)">
+    Pull the latest changes and reinstall:
+
+    ```bash
+    cd purecortexai/cli
+    git pull origin main
+    source .venv/bin/activate
+    pip install -e . --upgrade
+    ```
+  </Tab>
+</Tabs>
+
+After upgrading, verify the new version is active:
+
+```bash
+pcx info
+```
+
+---
+
+## Troubleshooting
+
+### `command not found: pcx`
+
+The `pcx` binary is not on your `PATH`. Common causes and fixes:
+
+- **pipx users:** Run `pipx ensurepath` and restart your terminal.
+- **venv users:** Either activate the virtual environment or create a shell
+  alias pointing to the venv binary (e.g., `alias pcx="~/.pcx-venv/bin/pcx"`).
+- **From-source users:** Make sure the virtual environment is activated
+  (`source .venv/bin/activate`).
+
+### `externally-managed-environment` error on macOS
+
+macOS 15+ prevents `pip install` outside a virtual environment (PEP 668). Use
+`pipx` or create a virtual environment -- see the
+[installation guide](/cli/installation) for details.
+
+### Connection errors
+
+If `pcx status` returns a connection error:
+
+1. Check that `https://purecortex.ai` is reachable from your network.
+2. If you set `PURECORTEX_API_URL`, verify the value is correct:
+   ```bash
+   echo $PURECORTEX_API_URL
+   ```
+3. Check for proxy or firewall rules that may block outbound HTTPS traffic.
+
+<Warning>
+  Do not point `PURECORTEX_API_URL` at untrusted endpoints. The CLI sends
+  requests to whatever URL is configured, including during interactive chat
+  sessions.
+</Warning>
