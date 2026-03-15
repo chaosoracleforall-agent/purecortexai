@@ -1,1 +1,1 @@
-# PureCortex Backend Source Package
+# PURECORTEX Backend Source Package

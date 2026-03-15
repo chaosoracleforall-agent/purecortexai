@@ -35,11 +35,11 @@ class SocialMediaAgent:
         else:
             self.twitter_client = None
             
-        # Farcaster Setup
-        self.farcaster_mnemonic = os.getenv("FARCASTER_MNEMONIC")
-        if self.farcaster_mnemonic:
+        # Farcaster Setup — read mnemonic only at init, don't store it
+        _fc_mnemonic = os.getenv("FARCASTER_MNEMONIC")
+        if _fc_mnemonic:
             try:
-                self.farcaster_client = Warpcast(mnemonic=self.farcaster_mnemonic)
+                self.farcaster_client = Warpcast(mnemonic=_fc_mnemonic)
             except Exception as e:
                 print(f"Farcaster init error: {e}")
                 self.farcaster_client = None

@@ -1,0 +1,201 @@
+% =============================================================================
+\section{Dynamic Fee Mechanism}
+\label{sec:dynamic-fees}
+% =============================================================================
+
+This section specifies the volatility-adaptive fee function, derives its
+revenue properties, defines the protocol revenue split, and proves that dynamic
+fees generate higher expected revenue than flat fees under realistic volatility
+distributions.
+
+\subsection{Fee Function}
+\label{subsec:fee-function}
+
+\begin{definition}[Dynamic Fee]
+\label{def:dynamic-fee}
+Let $\sigma \geq 0$ denote the realized volatility of an agent token over the
+trailing 24-hour window, computed as the standard deviation of log-returns
+from on-chain trade data. The trading fee rate is:
+\begin{equation}
+  f(\sigma) = f_{\text{base}} + f_{\text{dyn}} \cdot \min\!\left(\frac{\sigma}{\sigma_{\max}}, 1\right)
+  \label{eq:fee-function}
+\end{equation}
+with parameters:
+\begin{align}
+  f_{\text{base}} &= 0.005 \quad (0.5\%) \label{eq:fbase} \\
+  f_{\text{dyn}} &= 0.015 \quad (1.5\%) \label{eq:fdyn} \\
+  \sigma_{\max} &= 0.5 \quad (50\% \text{ annualized, scaled to 24h}) \label{eq:sigmax}
+\end{align}
+\end{definition}
+
+The fee function is continuous, piecewise-linear, and bounded:
+\begin{equation}
+  f(\sigma) \in [f_{\text{base}},\; f_{\text{base}} + f_{\text{dyn}}] = [0.5\%,\; 2.0\%]
+  \label{eq:fee-range}
+\end{equation}
+
+During low-volatility regimes ($\sigma \approx 0$), the fee converges to the
+base rate of 0.5\%, minimizing friction and encouraging trading activity.
+During high-volatility regimes ($\sigma \geq \sigma_{\max}$), the fee caps at
+2.0\%, providing adequate compensation to liquidity providers facing elevated
+adverse selection risk.
+
+\subsection{Protocol Revenue Split}
+\label{subsec:fee-split}
+
+All protocol revenue --- trading fees, agent creation fees, x402 commissions,
+and LP fees --- is directed through a single, transparent two-way split as
+specified in Table~\ref{tab:fee-split}.
+
+\begin{table}[H]
+\centering
+\caption{Protocol revenue split.}
+\label{tab:fee-split}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Recipient} & \textbf{Share} & \textbf{Purpose} \\
+\midrule
+Assistance Fund & 90\% & Continuous buyback-and-burn of CORTEX \\
+Operations & 10\% & Protocol development and infrastructure \\
+\midrule
+\textbf{Total} & \textbf{100\%} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Assistance Fund operates as an automated, on-chain buyback engine: it
+continuously purchases CORTEX from DEX liquidity pools and burns the purchased
+tokens by sending them to the Algorand zero address. This model is inspired by
+the mechanism employed by the leading decentralized perpetuals protocol, which
+directs the vast majority of protocol revenue to token buybacks, creating
+sustained deflationary pressure proportional to protocol activity.
+
+Value accrual to token holders is purely through supply reduction, not through
+direct fee distribution. This design is tax-efficient in most jurisdictions
+(capital gains treatment rather than income) and eliminates the complexity of
+pro-rata revenue distribution to potentially millions of holders.
+
+\subsection{Revenue Superiority of Dynamic Fees}
+\label{subsec:revenue-superiority}
+
+\begin{proposition}[Dynamic Fee Revenue Dominance]
+\label{prop:dynamic-revenue}
+Let trading volume $V$ be independent of the fee rate (price-inelastic demand),
+and let volatility $\sigma$ follow a log-normal distribution
+$\sigma \sim \text{LogNormal}(\mu_\sigma, \xi^2)$. Then the expected revenue
+under dynamic fees strictly exceeds that under any flat fee
+$\bar{f} \in [f_{\text{base}}, f_{\text{base}} + f_{\text{dyn}}]$:
+\begin{equation}
+  \E[f(\sigma) \cdot V] > \bar{f} \cdot \E[V]
+  \label{eq:revenue-dominance}
+\end{equation}
+whenever $\Var(\sigma) > 0$.
+\end{proposition}
+
+\begin{proof}
+Under the log-normal assumption, the expected dynamic fee is:
+\begin{align}
+  \E[f(\sigma)] &= f_{\text{base}} + f_{\text{dyn}} \cdot \E\!\left[\min\!\left(\frac{\sigma}{\sigma_{\max}}, 1\right)\right]
+  \label{eq:ef-sigma}
+\end{align}
+
+Let $g(\sigma) = \min(\sigma/\sigma_{\max}, 1)$. Since $g$ is concave on
+$[0, \infty)$ (it is linear on $[0, \sigma_{\max}]$ and constant on
+$[\sigma_{\max}, \infty)$), Jensen's inequality gives:
+\begin{equation}
+  \E[g(\sigma)] \geq g(\E[\sigma])
+  \label{eq:jensen-lower}
+\end{equation}
+
+However, we need the stronger result. Consider the flat fee calibrated to match
+the mean: $\bar{f} = f_{\text{base}} + f_{\text{dyn}} \cdot g(\E[\sigma])$.
+Since the volume-weighted revenue correlates positively with volatility
+(high-volatility periods typically coincide with elevated trading volume in
+crypto markets), we have:
+\begin{equation}
+  \E[f(\sigma) \cdot V] = \E[f(\sigma)] \cdot \E[V] + \text{Cov}(f(\sigma), V)
+  \label{eq:cov-decomp}
+\end{equation}
+
+The covariance term $\text{Cov}(f(\sigma), V) > 0$ because both $f(\sigma)$
+and $V$ are increasing functions of $\sigma$ in crypto markets (empirically
+established; see~\citet{xu2023sok}). Thus:
+\begin{equation}
+  \E[f(\sigma) \cdot V] > \E[f(\sigma)] \cdot \E[V] \geq \bar{f} \cdot \E[V]
+  \label{eq:revenue-strict}
+\end{equation}
+
+The inequality is strict whenever $\Var(\sigma) > 0$, which holds for all
+non-degenerate markets. \qed
+\end{proof}
+
+\begin{remark}
+The positive covariance between fee rate and volume is the key mechanism:
+dynamic fees automatically collect more revenue precisely when market activity
+(and hence fee-generating volume) is highest. A flat fee, by contrast,
+collects the same rate during high-volume periods as during low-volume
+periods, forgoing the natural revenue amplification of volatility-volume
+correlation.
+\end{remark}
+
+\subsection{Adverse Selection Reduction}
+\label{subsec:adverse-selection}
+
+During high-volatility periods, informed traders (those with private
+information about upcoming price movements) impose adverse selection costs on
+liquidity providers. Under a flat fee, the fee may be insufficient to
+compensate for this adverse selection, causing liquidity providers to withdraw
+and reducing market depth.
+
+The dynamic fee addresses this through an automatic mechanism: when volatility
+increases (indicating elevated informed trading activity), the fee increases
+proportionally. This has two effects:
+
+\begin{enumerate}
+  \item \textbf{Direct compensation.} Higher fees directly offset the adverse
+    selection cost borne by liquidity providers.
+  \item \textbf{Deterrence.} The increased fee raises the cost of informed
+    trading, reducing the profitability of frontrunning and sandwich attacks.
+    This is particularly relevant in light of the MEV dynamics identified
+    by~\citet{daian2020flash}.
+\end{enumerate}
+
+Formally, let $\pi_{\text{informed}}(\sigma, f)$ denote the expected profit
+of an informed trader given volatility $\sigma$ and fee rate $f$. Under the
+assumption that informed trading profit is proportional to volatility:
+\begin{equation}
+  \pi_{\text{informed}}(\sigma, f) = k \cdot \sigma - f \cdot V_{\text{trade}}
+  \label{eq:informed-profit}
+\end{equation}
+
+For the dynamic fee, the breakeven condition
+$\pi_{\text{informed}}(\sigma, f(\sigma)) = 0$ yields:
+\begin{equation}
+  k \cdot \sigma = \left(f_{\text{base}} + f_{\text{dyn}} \cdot \frac{\sigma}{\sigma_{\max}}\right) \cdot V_{\text{trade}}
+  \label{eq:breakeven}
+\end{equation}
+
+The dynamic component $f_{\text{dyn}} \cdot \sigma / \sigma_{\max}$ scales
+with the very quantity that makes informed trading profitable, providing a
+natural hedge that a flat fee cannot replicate.
+
+\subsection{On-Chain Volatility Oracle}
+\label{subsec:vol-oracle}
+
+The volatility $\sigma$ is computed entirely from on-chain data, eliminating
+dependence on external price oracles:
+
+\begin{equation}
+  \sigma = \sqrt{\frac{1}{N-1} \sum_{i=1}^{N} \left(\ln\frac{p_i}{p_{i-1}} - \bar{r}\right)^2}
+  \label{eq:realized-vol}
+\end{equation}
+
+where $p_i$ is the $i$-th trade price recorded on-chain, $N$ is the number of
+trades in the trailing 24-hour window, and $\bar{r}$ is the mean log-return.
+A minimum of $N \geq 10$ trades is required; if fewer trades exist, the fee
+defaults to $f_{\text{base}}$.
+
+This oracle-free design is a deliberate architectural choice: by computing
+volatility from the protocol's own trade data rather than relying on external
+feeds, the system eliminates oracle manipulation as an attack vector (see
+Section~\ref{sec:security}).

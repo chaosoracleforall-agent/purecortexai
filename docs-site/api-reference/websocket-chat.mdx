@@ -1,15 +1,17 @@
 ---
 title: "WebSocket Chat"
-description: "Bidirectional WebSocket connection for real-time AI agent chat using Dual-Brain consensus."
+description: "Bidirectional WebSocket connection for real-time AI agent chat using Tri-Brain consensus."
 ---
 
-Connect to the PureCortex WebSocket endpoint for real-time, streaming conversations with the AI agent system. Messages are processed through the **Dual-Brain consensus** mechanism, where two independent AI models evaluate your query and converge on a response.
+Connect to the PURECORTEX WebSocket endpoint for real-time, streaming conversations with the AI agent system. Messages are processed through the **Tri-Brain consensus** mechanism, where three independent AI models (Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5) evaluate your query and converge on a response via 2-of-3 majority agreement.
 
 ## Endpoint
 
 ```
-wss://purecortex.ai/ws/chat
+wss://purecortex.ai/ws/chat?session={session_token}
 ```
+
+Create `session_token` first by calling `POST https://purecortex.ai/api/chat/session` with a valid `X-API-Key`.
 
 ## Connection Details
 
@@ -22,19 +24,27 @@ wss://purecortex.ai/ws/chat
 
 ## Message Flow
 
-1. **Client** connects to `wss://purecortex.ai/ws/chat`
-2. **Server** sends a welcome message confirming the connection
-3. **Client** sends a text message (max 4096 characters)
-4. **Server** responds with the Dual-Brain consensus result as a text message
-5. Repeat steps 3-4 for continued conversation
+1. **Client** requests a chat session from `POST /api/chat/session`
+2. **Client** connects to `wss://purecortex.ai/ws/chat?session=...`
+3. **Server** sends a welcome message confirming the connection
+4. **Client** sends a text message (max 4096 characters)
+5. **Server** responds with the Tri-Brain consensus result as a text message
+6. Repeat steps 4-5 for continued conversation
 
 ## JavaScript Example
 
 ```javascript
-const ws = new WebSocket("wss://purecortex.ai/ws/chat");
+const session = await fetch("https://purecortex.ai/api/chat/session", {
+  method: "POST",
+  headers: {
+    "X-API-Key": process.env.PURECORTEX_API_KEY!,
+  },
+}).then((r) => r.json());
+
+const ws = new WebSocket(`wss://purecortex.ai/ws/chat?session=${session.session_token}`);
 
 ws.onopen = () => {
-  console.log("Connected to PureCortex");
+  console.log("Connected to PURECORTEX");
   ws.send("What is the current CORTEX burn rate?");
 };
 
@@ -55,10 +65,20 @@ ws.onclose = (event) => {
 
 ```python
 import asyncio
+import os
+import httpx
 import websockets
 
 async def chat():
-    uri = "wss://purecortex.ai/ws/chat"
+    async with httpx.AsyncClient() as client:
+        session = await client.post(
+            "https://purecortex.ai/api/chat/session",
+            headers={"X-API-Key": os.environ["PURECORTEX_API_KEY"]},
+        )
+        session.raise_for_status()
+        session_token = session.json()["session_token"]
+
+    uri = f"wss://purecortex.ai/ws/chat?session={session_token}"
     async with websockets.connect(uri) as ws:
         # Send a message
         await ws.send("What is the current CORTEX burn rate?")
@@ -68,7 +88,7 @@ async def chat():
         print(f"Response: {response}")
 
         # Continue the conversation
-        await ws.send("How does the Dual-Brain consensus work?")
+        await ws.send("How does the Tri-Brain consensus work?")
         response = await ws.recv()
         print(f"Response: {response}")
 

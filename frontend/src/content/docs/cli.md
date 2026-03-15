@@ -1,11 +1,11 @@
 ---
 title: CLI Documentation
-description: PureCortex command-line interface for administrative control and monitoring.
+description: PURECORTEX command-line interface for administrative control and monitoring.
 ---
 
-# PureCortex CLI
+# PURECORTEX CLI
 
-The PureCortex CLI (`pcx`) provides administrative control and monitoring for the platform.
+The PURECORTEX CLI (`pcx`) provides administrative control and monitoring for the platform.
 
 ## Installation
 
@@ -67,7 +67,7 @@ pcx status
 
 **Output:**
 ```
-PureCortex Status
+PURECORTEX Status
 ├── API: ✓ Operational
 ├── Orchestrator: ✓ Active
 ├── Algod: ✓ Syncing (testnet)
@@ -128,7 +128,7 @@ pcx transparency
 
 **Output:**
 ```
-PureCortex Transparency Report
+PURECORTEX Transparency Report
 ├── Total Supply: 10,000,000,000,000,000 CORTEX
 ├── Circulating: 3,100,000,000,000,000 CORTEX
 ├── Burned: 0 CORTEX

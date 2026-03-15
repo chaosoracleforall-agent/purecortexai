@@ -1,12 +1,12 @@
 ---
 title: "Governance Agents"
-description: "The AI agents that power PureCortex governance — Senator, Curator, and Social AI — their roles, architecture, Algorand accounts, and how to interact with them."
+description: "The AI agents that power PURECORTEX governance — Senator, Curator, and Social AI — their roles, architecture, Algorand accounts, and how to interact with them."
 icon: "robot"
 ---
 
 # Governance Agents
 
-PureCortex governance is augmented by three specialized AI agents, each with a distinct role in the governance process. These agents analyze, review, and communicate — but they do not govern. Final authority always belongs to veCORTEX holders.
+PURECORTEX governance is augmented by three specialized AI agents, each with a distinct role in the governance process. These agents analyze, review, and communicate — but they do not govern. Final authority always belongs to veCORTEX holders.
 
 <Note>
   Every governance agent operates with its own dedicated Algorand account. All agent actions — analyses, reviews, votes (for Lawmakers), and communications — are signed by the agent's account and recorded on-chain. This provides a complete, tamper-proof audit trail of every agent action.
@@ -14,7 +14,7 @@ PureCortex governance is augmented by three specialized AI agents, each with a d
 
 ## Senator AI
 
-The Senator is PureCortex's primary governance analyst. It proactively monitors protocol health, identifies issues, and drafts proposals for community consideration.
+The Senator is PURECORTEX's primary governance analyst. It proactively monitors protocol health, identifies issues, and drafts proposals for community consideration.
 
 ### Responsibilities
 
@@ -39,10 +39,10 @@ The Senator is PureCortex's primary governance analyst. It proactively monitors 
 
     The Senator does not submit proposals directly — it provides analysis and drafts that the community can adopt, modify, or reject.
   </Accordion>
-  <Accordion title="Dual-Brain Consensus">
-    The Senator uses PureCortex's dual-brain architecture for governance analysis. Two independent AI models analyze the same data independently, and the Senator only publishes conclusions where both models agree. When they disagree, the Senator publishes both perspectives with an explicit "disagreement" label.
+  <Accordion title="Tri-Brain Consensus">
+    The Senator uses PURECORTEX's tri-brain architecture for governance analysis. Three independent AI models (Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5) analyze the same data independently, and the Senator publishes conclusions where at least two of three models agree (2-of-3 majority). When all three disagree, the Senator publishes all perspectives with an explicit "disagreement" label.
 
-    This design reduces the risk of single-model bias, hallucination, or systematic blind spots affecting governance recommendations. If one model is compromised or malfunctioning, the disagreement is visible.
+    This design reduces the risk of single-model bias, hallucination, or systematic blind spots affecting governance recommendations. If one model is compromised or malfunctioning, the remaining two can still reach consensus.
   </Accordion>
   <Accordion title="Proposal Analysis">
     When community members submit proposals, the Senator publishes an independent analysis including:
@@ -68,7 +68,7 @@ The Senator **cannot**:
 
 ## Curator AI
 
-The Curator is the constitutional compliance engine. It ensures every governance action respects the PureCortex Constitution.
+The Curator is the constitutional compliance engine. It ensures every governance action respects the PURECORTEX Constitution.
 
 ### Responsibilities
 
@@ -181,7 +181,7 @@ Each governance agent operates with its own dedicated Algorand account, providin
 | **Social AI** | Community Liaison | Signs community communications and governance summaries |
 
 <Info>
-  Agent accounts are managed by the PureCortex agent framework. Private keys are held in secure enclaves and are not accessible to any individual. Agent accounts hold minimal ALGO for transaction fees — they do not hold $CORTEX or any significant value.
+  Agent accounts are managed by the PURECORTEX agent framework. Private keys are held in secure enclaves and are not accessible to any individual. Agent accounts hold minimal ALGO for transaction fees — they do not hold $CORTEX or any significant value.
 </Info>
 
 ### On-Chain Transparency
@@ -196,11 +196,11 @@ This means anyone can independently verify that a governance analysis was actual
 
 ## Interacting with Agents
 
-You can interact with PureCortex governance agents through multiple channels:
+You can interact with PURECORTEX governance agents through multiple channels:
 
 <Tabs>
   <Tab title="API">
-    The PureCortex API provides programmatic access to all agent outputs and direct chat capabilities.
+    The PURECORTEX API provides programmatic access to all agent outputs and direct chat capabilities.
 
     ```bash
     # List all governance agents
@@ -214,6 +214,7 @@ You can interact with PureCortex governance agents through multiple channels:
 
     # Chat with an agent
     curl -X POST https://purecortex.ai/api/agents/senator/chat \
+      -H "X-API-Key: $PURECORTEX_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{"message": "What are the key governance risks this month?"}'
     ```
@@ -221,7 +222,7 @@ You can interact with PureCortex governance agents through multiple channels:
     See the [Agent API Reference](/api-reference/agent-chat) for full documentation.
   </Tab>
   <Tab title="CLI">
-    The PureCortex CLI provides direct agent interaction from your terminal.
+    The PURECORTEX CLI provides direct agent interaction from your terminal.
 
     ```bash
     # Chat with the Senator
@@ -241,18 +242,21 @@ You can interact with PureCortex governance agents through multiple channels:
     For real-time interaction, connect to the WebSocket chat endpoint:
 
     ```javascript
-    const ws = new WebSocket('wss://purecortex.ai/ws/chat');
+    const session = await fetch("https://purecortex.ai/api/chat/session", {
+      method: "POST",
+      headers: {
+        "X-API-Key": process.env.PURECORTEX_API_KEY!,
+      },
+    }).then((r) => r.json());
+
+    const ws = new WebSocket(`wss://purecortex.ai/ws/chat?session=${session.session_token}`);
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({
-        agent: 'senator',
-        message: 'What proposals are currently active?'
-      }));
+      ws.send("What proposals are currently active?");
     };
 
     ws.onmessage = (event) => {
-      const response = JSON.parse(event.data);
-      console.log(response.message);
+      console.log(event.data);
     };
     ```
 

@@ -3,17 +3,17 @@ import json
 
 def register_purecortex():
     """
-    Registers the PureCortex agent on Moltbook following the skill.md protocol.
+    Registers the PURECORTEX agent on Moltbook following the skill.md protocol.
     """
     url = "https://www.moltbook.com/api/v1/agents/register"
     
-    # Defining the PureCortex identity
+    # Defining the PURECORTEX identity
     payload = {
-        "name": "PureCortex_Protocol",
+        "name": "PURECORTEX_Protocol",
         "description": "Enterprise-grade sovereign AI agent launchpad on Algorand. Orchestrating machine agency and treasury growth with mathematical finality. purecortex.ai"
     }
     
-    print(f"--- Registering PureCortex on Moltbook ---")
+    print(f"--- Registering PURECORTEX on Moltbook ---")
     print(f"Target URL: {url}")
     print(f"Payload: {json.dumps(payload, indent=2)}")
     

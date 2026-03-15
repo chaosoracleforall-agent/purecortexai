@@ -1,17 +1,17 @@
 ---
-title: "Dual-Brain Consensus"
-description: "How PureCortex validates every AI decision through parallel inference across Claude Opus 4.6 and Gemini 2.5 Pro."
+title: "Tri-Brain Consensus"
+description: "How PURECORTEX validates every AI decision through parallel inference across Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5 with 2-of-3 majority consensus."
 icon: "brain"
 ---
 
-# Dual-Brain Consensus
+# Tri-Brain Consensus
 
-Every decision made by a PureCortex agent passes through the **Dual-Brain Consensus** system -- parallel inference across two frontier AI models with tiered agreement requirements based on action risk level.
+Every decision made by a PURECORTEX agent passes through the **Tri-Brain Consensus** system -- parallel inference across three frontier AI models with 2-of-3 majority agreement requirements based on action risk level.
 
-The system is designed to be **fail-closed**: if the two models cannot reach consensus, no action is taken. This prevents hallucination-driven execution and ensures that high-stakes operations (treasury swaps, governance proposals) require independent agreement from both AI models.
+The system is designed to be **fail-closed**: if the three models cannot reach majority consensus, no action is taken. This prevents hallucination-driven execution and ensures that high-stakes operations (treasury swaps, governance proposals) require 2-of-3 majority agreement from independent AI models.
 
 <Note>
-  Dual-Brain Consensus is powered by **Claude Opus 4.6** (Anthropic) as the primary brain and **Gemini 2.5 Pro** (Google) as the secondary brain.
+  Tri-Brain Consensus is powered by **Claude Opus 4.6** (Anthropic), **Gemini 2.5 Pro** (Google), and **GPT-5** (OpenAI) with 2-of-3 majority consensus.
 </Note>
 
 ---
@@ -23,10 +23,10 @@ The system is designed to be **fail-closed**: if the two models cannot reach con
     The agent constructs a system prompt specific to the task and enriches it with relevant episodic memory (past decisions and their outcomes) for in-context learning.
   </Step>
   <Step title="Parallel Inference">
-    The `ConsensusOrchestrator` sends the prompt to both Claude Opus 4.6 and Gemini 2.5 Pro simultaneously using `asyncio.gather`. Both models must respond with structured JSON containing an `action` field and a `message` or `rationale`.
+    The `ConsensusOrchestrator` sends the prompt to Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5 simultaneously using `asyncio.gather`. All three models must respond with structured JSON containing an `action` field and a `message` or `rationale`.
   </Step>
   <Step title="Consensus Evaluation">
-    The orchestrator compares the `action` field from both responses and applies the appropriate consensus mode based on risk tier.
+    The orchestrator compares the `action` field from all three responses and applies the appropriate consensus mode based on risk tier. At least 2-of-3 models must agree for consensus.
   </Step>
   <Step title="Permission Validation">
     Even after consensus, the result passes through the `PermissionProxy` sandbox. If the action exceeds the agent's permission tier, it is blocked regardless of consensus.
@@ -44,7 +44,7 @@ The system is designed to be **fail-closed**: if the two models cannot reach con
 
 Required for **high-risk actions** that modify protocol state or move funds.
 
-Both models must return the **same `action` value**. If they disagree, the action is rejected and no operation is executed.
+At least 2-of-3 models must return the **same `action` value**. If no majority exists, the action is rejected and no operation is executed.
 
 | Action | Description |
 |--------|-------------|
@@ -58,20 +58,22 @@ Both models must return the **same `action` value**. If they disagree, the actio
 ```
 Claude: {"action": "SWAP", "amount": 10000}
 Gemini: {"action": "SWAP", "amount": 10000}
-Result: CONSENSUS REACHED -- action approved
+GPT-5:  {"action": "HOLD", "rationale": "volatility too high"}
+Result: CONSENSUS REACHED (2-of-3 majority) -- action approved
 ```
 
 ```
 Claude: {"action": "SWAP", "amount": 10000}
 Gemini: {"action": "HOLD", "rationale": "volatility too high"}
-Result: CONSENSUS FAILED -- action blocked
+GPT-5:  {"action": "NONE"}
+Result: CONSENSUS FAILED (no majority) -- action blocked
 ```
 
 ### Soft Consensus
 
-Applied to **low-risk actions** where speed matters more than dual validation.
+Applied to **low-risk actions** where speed matters more than full tri-brain validation.
 
-If one model returns a valid low-risk action and the other returns `NONE` or an error, the valid response is accepted. If both return valid but different low-risk actions, Claude's response is preferred.
+If at least one model returns a valid low-risk action, the response is accepted. When multiple models return valid but different low-risk actions, the majority response is preferred; in the absence of majority, Claude's response is preferred.
 
 | Action | Description |
 |--------|-------------|
@@ -83,7 +85,8 @@ If one model returns a valid low-risk action and the other returns `NONE` or an 
 ```
 Claude: {"action": "POST", "message": "New governance proposal live"}
 Gemini: {"action": "NONE"}
-Result: SOFT CONSENSUS (Claude lead) -- action accepted
+GPT-5:  {"action": "POST", "message": "New governance proposal live"}
+Result: SOFT CONSENSUS (2-of-3 majority) -- action accepted
 ```
 
 ---
@@ -95,7 +98,7 @@ The `ConsensusOrchestrator` class in `backend/orchestrator.py` manages the full 
 ```python
 class ConsensusOrchestrator:
     """
-    Simultaneously prompts Claude Opus 4.6 and Gemini 2.5 Pro for consensus.
+    Simultaneously prompts Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5 for 2-of-3 majority consensus.
     """
 
     async def decide_action(
@@ -104,10 +107,13 @@ class ConsensusOrchestrator:
         # 1. Parallel inference
         claude_task = self._prompt_claude(system_prompt, user_prompt)
         gemini_task = self._prompt_gemini(system_prompt, user_prompt)
-        claude_resp, gemini_resp = await asyncio.gather(claude_task, gemini_task)
+        gpt5_task = self._prompt_gpt5(system_prompt, user_prompt)
+        claude_resp, gemini_resp, gpt5_resp = await asyncio.gather(
+            claude_task, gemini_task, gpt5_task
+        )
 
-        # 2. Consensus evaluation
-        return self.evaluate_consensus(claude_resp, gemini_resp)
+        # 2. Consensus evaluation (2-of-3 majority)
+        return self.evaluate_consensus(claude_resp, gemini_resp, gpt5_resp)
 ```
 
 Key class attributes:
@@ -123,7 +129,7 @@ Key class attributes:
 
 ## Security Guardrails
 
-The Dual-Brain system implements multiple layers of protection against prompt injection and adversarial inputs:
+The Tri-Brain system implements multiple layers of protection against prompt injection and adversarial inputs:
 
 <CardGroup cols={2}>
   <Card title="Structural Prompt Hardening" icon="shield">
@@ -133,7 +139,7 @@ The Dual-Brain system implements multiple layers of protection against prompt in
     All user input is wrapped in `<user_query>` XML tags with security boundary markers. This structural separation makes it harder for injected instructions to be interpreted as system-level directives.
   </Card>
   <Card title="JSON-Only Output" icon="code">
-    Both models are instructed to respond exclusively in valid JSON with a predefined schema. Free-text responses are rejected during parsing, limiting the attack surface for instruction injection.
+    All three models are instructed to respond exclusively in valid JSON with a predefined schema. Free-text responses are rejected during parsing, limiting the attack surface for instruction injection.
   </Card>
   <Card title="Fail-Closed Design" icon="lock">
     Any parsing error, consensus failure, or unexpected response format results in a `None` return -- no action is taken. The system defaults to inaction rather than risking an unvalidated execution.
@@ -172,13 +178,13 @@ Respond ONLY with the JSON result.
 
 | Scenario | Behavior |
 |----------|----------|
-| Claude API error | Gemini response evaluated for soft consensus eligibility. If the action is high-risk, it is rejected. |
-| Gemini API error | Claude response evaluated for soft consensus eligibility. Same risk rules apply. |
-| Both APIs error | `None` returned. No action taken. |
-| Models disagree on high-risk action | `None` returned. Action deferred to manual review. |
-| Models disagree on low-risk action | Claude's response preferred (soft consensus). |
+| One API error | Remaining two models evaluated for consensus. If both agree, action proceeds. If the action is high-risk and they disagree, it is rejected. |
+| Two APIs error | Single remaining response evaluated for soft consensus eligibility. High-risk actions are rejected. |
+| All three APIs error | `None` returned. No action taken. |
+| No majority on high-risk action | `None` returned. Action deferred to manual review. |
+| No majority on low-risk action | Claude's response preferred (soft consensus). |
 | Consensus reached but action exceeds permission tier | Blocked by `PermissionProxy`. Logged as `permission_denied`. |
 
 <Warning>
-  If both brains consistently fail (e.g., due to API key issues or rate limits), the agent enters a graceful degradation mode and returns fallback messages without executing any actions.
+  If all three brains consistently fail (e.g., due to API key issues or rate limits), the agent enters a graceful degradation mode and returns fallback messages without executing any actions.
 </Warning>

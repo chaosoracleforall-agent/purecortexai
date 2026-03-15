@@ -1,4 +1,4 @@
-# Brand Strategy: PureCortex
+# Brand Strategy: PURECORTEX
 
 ## **1. The Vision**
 To be the premier technical infrastructure for sovereign AI agents. We represent the "Modern Tech" standard of autonomous economic actors on Algorand.
@@ -6,7 +6,7 @@ To be the premier technical infrastructure for sovereign AI agents. We represent
 ## **2. Design Principles**
 - **Clarity:** Every pixel serves a purpose. No visual bloat.
 - **Modularity:** Architecture that reflects the composability of the Algorand network.
-- **Velocity:** High-fidelity animations that mirror the speed of dual-brain consensus.
+- **Velocity:** High-fidelity animations that mirror the speed of tri-brain consensus.
 
 ## **3. Visual Identity**
 - **Primary Mark:** Atomic Neuron (Neural Blue).

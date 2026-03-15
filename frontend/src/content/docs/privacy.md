@@ -1,16 +1,16 @@
 ---
 title: Privacy Policy
-description: PureCortex Privacy Policy — sovereign intelligence with minimal data collection.
+description: PURECORTEX Privacy Policy — sovereign intelligence with minimal data collection.
 ---
 
 # Privacy Policy
 
-PureCortex is designed for sovereign intelligence. We prioritize privacy through minimal data collection.
+PURECORTEX is designed for sovereign intelligence. We prioritize privacy through minimal data collection.
 
 ## 1. Data Collection
 
 - **Blockchain Data:** We do not collect private keys. All transactions are public on the Algorand blockchain.
-- **AI Interactions:** Chat logs via the Neural Link are processed in memory by the dual-brain (Claude/Gemini) and are not stored permanently by the creators of this interface.
+- **AI Interactions:** Chat logs via the Neural Link are processed in memory by the tri-brain (Claude/Gemini/GPT-5) and are not stored permanently by the creators of this interface.
 - **Cookies:** We use minimal local storage to maintain your wallet session.
 
 ## 2. Third Parties
@@ -23,4 +23,4 @@ Your interactions and transactions are never sold, rented, or monetized for adve
 
 ---
 
-*PureCortex: Privacy is a component of Sovereignty.*
+*PURECORTEX: Privacy is a component of Sovereignty.*

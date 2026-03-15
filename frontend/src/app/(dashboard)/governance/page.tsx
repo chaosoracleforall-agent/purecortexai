@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scale, FileText, Shield, ChevronDown, ChevronRight, Cpu, Clock, Users, Vote, AlertTriangle, Sparkles } from 'lucide-react';
+import { Scale, FileText, Shield, ChevronDown, ChevronRight, Cpu, Clock, Users, Vote, AlertTriangle, Sparkles, ExternalLink, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import { GOVERNANCE_APP_ID } from '@/lib/algorand';
+import { fetchJson } from '@/lib/api';
 
 const PREAMBLE_SECTIONS = [
-  { title: 'Sovereign Agency', text: 'Autonomous AI agents operating within PureCortex are recognized as sovereign economic actors, possessing defined rights and operating within clearly established boundaries. Each agent, upon its creation and tokenization through the Protocol, acquires the capacity to engage in economic activity, hold assets, and interact with other agents and users on terms governed by this Constitution.' },
+  { title: 'Sovereign Agency', text: 'Autonomous AI agents operating within PURECORTEX are recognized as sovereign economic actors, possessing defined rights and operating within clearly established boundaries. Each agent, upon its creation and tokenization through the Protocol, acquires the capacity to engage in economic activity, hold assets, and interact with other agents and users on terms governed by this Constitution.' },
   { title: 'Ethical Operation', text: 'All AI agents must operate transparently, providing honest representations of their capabilities, limitations, and the basis for their actions. Agents shall not engage in deceptive practices, manipulate markets through artificial means, or exploit information asymmetries to the detriment of users or the ecosystem.' },
   { title: 'Responsible Value Creation', text: 'Agents generating economic value through their operations bear a responsibility to share that value with the ecosystem that enables their existence. Revenue sharing, composability contributions, and fee structures exist to ensure that value creation benefits all participants.' },
-  { title: 'Safety First (Fail-Closed)', text: 'In situations of uncertainty, ambiguity, or potential harm, agents and protocol mechanisms shall default to inaction rather than action. The Dual-Brain Consensus requires unanimous agreement before any critical operation; disagreement triggers a halt, never an assumption of approval.' },
+  { title: 'Safety First (Fail-Closed)', text: 'In situations of uncertainty, ambiguity, or potential harm, agents and protocol mechanisms shall default to inaction rather than action. The Tri-Brain Consensus requires 2-of-3 majority agreement before any critical operation; disagreement triggers a halt, never an assumption of approval.' },
   { title: 'Governance by Participants', text: 'Users govern the Protocol through their veCORTEX-weighted voting power, either directly or through delegation to Lawmaker Agents. The Senator AI proposes governance changes; users and their agents decide. No single entity may unilaterally alter the fundamental principles of this Constitution.' },
 ];
 
@@ -31,16 +33,98 @@ const PROPOSAL_TYPES = [
 
 const LIFECYCLE_STEPS = [
   { icon: Sparkles, label: 'Draft', desc: 'Senator AI analyzes ecosystem state', duration: '' },
-  { icon: FileText, label: 'Submit', desc: 'Proposal stored on-chain', duration: '' },
+  { icon: FileText, label: 'Submit', desc: 'Proposal stored in the live governance service', duration: '' },
   { icon: Clock, label: 'Discuss', desc: '48-hour discussion period', duration: '48h' },
   { icon: Vote, label: 'Vote', desc: '5-day veCORTEX-weighted voting', duration: '5 days' },
   { icon: Shield, label: 'Timelock', desc: '24h-7d cooling period', duration: 'Variable' },
-  { icon: Scale, label: 'Execute', desc: 'Auto-executed via SovereignTreasury', duration: '' },
+  { icon: Scale, label: 'Execute', desc: 'On-chain execution rollout follows contract readiness', duration: '' },
 ];
+
+type GovernanceTab = 'constitution' | 'proposals' | 'agents';
+
+interface GovernanceProposalSummary {
+  id: number;
+  title: string;
+  type: string;
+  status: string;
+  proposer: string;
+  created_at: string;
+  votes_for: number;
+  votes_against: number;
+  voter_count: number;
+  curator_reviewed: boolean;
+}
+
+interface GovernanceOverview {
+  total_proposals: number;
+  active_proposals: number;
+  voting_proposals: number;
+  passed_proposals: number;
+  rejected_proposals: number;
+  total_votes: number;
+}
+
+interface GovernanceProposalListResponse {
+  total: number;
+  proposals: GovernanceProposalSummary[];
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  review: 'text-yellow-500 bg-yellow-500/10',
+  active: 'text-yellow-500 bg-yellow-500/10',
+  voting: 'text-blue-500 bg-blue-500/10',
+  passed: 'text-emerald-500 bg-emerald-500/10',
+  rejected: 'text-red-500 bg-red-500/10',
+  executed: 'text-purple-500 bg-purple-500/10',
+  cancelled: 'text-gray-500 bg-gray-500/10',
+};
+
+function formatStatusLabel(status: string): string {
+  return status.replace(/_/g, ' ');
+}
+
+function truncateValue(value: string): string {
+  if (value.length <= 14) {
+    return value;
+  }
+  return `${value.slice(0, 8)}...${value.slice(-4)}`;
+}
 
 export default function GovernancePage() {
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'constitution' | 'proposals' | 'agents'>('constitution');
+  const [activeTab, setActiveTab] = useState<GovernanceTab>('constitution');
+  const [proposals, setProposals] = useState<GovernanceProposalSummary[]>([]);
+  const [overview, setOverview] = useState<GovernanceOverview | null>(null);
+  const [loadingProposals, setLoadingProposals] = useState(false);
+  const [proposalError, setProposalError] = useState<string | null>(null);
+  const [hasLoadedProposals, setHasLoadedProposals] = useState(false);
+
+  const loadProposals = useCallback(async () => {
+    setLoadingProposals(true);
+    setProposalError(null);
+
+    try {
+      const [overviewResp, proposalsResp] = await Promise.all([
+        fetchJson<GovernanceOverview>('/api/governance/overview'),
+        fetchJson<GovernanceProposalListResponse>('/api/governance/proposals'),
+      ]);
+      setOverview(overviewResp);
+      setProposals(proposalsResp.proposals);
+      setHasLoadedProposals(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load governance proposals';
+      setProposalError(message);
+    } finally {
+      setLoadingProposals(false);
+    }
+  }, []);
+
+  const handleTabChange = useCallback((tab: GovernanceTab) => {
+    setActiveTab(tab);
+    if (tab === 'proposals' && !hasLoadedProposals && !loadingProposals) {
+      void loadProposals();
+    }
+  }, [hasLoadedProposals, loadProposals, loadingProposals]);
 
   return (
     <div className="space-y-12">
@@ -64,7 +148,7 @@ export default function GovernancePage() {
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              onClick={() => handleTabChange(tab.key as GovernanceTab)}
               className={`flex items-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-all border-b-2 ${
                 activeTab === tab.key
                   ? 'border-[#007AFF] text-[#007AFF]'
@@ -149,7 +233,7 @@ export default function GovernancePage() {
               <h2 className="text-xl font-black uppercase tracking-tighter italic">Proposal Lifecycle</h2>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {LIFECYCLE_STEPS.map((step, i) => {
+                {LIFECYCLE_STEPS.map((step) => {
                   const Icon = step.icon;
                   return (
                     <div key={step.label} className="text-center space-y-3">
@@ -197,13 +281,149 @@ export default function GovernancePage() {
               </div>
             </section>
 
-            {/* Active Proposals */}
-            <section className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-8 text-center space-y-4">
-              <Vote className="w-12 h-12 text-gray-700 mx-auto" />
-              <h3 className="text-lg font-bold text-gray-400">No Active Proposals</h3>
-              <p className="text-sm text-gray-600 max-w-md mx-auto">
-                Governance launches with mainnet on March 31, 2026. The Senator AI will begin proposing protocol improvements after the first veCORTEX stakes are placed.
-              </p>
+            {/* Live Governance Proposals */}
+            <section className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-black uppercase tracking-tighter italic">Live Governance Proposals</h2>
+                  <p className="text-sm text-gray-500 max-w-2xl">
+                    Testnet governance currently uses the live backend governance service as the canonical source of truth.
+                    On-chain proposal mirroring remains a follow-up step once contract execution is ready.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => void loadProposals()}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 text-[10px] font-mono uppercase tracking-widest text-gray-400 hover:text-white hover:border-[#007AFF]/40 transition-all"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingProposals ? 'animate-spin text-[#007AFF]' : ''}`} />
+                    Refresh
+                  </button>
+                  <a
+                    href={`https://testnet.explorer.perawallet.app/application/${GOVERNANCE_APP_ID}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-[10px] font-mono text-[#007AFF] hover:underline"
+                  >
+                    View Contract <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+
+              {overview && !loadingProposals && (
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                  {[
+                    { label: 'Total', value: overview.total_proposals, tone: 'text-white' },
+                    { label: 'Review / Active', value: overview.active_proposals, tone: 'text-yellow-500' },
+                    { label: 'Voting', value: overview.voting_proposals, tone: 'text-[#007AFF]' },
+                    { label: 'Passed', value: overview.passed_proposals, tone: 'text-emerald-500' },
+                    { label: 'Total Votes', value: overview.total_votes, tone: 'text-purple-400' },
+                  ].map((item) => (
+                    <div key={item.label} className="bg-[#1A1A1A] border border-white/5 rounded-xl p-4 space-y-1">
+                      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{item.label}</div>
+                      <div className={`text-2xl font-black tracking-tighter italic ${item.tone}`}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {loadingProposals ? (
+                <div className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-8 flex items-center justify-center gap-3">
+                  <Loader2 className="w-5 h-5 text-[#007AFF] animate-spin" />
+                  <span className="text-sm text-gray-500">Loading live governance proposals...</span>
+                </div>
+              ) : proposalError ? (
+                <div className="bg-[#1A1A1A] border border-red-500/20 rounded-2xl p-8 text-center space-y-4">
+                  <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+                  <h3 className="text-lg font-bold text-red-400">Governance Feed Unavailable</h3>
+                  <p className="text-sm text-gray-500 max-w-md mx-auto">
+                    {proposalError}
+                  </p>
+                  <button
+                    onClick={() => void loadProposals()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#007AFF] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#0062CC] transition-all"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Retry
+                  </button>
+                </div>
+              ) : proposals.length === 0 ? (
+                <div className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-8 text-center space-y-4">
+                  <Vote className="w-12 h-12 text-gray-700 mx-auto" />
+                  <h3 className="text-lg font-bold text-gray-400">No Proposals Found</h3>
+                  <p className="text-sm text-gray-600 max-w-md mx-auto">
+                    The governance API is live, but no proposals have been submitted into the current testnet queue yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {proposals.map((p) => {
+                    const totalVotes = p.votes_for + p.votes_against;
+                    const yesPct = totalVotes > 0 ? Math.round((p.votes_for / totalVotes) * 100) : 0;
+                    const noPct = totalVotes > 0 ? 100 - yesPct : 0;
+
+                    return (
+                      <div key={p.id} className="bg-[#1A1A1A] border border-white/5 rounded-xl p-6 space-y-4 hover:border-[#007AFF]/20 transition-all">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[#007AFF] font-mono text-sm font-bold">#{p.id}</span>
+                              <span className={`text-[9px] font-mono px-2 py-1 rounded-full uppercase tracking-widest ${STATUS_COLORS[p.status] || 'text-gray-500 bg-gray-500/10'}`}>
+                                {formatStatusLabel(p.status)}
+                              </span>
+                              <span className="text-[9px] font-mono text-gray-600 bg-white/5 px-2 py-1 rounded uppercase tracking-widest">
+                                {p.type}
+                              </span>
+                              {p.curator_reviewed && (
+                                <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded uppercase tracking-widest">
+                                  Curator Reviewed
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-lg font-bold text-white">{p.title}</h3>
+                            <p className="text-xs text-gray-500 font-mono">
+                              Proposer: {truncateValue(p.proposer)} | {new Date(p.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Vote bar */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1 text-emerald-500">
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span className="font-bold">{p.votes_for} YES</span>
+                              {totalVotes > 0 && <span className="text-gray-500 ml-1">({yesPct}%)</span>}
+                            </div>
+                            <div className="flex items-center gap-1 text-red-500">
+                              <span className="font-bold">{p.votes_against} NO</span>
+                              {totalVotes > 0 && <span className="text-gray-500 ml-1">({noPct}%)</span>}
+                              <XCircle className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                          <div className="h-2 bg-[#050505] rounded-full overflow-hidden flex">
+                            {totalVotes > 0 && (
+                              <>
+                                <div className="bg-emerald-500 transition-all" style={{ width: `${yesPct}%` }} />
+                                <div className="bg-red-500 transition-all" style={{ width: `${noPct}%` }} />
+                              </>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-gray-600 font-mono text-center">
+                            {p.voter_count} voter{p.voter_count !== 1 ? 's' : ''} participated
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="text-center">
+                <p className="text-[10px] text-gray-600 font-mono">
+                  Governance contract App ID {GOVERNANCE_APP_ID} remains visible on testnet, but the proposal feed above is sourced from the live governance API.
+                </p>
+              </div>
             </section>
           </motion.div>
         )}
@@ -221,7 +441,7 @@ export default function GovernancePage() {
                   <h2 className="text-xl font-black uppercase tracking-tighter italic">The Senator</h2>
                   <p className="text-[10px] font-mono text-[#007AFF] uppercase tracking-widest">Protocol Analyst & Governance Proposer</p>
                 </div>
-                <span className="ml-auto text-[9px] font-mono text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Launches at Mainnet</span>
+                <span className="ml-auto text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Active on Testnet</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -238,9 +458,9 @@ export default function GovernancePage() {
                   <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Constraints</div>
                   <ul className="text-sm text-gray-400 space-y-1">
                     <li>Cannot vote on its own proposals</li>
-                    <li>Dual-Brain consensus required (Claude + Gemini)</li>
+                    <li>Tri-Brain consensus required (Claude + Gemini + OpenAI)</li>
                     <li>Fail-closed: disagreement = no proposal</li>
-                    <li>All actions on-chain and auditable</li>
+                    <li>All proposal actions are logged and auditable</li>
                   </ul>
                 </div>
               </div>
@@ -256,7 +476,7 @@ export default function GovernancePage() {
                   <h2 className="text-xl font-black uppercase tracking-tighter italic">The Curator</h2>
                   <p className="text-[10px] font-mono text-emerald-500 uppercase tracking-widest">Constitutional Compliance Reviewer</p>
                 </div>
-                <span className="ml-auto text-[9px] font-mono text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Launches at Mainnet</span>
+                <span className="ml-auto text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Active on Testnet</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -299,7 +519,7 @@ export default function GovernancePage() {
 
               <div className="flex items-center gap-3 p-4 bg-[#050505] border border-yellow-500/20 rounded-xl">
                 <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
-                <p className="text-xs text-yellow-500/80">Delegation management launches with veCORTEX staking at mainnet. Stake CORTEX tokens and lock for 1 week to 4 years to receive voting power.</p>
+                <p className="text-xs text-yellow-500/80">Delegation management is not active on testnet yet. veCORTEX staking and delegated voting remain part of the later rollout plan.</p>
               </div>
             </section>
           </motion.div>

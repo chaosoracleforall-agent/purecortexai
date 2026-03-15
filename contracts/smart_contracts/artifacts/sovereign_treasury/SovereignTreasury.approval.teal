@@ -1,0 +1,611 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 0 1 8 32
+    bytecblock "buyback_balance" "total_burned" "total_revenue" "cortex_token" "operations_address" "buyback_pct" 0x151f7c75
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/sovereign_treasury/contract.py:33
+    // self.cortex_token = UInt64(0)
+    bytec_3 // "cortex_token"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:34
+    // self.operations_address = Bytes()
+    bytec 4 // "operations_address"
+    pushbytes 0x
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:35
+    // self.total_burned = UInt64(0)
+    bytec_1 // "total_burned"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:36
+    // self.total_revenue = UInt64(0)
+    bytec_2 // "total_revenue"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:37
+    // self.buyback_balance = UInt64(0)  # ALGO accumulated for buyback
+    bytec_0 // "buyback_balance"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:38
+    // self.buyback_pct = UInt64(90)  # 90% to buyback, 10% to operations
+    bytec 5 // "buyback_pct"
+    pushint 90
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/sovereign_treasury/contract.py:16
+    // class SovereignTreasury(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@19
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    assert
+    pushbytess 0x86e2e303 0x7b4f6ef9 0x7229b76d 0xb651f6da 0x8c1f264b 0xcfed26d2 0x2f955b2e 0x55d7eee9 0x8d6ff883 0x9717ad50 // method "initialize(uint64,address)void", method "process_revenue(pay)void", method "execute_burn(axfer)void", method "withdraw_buyback_algo(uint64)void", method "get_total_burned()uint64", method "get_total_revenue()uint64", method "get_buyback_balance()uint64", method "get_treasury_stats()byte[]", method "update_buyback_percentage(uint64)void", method "update_operations_address(address)void"
+    txna ApplicationArgs 0
+    match initialize process_revenue execute_burn withdraw_buyback_algo get_total_burned get_total_revenue get_buyback_balance get_treasury_stats update_buyback_percentage update_operations_address
+    err
+
+main___algopy_default_create@19:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.initialize[routing]() -> void:
+initialize:
+    // smart_contracts/sovereign_treasury/contract.py:44
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_3 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/sovereign_treasury/contract.py:51
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/sovereign_treasury/contract.py:52
+    // assert self.cortex_token == UInt64(0), "Already initialized"
+    intc_0 // 0
+    bytec_3 // "cortex_token"
+    app_global_get_ex
+    assert // check self.cortex_token exists
+    !
+    assert // Already initialized
+    // smart_contracts/sovereign_treasury/contract.py:54
+    // self.cortex_token = cortex_asset.id
+    bytec_3 // "cortex_token"
+    dig 2
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:55
+    // self.operations_address = ops_address.bytes
+    bytec 4 // "operations_address"
+    swap
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:57-63
+    // # Opt-in to CORTEX so the contract can receive tokens for burning
+    // itxn.AssetTransfer(
+    //     xfer_asset=cortex_asset,
+    //     asset_receiver=Global.current_application_address,
+    //     asset_amount=UInt64(0),
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/sovereign_treasury/contract.py:60
+    // asset_receiver=Global.current_application_address,
+    global CurrentApplicationAddress
+    // smart_contracts/sovereign_treasury/contract.py:61
+    // asset_amount=UInt64(0),
+    intc_0 // 0
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    // smart_contracts/sovereign_treasury/contract.py:57-58
+    // # Opt-in to CORTEX so the contract can receive tokens for burning
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/sovereign_treasury/contract.py:62
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/sovereign_treasury/contract.py:57-63
+    // # Opt-in to CORTEX so the contract can receive tokens for burning
+    // itxn.AssetTransfer(
+    //     xfer_asset=cortex_asset,
+    //     asset_receiver=Global.current_application_address,
+    //     asset_amount=UInt64(0),
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/sovereign_treasury/contract.py:44
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.process_revenue[routing]() -> void:
+process_revenue:
+    // smart_contracts/sovereign_treasury/contract.py:69
+    // @abimethod()
+    txn GroupIndex
+    intc_1 // 1
+    -
+    dup
+    gtxns TypeEnum
+    intc_1 // pay
+    ==
+    assert // transaction type is pay
+    // smart_contracts/sovereign_treasury/contract.py:82
+    // payment.receiver == Global.current_application_address
+    dup
+    gtxns Receiver
+    global CurrentApplicationAddress
+    ==
+    // smart_contracts/sovereign_treasury/contract.py:81-83
+    // assert (
+    //     payment.receiver == Global.current_application_address
+    // ), "Must pay treasury"
+    assert // Must pay treasury
+    // smart_contracts/sovereign_treasury/contract.py:84
+    // assert payment.amount > UInt64(0), "Zero revenue"
+    gtxns Amount
+    dup
+    assert // Zero revenue
+    // smart_contracts/sovereign_treasury/contract.py:87
+    // self.total_revenue = self.total_revenue + revenue
+    intc_0 // 0
+    bytec_2 // "total_revenue"
+    app_global_get_ex
+    assert // check self.total_revenue exists
+    dig 1
+    +
+    bytec_2 // "total_revenue"
+    swap
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:89-90
+    // # Calculate split
+    // buyback_amount = (revenue * self.buyback_pct) // UInt64(100)
+    intc_0 // 0
+    bytec 5 // "buyback_pct"
+    app_global_get_ex
+    assert // check self.buyback_pct exists
+    dig 1
+    *
+    pushint 100
+    /
+    // smart_contracts/sovereign_treasury/contract.py:91
+    // ops_amount = revenue - buyback_amount
+    swap
+    dig 1
+    -
+    dup
+    uncover 2
+    // smart_contracts/sovereign_treasury/contract.py:93-94
+    // # Track buyback balance
+    // self.buyback_balance = self.buyback_balance + buyback_amount
+    intc_0 // 0
+    bytec_0 // "buyback_balance"
+    app_global_get_ex
+    assert // check self.buyback_balance exists
+    +
+    bytec_0 // "buyback_balance"
+    swap
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:96-97
+    // # Send operations share immediately
+    // if ops_amount > UInt64(0):
+    bz process_revenue_after_if_else@4
+    // smart_contracts/sovereign_treasury/contract.py:98-102
+    // itxn.Payment(
+    //     receiver=Account(self.operations_address),
+    //     amount=ops_amount,
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/sovereign_treasury/contract.py:99
+    // receiver=Account(self.operations_address),
+    intc_0 // 0
+    bytec 4 // "operations_address"
+    app_global_get_ex
+    assert // check self.operations_address exists
+    dup
+    len
+    intc_3 // 32
+    ==
+    assert // Address length is 32 bytes
+    dig 1
+    itxn_field Amount
+    itxn_field Receiver
+    // smart_contracts/sovereign_treasury/contract.py:98
+    // itxn.Payment(
+    intc_1 // pay
+    itxn_field TypeEnum
+    // smart_contracts/sovereign_treasury/contract.py:101
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/sovereign_treasury/contract.py:98-102
+    // itxn.Payment(
+    //     receiver=Account(self.operations_address),
+    //     amount=ops_amount,
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+
+process_revenue_after_if_else@4:
+    // smart_contracts/sovereign_treasury/contract.py:69
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.execute_burn[routing]() -> void:
+execute_burn:
+    // smart_contracts/sovereign_treasury/contract.py:108
+    // @abimethod()
+    txn GroupIndex
+    intc_1 // 1
+    -
+    dup
+    gtxns TypeEnum
+    pushint 4 // axfer
+    ==
+    assert // transaction type is axfer
+    // smart_contracts/sovereign_treasury/contract.py:119
+    // assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
+    dup
+    gtxns XferAsset
+    intc_0 // 0
+    bytec_3 // "cortex_token"
+    app_global_get_ex
+    assert // check self.cortex_token exists
+    swap
+    dig 1
+    ==
+    assert // Wrong token
+    // smart_contracts/sovereign_treasury/contract.py:121
+    // cortex_transfer.asset_receiver == Global.current_application_address
+    dig 1
+    gtxns AssetReceiver
+    global CurrentApplicationAddress
+    ==
+    // smart_contracts/sovereign_treasury/contract.py:120-122
+    // assert (
+    //     cortex_transfer.asset_receiver == Global.current_application_address
+    // ), "Must send to treasury"
+    assert // Must send to treasury
+    // smart_contracts/sovereign_treasury/contract.py:124
+    // burn_amount = cortex_transfer.asset_amount
+    swap
+    gtxns AssetAmount
+    // smart_contracts/sovereign_treasury/contract.py:125
+    // assert burn_amount > UInt64(0), "Nothing to burn"
+    dup
+    assert // Nothing to burn
+    // smart_contracts/sovereign_treasury/contract.py:127-133
+    // # Send to Algorand zero address (permanent burn)
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=Global.zero_address,
+    //     asset_amount=burn_amount,
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/sovereign_treasury/contract.py:130
+    // asset_receiver=Global.zero_address,
+    global ZeroAddress
+    dig 1
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    swap
+    itxn_field XferAsset
+    // smart_contracts/sovereign_treasury/contract.py:127-128
+    // # Send to Algorand zero address (permanent burn)
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/sovereign_treasury/contract.py:132
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/sovereign_treasury/contract.py:127-133
+    // # Send to Algorand zero address (permanent burn)
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=Global.zero_address,
+    //     asset_amount=burn_amount,
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/sovereign_treasury/contract.py:135
+    // self.total_burned = self.total_burned + burn_amount
+    intc_0 // 0
+    bytec_1 // "total_burned"
+    app_global_get_ex
+    assert // check self.total_burned exists
+    +
+    bytec_1 // "total_burned"
+    swap
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:108
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.withdraw_buyback_algo[routing]() -> void:
+withdraw_buyback_algo:
+    // smart_contracts/sovereign_treasury/contract.py:137
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/sovereign_treasury/contract.py:149
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/sovereign_treasury/contract.py:150
+    // assert amount <= self.buyback_balance, "Exceeds buyback balance"
+    intc_0 // 0
+    bytec_0 // "buyback_balance"
+    app_global_get_ex
+    assert // check self.buyback_balance exists
+    dup2
+    <=
+    assert // Exceeds buyback balance
+    // smart_contracts/sovereign_treasury/contract.py:151
+    // assert amount > UInt64(0), "Zero withdrawal"
+    dig 1
+    assert // Zero withdrawal
+    // smart_contracts/sovereign_treasury/contract.py:153-157
+    // itxn.Payment(
+    //     receiver=Txn.sender,
+    //     amount=amount,
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/sovereign_treasury/contract.py:154
+    // receiver=Txn.sender,
+    txn Sender
+    dig 2
+    itxn_field Amount
+    itxn_field Receiver
+    // smart_contracts/sovereign_treasury/contract.py:153
+    // itxn.Payment(
+    intc_1 // pay
+    itxn_field TypeEnum
+    // smart_contracts/sovereign_treasury/contract.py:156
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/sovereign_treasury/contract.py:153-157
+    // itxn.Payment(
+    //     receiver=Txn.sender,
+    //     amount=amount,
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/sovereign_treasury/contract.py:159
+    // self.buyback_balance = self.buyback_balance - amount
+    swap
+    -
+    bytec_0 // "buyback_balance"
+    swap
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:137
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.get_total_burned[routing]() -> void:
+get_total_burned:
+    // smart_contracts/sovereign_treasury/contract.py:168
+    // return self.total_burned
+    intc_0 // 0
+    bytec_1 // "total_burned"
+    app_global_get_ex
+    assert // check self.total_burned exists
+    // smart_contracts/sovereign_treasury/contract.py:165
+    // @abimethod(readonly=True)
+    itob
+    bytec 6 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.get_total_revenue[routing]() -> void:
+get_total_revenue:
+    // smart_contracts/sovereign_treasury/contract.py:173
+    // return self.total_revenue
+    intc_0 // 0
+    bytec_2 // "total_revenue"
+    app_global_get_ex
+    assert // check self.total_revenue exists
+    // smart_contracts/sovereign_treasury/contract.py:170
+    // @abimethod(readonly=True)
+    itob
+    bytec 6 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.get_buyback_balance[routing]() -> void:
+get_buyback_balance:
+    // smart_contracts/sovereign_treasury/contract.py:178
+    // return self.buyback_balance
+    intc_0 // 0
+    bytec_0 // "buyback_balance"
+    app_global_get_ex
+    assert // check self.buyback_balance exists
+    // smart_contracts/sovereign_treasury/contract.py:175
+    // @abimethod(readonly=True)
+    itob
+    bytec 6 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.get_treasury_stats[routing]() -> void:
+get_treasury_stats:
+    // smart_contracts/sovereign_treasury/contract.py:188
+    // op.itob(self.total_revenue)
+    intc_0 // 0
+    bytec_2 // "total_revenue"
+    app_global_get_ex
+    assert // check self.total_revenue exists
+    itob
+    // smart_contracts/sovereign_treasury/contract.py:189
+    // + op.itob(self.total_burned)
+    intc_0 // 0
+    bytec_1 // "total_burned"
+    app_global_get_ex
+    assert // check self.total_burned exists
+    itob
+    // smart_contracts/sovereign_treasury/contract.py:188-189
+    // op.itob(self.total_revenue)
+    // + op.itob(self.total_burned)
+    concat
+    // smart_contracts/sovereign_treasury/contract.py:190
+    // + op.itob(self.buyback_balance)
+    intc_0 // 0
+    bytec_0 // "buyback_balance"
+    app_global_get_ex
+    assert // check self.buyback_balance exists
+    itob
+    // smart_contracts/sovereign_treasury/contract.py:188-190
+    // op.itob(self.total_revenue)
+    // + op.itob(self.total_burned)
+    // + op.itob(self.buyback_balance)
+    concat
+    // smart_contracts/sovereign_treasury/contract.py:191
+    // + op.itob(self.buyback_pct)
+    intc_0 // 0
+    bytec 5 // "buyback_pct"
+    app_global_get_ex
+    assert // check self.buyback_pct exists
+    itob
+    // smart_contracts/sovereign_treasury/contract.py:188-191
+    // op.itob(self.total_revenue)
+    // + op.itob(self.total_burned)
+    // + op.itob(self.buyback_balance)
+    // + op.itob(self.buyback_pct)
+    concat
+    // smart_contracts/sovereign_treasury/contract.py:180
+    // @abimethod(readonly=True)
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec 6 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.update_buyback_percentage[routing]() -> void:
+update_buyback_percentage:
+    // smart_contracts/sovereign_treasury/contract.py:198
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/sovereign_treasury/contract.py:204
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/sovereign_treasury/contract.py:205
+    // assert new_pct <= UInt64(100), "Cannot exceed 100%"
+    dup
+    pushint 100
+    <=
+    assert // Cannot exceed 100%
+    // smart_contracts/sovereign_treasury/contract.py:206
+    // assert new_pct >= UInt64(50), "Buyback must be at least 50%"
+    dup
+    pushint 50
+    >=
+    assert // Buyback must be at least 50%
+    // smart_contracts/sovereign_treasury/contract.py:207
+    // self.buyback_pct = new_pct
+    bytec 5 // "buyback_pct"
+    swap
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:198
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.sovereign_treasury.contract.SovereignTreasury.update_operations_address[routing]() -> void:
+update_operations_address:
+    // smart_contracts/sovereign_treasury/contract.py:209
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_3 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/sovereign_treasury/contract.py:215
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/sovereign_treasury/contract.py:216
+    // self.operations_address = new_address.bytes
+    bytec 4 // "operations_address"
+    swap
+    app_global_put
+    // smart_contracts/sovereign_treasury/contract.py:209
+    // @abimethod()
+    intc_1 // 1
+    return

@@ -14,7 +14,7 @@ from algopy.arc4 import abimethod
 
 class GovernanceContract(ARC4Contract):
     """
-    On-chain governance for PureCortex.
+    On-chain governance for PURECORTEX.
 
     Proposal lifecycle:
       propose -> discuss (48h) -> vote (5 days) -> timelock (7 days) -> execute
@@ -41,11 +41,12 @@ class GovernanceContract(ARC4Contract):
         self.proposal_count = UInt64(0)
 
         # Proposals: proposal_id -> ProposalData (80 bytes)
-        self.proposals = BoxMap(UInt64, Bytes)
+        # key_prefix=b"" ensures op.Box.get(op.itob(id)) matches self.proposals[id]
+        self.proposals = BoxMap(UInt64, Bytes, key_prefix=b"")
 
         # Votes: composite key (proposal_id_bytes + voter_bytes) -> vote_data
         # vote_data: vote(8) + ve_power(8) = 16 bytes
-        self.votes = BoxMap(Bytes, Bytes)
+        self.votes = BoxMap(Bytes, Bytes, key_prefix=b"")
 
         # Governance timing parameters (in rounds, ~3 rounds/minute)
         self.DISCUSSION_PERIOD = UInt64(8640)  # 48 hours (48 * 60 * 3)
@@ -95,6 +96,7 @@ class GovernanceContract(ARC4Contract):
         Returns the new proposal ID.
         """
         assert Txn.sender == Global.creator_address, "Only Senator can propose"
+        assert proposal_type <= UInt64(3), "Invalid proposal type"
 
         proposal_id = self.proposal_count + UInt64(1)
         self.proposal_count = proposal_id
@@ -124,6 +126,10 @@ class GovernanceContract(ARC4Contract):
         """
         Advance a proposal from the discussion phase to the voting phase.
         Can only be called after the discussion period (48h) has elapsed.
+
+        NOTE: This is intentionally permissionless — any account can advance
+        a proposal once the discussion period elapses. The proposer cannot
+        cancel during this phase by design, ensuring governance transparency.
         """
         assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
         proposal_data = self.proposals[proposal_id]
@@ -168,12 +174,16 @@ class GovernanceContract(ARC4Contract):
 
         total_votes = yes_votes + no_votes
 
+        # Quorum check: require minimum vote participation to prevent
+        # low-turnout proposals from passing. Uses absolute threshold
+        # since cross-contract staking supply reads are not yet available.
+        assert total_votes >= UInt64(100), "Quorum not met: minimum 100 vePower of votes required"
+
         # Determine outcome — supermajority check
         # passed = yes_votes * 10000 >= total_votes * SUPERMAJORITY_BPS
         new_status = UInt64(3)  # default: rejected
-        if total_votes > UInt64(0):
-            if yes_votes * UInt64(10000) >= total_votes * self.SUPERMAJORITY_BPS:
-                new_status = UInt64(2)  # passed
+        if yes_votes * UInt64(10000) >= total_votes * self.SUPERMAJORITY_BPS:
+            new_status = UInt64(2)  # passed
 
         new_data = (
             op.extract(proposal_data, 0, 64)
@@ -256,6 +266,7 @@ class GovernanceContract(ARC4Contract):
 
         current_status = op.btoi(op.extract(proposal_data, 64, 8))
         assert current_status == UInt64(1), "Not in voting phase"
+        assert vote <= UInt64(1), "Vote must be 0 (no) or 1 (yes)"
 
         # Check voting period hasn't expired
         created_round = op.btoi(op.extract(proposal_data, 32, 8))
@@ -269,8 +280,10 @@ class GovernanceContract(ARC4Contract):
         assert not op.Box.get(vote_key)[1], "Already voted"
 
         # Get voter's veCORTEX power
-        # In production: cross-app call to staking contract
-        # Placeholder: each voter gets weight of 1
+        # TESTNET PLACEHOLDER: Each voter gets weight of 1.
+        # In production, this must be replaced with a cross-app call to the
+        # VeCortexStaking contract to read the voter's actual vePower.
+        # Without this, vote weighting is purely 1-address-1-vote.
         ve_power = UInt64(1)
 
         # Record the vote

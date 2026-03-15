@@ -1,4 +1,4 @@
-# PureCortex: Internal Security Audit & Hardening Report 🦞
+# PURECORTEX: Internal Security Audit & Hardening Report 🦞
 
 ## 1. Smart Contract Audit (Algorand/Puya)
 
@@ -15,7 +15,7 @@
 - **Assessment:** The contract correctly sets `manager`, `reserve`, `freeze`, and `clawback` to the `application_address`.
 - **Status:** **HARDENED.** No external EOA can freeze or claw back agent tokens.
 
-## 2. AI Orchestration Audit (OpenClaw/Dual-Brain)
+## 2. AI Orchestration Audit (OpenClaw/Tri-Brain)
 
 ### 2.1. Prompt Injection Mitigation
 - **Vulnerability Found:** The `user_prompt` is currently concatenated directly into the `system_prompt` for Gemini and Claude. An attacker could use "Ignore previous instructions" to hijack the agent.

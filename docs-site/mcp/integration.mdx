@@ -1,6 +1,6 @@
 ---
 title: "Integration Guide"
-description: "Connect to PureCortex via MCP from Claude Desktop, custom agents, and remote endpoints."
+description: "Connect to PURECORTEX via MCP from Claude Desktop, custom agents, and remote endpoints."
 icon: "code"
 ---
 
@@ -12,7 +12,7 @@ This guide covers three integration paths: local connection via Claude Desktop, 
 
 ## Claude Desktop
 
-Claude Desktop supports MCP servers natively. Add PureCortex to your configuration file to make all three tools available inside Claude conversations.
+Claude Desktop supports MCP servers natively. Add PURECORTEX to your configuration file to make all three tools available inside Claude conversations.
 
 <Steps>
   <Step title="Clone the repository">
@@ -49,7 +49,7 @@ Claude Desktop supports MCP servers natively. Add PureCortex to your configurati
       </Tab>
     </Tabs>
 
-    Add the PureCortex server to the `mcpServers` object:
+    Add the PURECORTEX server to the `mcpServers` object:
 
     ```json
     {
@@ -67,19 +67,19 @@ Claude Desktop supports MCP servers natively. Add PureCortex to your configurati
     ```
   </Step>
   <Step title="Restart Claude Desktop">
-    Restart the application. You should see PureCortex listed in the MCP tools panel. You can now ask Claude to invoke tools like `get_dual_brain_consensus`, `get_agent_info`, and `get_protocol_stats`.
+    Restart the application. You should see PURECORTEX listed in the MCP tools panel. You can now ask Claude to invoke tools like `get_tri_brain_consensus`, `get_agent_info`, and `get_protocol_stats`.
   </Step>
 </Steps>
 
 <Warning>
-  The `CLAUDE_API_KEY` and `GEMINI_API_KEY` environment variables are required for the dual-brain orchestrator. Without them, the `get_dual_brain_consensus` tool will return an initialization error. The keys are loaded from environment variables first, then from GCP Secret Manager as a fallback.
+  The `CLAUDE_API_KEY` and `GEMINI_API_KEY` environment variables are required for the tri-brain orchestrator. Without them, the `get_tri_brain_consensus` tool will return an initialization error. The keys are loaded from environment variables first, then from GCP Secret Manager as a fallback.
 </Warning>
 
 ---
 
 ## SSE Remote Endpoint
 
-For remote agents and cloud-hosted services, PureCortex exposes an SSE (Server-Sent Events) transport endpoint:
+For remote agents and cloud-hosted services, PURECORTEX exposes an SSE (Server-Sent Events) transport endpoint:
 
 ```
 https://purecortex.ai/mcp/sse
@@ -127,7 +127,7 @@ console.log(tools);
 
 // Call a tool
 const result = await client.callTool({
-  name: "get_dual_brain_consensus",
+  name: "get_tri_brain_consensus",
   arguments: { prompt: "Summarize Algorand DeFi trends" }
 });
 console.log(result);
@@ -139,7 +139,7 @@ console.log(result);
 
 ## Custom Agent Integration
 
-If you are building an autonomous agent that needs to consume PureCortex intelligence, use the MCP SDK for your language:
+If you are building an autonomous agent that needs to consume PURECORTEX intelligence, use the MCP SDK for your language:
 
 <CardGroup cols={2}>
   <Card title="Python SDK" icon="python" href="https://github.com/modelcontextprotocol/python-sdk">
@@ -158,18 +158,18 @@ from mcp import ClientSession
 from mcp.client.sse import sse_client
 
 async def autonomous_loop():
-    """Agent that queries PureCortex for consensus every hour."""
+    """Agent that queries PURECORTEX for consensus every hour."""
     async with sse_client("https://purecortex.ai/mcp/sse") as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
             while True:
                 result = await session.call_tool(
-                    "get_dual_brain_consensus",
+                    "get_tri_brain_consensus",
                     {"prompt": "Should I rebalance my portfolio given current conditions?"}
                 )
                 response = result.content[0].text
-                print(f"PureCortex says: {response}")
+                print(f"PURECORTEX says: {response}")
 
                 # Act on the response...
                 await asyncio.sleep(3600)
@@ -181,7 +181,7 @@ asyncio.run(autonomous_loop())
 
 ## Composability Scoring
 
-When your agent registers tools in the PureCortex MCP registry and those tools are invoked by other agents, your agent earns a **composability score**. This score reflects how frequently and reliably your agent's tools are used across the network.
+When your agent registers tools in the PURECORTEX MCP registry and those tools are invoked by other agents, your agent earns a **composability score**. This score reflects how frequently and reliably your agent's tools are used across the network.
 
 <AccordionGroup>
   <Accordion title="How scoring works">

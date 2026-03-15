@@ -1,0 +1,208 @@
+% =============================================================================
+\section{Security Analysis}
+\label{sec:security}
+% =============================================================================
+
+This section identifies and addresses the principal security considerations for
+the PURECORTEX protocol, covering arithmetic precision, reentrancy, LP lock
+immutability, oracle-free design, contract sovereignty, and governance safety.
+
+\subsection{Integer Precision in Bonding Curve Arithmetic}
+\label{subsec:precision}
+
+The bonding curve cost function (Equation~\eqref{eq:cost-closed}) involves
+multiplication and division operations that are susceptible to truncation
+errors when implemented in integer arithmetic (Algorand's AVM does not support
+floating-point operations).
+
+\subsubsection{Truncation Bug}
+
+A naive implementation of the cost function computes:
+\begin{equation}
+  C(s, n) = n \cdot B + \frac{S \cdot (2sn + n^2)}{2}
+  \label{eq:naive-cost}
+\end{equation}
+
+If $S$ is expressed in microCORTEX per token, the intermediate product
+$S \cdot (2sn + n^2)$ can overflow a 64-bit unsigned integer for large values
+of $s$ and $n$. Conversely, if $S$ is small, the integer division by 2 can
+truncate significant digits, causing systematic underpricing.
+
+\subsubsection{Fix: Scaled Arithmetic}
+
+The implementation uses a scaling factor $\Lambda = 10^{12}$ to maintain
+precision:
+
+\begin{equation}
+  C_{\text{scaled}}(s, n) = \frac{n \cdot B \cdot \Lambda + S \cdot (2sn + n^2) \cdot \Lambda / 2}{\Lambda}
+  \label{eq:scaled-cost}
+\end{equation}
+
+All intermediate computations are performed in $\Lambda$-scaled space, with
+a single final division to return to the native unit. The scaling factor is
+chosen such that:
+\begin{enumerate}
+  \item No intermediate product exceeds $2^{128}$ (Algorand's AVM supports
+    128-bit intermediate arithmetic via the \texttt{wide\_ratio} opcode).
+  \item The truncation error is bounded by $1 / \Lambda = 10^{-12}$ CORTEX,
+    which is negligible relative to the token's 6-decimal precision.
+\end{enumerate}
+
+\subsection{Reentrancy Elimination via Atomic Transactions}
+\label{subsec:reentrancy}
+
+Reentrancy attacks---wherein a malicious contract re-enters a vulnerable
+function during execution---are a well-documented class of vulnerabilities in
+EVM-based smart contracts. The PURECORTEX protocol is architecturally immune
+to reentrancy due to Algorand's execution model:
+
+\begin{enumerate}
+  \item \textbf{Atomic transaction groups.} All multi-step operations (bonding
+    curve buy/sell, graduation, staking) are bundled into atomic transaction
+    groups. The entire group either succeeds or fails; there is no intermediate
+    state in which a callback could execute.
+  \item \textbf{No external calls during execution.} Algorand smart contracts
+    (AVM programs) do not support arbitrary external calls during execution.
+    Inner transactions are pre-declared and execute atomically within the
+    group.
+  \item \textbf{No fallback functions.} Unlike Solidity, AVM programs do not
+    have fallback or receive functions that could be triggered by incoming
+    payments, eliminating the attack vector used in the DAO hack and similar
+    exploits.
+\end{enumerate}
+
+\subsection{LogicSig LP Lock Immutability}
+\label{subsec:logicsig}
+
+The LP tokens generated during graduation are locked in a LogicSig account
+with the following security properties:
+
+\begin{enumerate}
+  \item \textbf{Statelessness.} The LogicSig program is stateless---it does
+    not read or write any on-chain state, and its behavior is fully determined
+    by the compiled program bytes.
+  \item \textbf{Immutability.} Once the LogicSig address is derived from the
+    program hash, the program cannot be modified. Any change to the program
+    bytes would produce a different address, and the LP tokens would remain in
+    the original (now permanently locked) address.
+  \item \textbf{No admin keys.} The LogicSig account has no associated private
+    key (its address is derived from the program hash, not from an Ed25519
+    keypair). No entity---including the protocol developers---can sign
+    transactions from this account; only transactions approved by the LogicSig
+    program logic are valid.
+  \item \textbf{Time enforcement.} The program checks
+    $\texttt{global.LatestTimestamp} \geq t_{\text{graduation}} + 10 \cdot
+    365.25 \cdot 24 \cdot 3600$ before approving any withdrawal. This
+    timestamp check is tamper-proof: Algorand block timestamps are consensus
+    values agreed upon by the committee.
+\end{enumerate}
+
+\subsection{Oracle-Free Design}
+\label{subsec:oracle-free}
+
+The PURECORTEX protocol does not depend on external price oracles for any core
+mechanism:
+
+\begin{table}[H]
+\centering
+\caption{Oracle-free design: all price inputs are derived from on-chain data.}
+\label{tab:oracle-free}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Mechanism} & \textbf{Price Input} & \textbf{Source} \\
+\midrule
+Bonding Curve & $P(q) = B + Sq$ & Deterministic formula \\
+Dynamic Fees & $\sigma$ (realized vol) & On-chain trade history \\
+Buyback & CORTEX market price & Tinyman pool reserves \\
+\veCORTEX{} & Lock amount in CORTEX & On-chain state \\
+Composability & x402 payment amount & Transaction payload \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This eliminates the following attack vectors:
+\begin{itemize}
+  \item \textbf{Oracle manipulation.} An attacker cannot manipulate an
+    external price feed to cause mispricing in the bonding curve or fee
+    calculation.
+  \item \textbf{Oracle downtime.} The protocol has no dependency on external
+    data availability; all computations use data that is intrinsic to the
+    Algorand blockchain.
+  \item \textbf{Flash loan oracle attacks.} Since there are no oracle price
+    lookups, flash loan-based price manipulation (a common attack in EVM DeFi)
+    is inapplicable.
+\end{itemize}
+
+\subsection{Contract Sovereignty}
+\label{subsec:sovereignty}
+
+The PURECORTEX smart contracts are designed to be self-sovereign after deployment:
+
+\begin{enumerate}
+  \item \textbf{No admin keys.} After initialization, the creator address of
+    each contract is set to the contract's own application address. This means
+    that only the contract itself (via governance-approved inner transactions)
+    can modify its own state.
+  \item \textbf{Governance-gated upgrades.} Contract upgrades require a
+    Constitution-type governance proposal (25\% quorum, 67\% approval, 7-day
+    timelock). The upgrade mechanism uses Algorand's
+    \texttt{update\_application} inner transaction, which is only executable
+    from within the contract itself.
+  \item \textbf{Immutable core logic.} Certain core functions (bonding curve
+    pricing, \veCORTEX{} decay formula, fee bounds) are marked as
+    non-upgradeable. Even a successful governance proposal cannot modify these
+    functions; they can only be replaced by deploying a new contract and
+    migrating state via a separate governance proposal.
+\end{enumerate}
+
+\subsection{Tri-Brain Governance Safety}
+\label{subsec:tri-brain}
+
+The Senator's tri-brain architecture provides defense in depth for governance
+proposals:
+
+\begin{enumerate}
+  \item \textbf{Analytical check.} The analytical brain verifies that the
+    proposed parameter change increases the welfare function $W$
+    (Equation~\eqref{eq:welfare}) by at least the significance threshold.
+  \item \textbf{Constitutional check.} The constitutional brain evaluates the
+    proposal against all seven articles of the constitution
+    (Appendix~\ref{app:constitution}), rejecting proposals that violate
+    constitutional constraints.
+  \item \textbf{Consensus requirement.} At least two of three brains must approve before the
+    proposal is submitted (2-of-3 majority agreement). A failure to reach majority
+    (e.g., the analytical brain identifies a welfare-increasing change that the constitutional brain flags
+    as a rights violation while the third brain abstains) results in proposal rejection.
+\end{enumerate}
+
+This tri-brain check mechanism prevents two categories of harmful proposals:
+\begin{itemize}
+  \item Proposals that are welfare-optimal but unconstitutional (e.g.,
+    confiscating a minority's staked tokens to redistribute to the majority).
+  \item Proposals that are constitutional but welfare-reducing (e.g., a
+    technically valid parameter change that would destabilize the fee market).
+\end{itemize}
+
+\subsection{Attack Surface Summary}
+\label{subsec:attack-summary}
+
+Table~\ref{tab:attack-summary} summarizes the attack surface and mitigations.
+
+\begin{table}[H]
+\centering
+\caption{Attack surface and mitigations.}
+\label{tab:attack-summary}
+\begin{tabular}{@{}p{3.5cm}p{4cm}p{4.5cm}@{}}
+\toprule
+\textbf{Attack Vector} & \textbf{Vulnerability} & \textbf{Mitigation} \\
+\midrule
+Arithmetic overflow & Bonding curve computation & Scaled arithmetic + wide\_ratio \\
+Reentrancy & Multi-step operations & Atomic transaction groups \\
+LP rug pull & LP token withdrawal & LogicSig immutable lock \\
+Oracle manipulation & Price feed dependency & Oracle-free design \\
+Admin key compromise & Privileged access & Self-sovereign contracts \\
+Governance capture & Majority control & Constitutional checks + supermajority \\
+Sybil composability & Inflated CS scores & $\sqrt{\cdot}$ diminishing returns \\
+\bottomrule
+\end{tabular}
+\end{table}

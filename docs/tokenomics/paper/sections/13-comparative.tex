@@ -1,0 +1,200 @@
+% =============================================================================
+\section{Comparative Analysis}
+\label{sec:comparative}
+% =============================================================================
+
+This section provides a systematic comparison of the PURECORTEX tokenomic
+framework against the prevailing agent tokenization architecture, referred to
+as ``Platform~A'' (see Section~\ref{subsec:rw-agent}). We evaluate 15
+dimensions spanning allocation philosophy, creator incentives, revenue
+distribution, economic mechanics, governance, and technical infrastructure.
+
+\subsection{Comparison Framework}
+\label{subsec:comp-framework}
+
+Table~\ref{tab:comparison} presents the full 14-dimension comparison.
+
+\begin{table}[H]
+\centering
+\caption{15-dimension comparative analysis: PURECORTEX vs.\ Platform~A.}
+\label{tab:comparison}
+\small
+\begin{tabular}{@{}p{2.8cm}p{4.8cm}p{4.8cm}@{}}
+\toprule
+\textbf{Dimension} & \textbf{PURECORTEX} & \textbf{Platform A} \\
+\midrule
+Insider Allocation & 10\% creator only (0\% VC, 0\% team/advisors) & Significant team + VC allocation \\
+\addlinespace
+Creator Vesting & 10\% at TGE + 90\% daily over 180 days & 100\% immediate, no vesting \\
+\addlinespace
+Revenue to Holders & 90\% of ALL revenue $\to$ buyback-burn (Assistance Fund) & 2-way split (creator + protocol) \\
+\addlinespace
+Staking Timing & Available from day one (launch parity) & Introduced post-launch; early adopters disadvantaged \\
+\addlinespace
+Fee Model & Dynamic: 0.5\%--2.0\% (volatility-adaptive) & Flat 1\% on all transactions \\
+\addlinespace
+LP Lock & 10-year LogicSig (immutable, no admin keys) & LP locked (mechanism varies) \\
+\addlinespace
+Supply Schedule & 4-year declining emissions + continuous buyback-burn & Fixed supply, no emission or burn schedule \\
+\addlinespace
+Burn Mechanics & 90\% of all revenue $\to$ Assistance Fund $\to$ continuous burn & No systematic burn \\
+\addlinespace
+Composability & MCP tool protocol + x402 micropayments + CS rewards & No inter-agent composability \\
+\addlinespace
+Governance Model & On-chain: Senator AI + veCORTEX lawmakers + constitution & Centralized team control \\
+\addlinespace
+Constitutional Framework & Immutable preamble + 7 amendable articles, on-chain & None \\
+\addlinespace
+Security Model & Oracle-free, atomic txns, no admin keys & EVM-based (oracle + reentrancy surface) \\
+\addlinespace
+Chain Finality & Instant ($<3.3$s, deterministic) & Probabilistic (block confirmations) \\
+\addlinespace
+Agent Interop & MCP standard + composability rewards & Isolated agents, no interop \\
+\addlinespace
+Oracle Dependency & None (all inputs on-chain) & External price feeds for some operations \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Detailed Analysis by Dimension}
+\label{subsec:dim-analysis}
+
+\subsubsection{Creator Vesting}
+
+The absence of creator vesting in Platform~A creates a well-documented
+moral hazard: creators can liquidate their entire allocation immediately after
+launch, extracting value from buyers who expect continued development. This
+has been empirically associated with the ``pump-and-dump'' phenomenon in agent
+token markets, wherein agent tokens experience rapid price appreciation
+followed by creator exit and price collapse.
+
+PURECORTEX's 180-day vesting schedule addresses this by ensuring that 99\% of
+the creator's allocation remains locked for six months. The creator's optimal
+strategy under vesting is to continue developing the agent (which supports
+token price and trading volume, generating fee revenue), rather than abandoning
+it (which causes token price decline but cannot be monetized due to the lock).
+This alignment is formalized in Proposition~\ref{prop:creator-wealth} and
+Theorem~\ref{thm:separating}.
+
+\subsubsection{Staking Timing}
+
+When staking is introduced after token launch, the earliest participants---who
+bore the maximum price-discovery risk---receive no preferential staking
+treatment. Late entrants who waited for price stability can lock at the same
+terms. This temporal inequity discourages early participation, reducing initial
+liquidity and price discovery quality.
+
+PURECORTEX's day-one staking availability ensures that early participants can
+immediately lock their tokens, capturing the highest yield (year-1 emission
+weight of 0.4) and the exclusive-period revenue (Proposition~\ref{prop:day-one}).
+This creates a strong incentive for early capital commitment.
+
+\subsubsection{Fee Model}
+
+A flat 1\% fee is suboptimal in two regimes:
+\begin{itemize}
+  \item In low-volatility markets, 1\% is unnecessarily high, suppressing
+    trading volume.
+  \item In high-volatility markets, 1\% is insufficient to compensate for
+    adverse selection, causing liquidity providers to withdraw.
+\end{itemize}
+
+The dynamic fee (Section~\ref{sec:dynamic-fees}) adapts to both regimes,
+generating 23--31\% more cumulative revenue
+(Section~\ref{subsec:sim-fees}) while maintaining lower friction during calm
+periods.
+
+\subsubsection{Revenue to Holders}
+
+Platform~A distributes revenue through a simple two-way split between the
+creator and the protocol, with the protocol's share controlled by the
+centralized team. Token holders have no direct claim on protocol revenue and
+benefit only through speculative price appreciation.
+
+PURECORTEX directs 90\% of \emph{all} protocol revenue to the Assistance Fund,
+which continuously buys CORTEX from the open market and burns it. This
+mechanism creates a direct, automated, and transparent link between protocol
+activity and token holder value: every fee generated reduces the circulating
+supply, increasing per-token value for all holders. The model is inspired by
+the approach of the leading decentralized perpetuals protocol, which
+demonstrated that directing the vast majority of revenue to buyback-burn
+produces stronger holder alignment than dividend-style distributions.
+
+\subsubsection{Burn Mechanics}
+
+Platform~A operates with a fixed supply and no systematic burn mechanism. Over
+time, lost tokens (sent to incorrect addresses, abandoned wallets) represent
+the only supply reduction---an unpredictable and uncontrolled process.
+
+PURECORTEX implements continuous burns through the Assistance Fund
+(Section~\ref{sec:buyback-burn}), with 90\% of all revenue funding buyback-burn
+operations. This creates an aggressive deflationary trajectory with a crossover
+at month 12--18 under moderate growth (Theorem~\ref{thm:deflationary},
+Section~\ref{subsec:sim-supply}).
+
+\subsubsection{Composability}
+
+Platform~A agents operate in isolation. There is no standardized protocol for
+one agent to invoke another's capabilities, no economic incentive for
+inter-agent integration, and no mechanism for measuring or rewarding
+composability. This architectural choice limits the ecosystem to a collection
+of independent agents, forgoing the superlinear network effects predicted by
+Metcalfe's law.
+
+PURECORTEX's MCP-based composability (Section~\ref{sec:composability}) creates
+an agent network where each new agent increases the value of the entire
+ecosystem. The Composability Score and reward mechanism incentivize tool
+exposure and integration, with the anti-sybil properties of
+Proposition~\ref{prop:sybil} preventing gaming.
+
+\subsubsection{Governance}
+
+Centralized governance creates platform risk: users have no recourse if the
+development team makes decisions that benefit the team at the expense of users.
+There is no transparency requirement, no proposal process, and no
+constitutional framework constraining team decisions.
+
+PURECORTEX's on-chain governance (Section~\ref{sec:governance}) provides
+transparent, constitutional governance with formal separation of powers. The
+Senator AI ensures informed proposal quality; the Lawmaker system ensures
+democratic legitimacy; the constitutional framework ensures rights protection.
+
+\subsubsection{Chain Properties}
+
+Algorand's instant finality eliminates confirmation-time uncertainties that
+affect EVM-based platforms. An agent token purchase on PURECORTEX is
+irreversible within 3.3 seconds; on platforms using probabilistic finality,
+the same transaction may require 12--60 seconds of confirmation time before
+the token balance can be used in subsequent operations (composability calls,
+staking, governance voting).
+
+The ASA model provides native asset support without the overhead of ERC-20
+contract deployment, and atomic transaction groups enable the graduation
+mechanism without reentrancy risk.
+
+\subsection{Quantitative Impact Summary}
+\label{subsec:quant-impact}
+
+Table~\ref{tab:impact-summary} summarizes the quantitative impact of each
+PURECORTEX design choice relative to the Platform~A baseline, as measured by
+the Monte Carlo simulations in Section~\ref{sec:simulations}.
+
+\begin{table}[H]
+\centering
+\caption{Quantitative impact of PURECORTEX design choices.}
+\label{tab:impact-summary}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Design Choice} & \textbf{Impact} & \textbf{Metric} \\
+\midrule
+Creator vesting & $-67\%$ & Creator exit rate (180-day) \\
+0\% insider allocation & $90\%$ & Community-controlled supply at TGE \\
+Day-one staking & $+3\text{--}5\times$ & Early staker lifetime yield \\
+Dynamic fees & $+27\%$ & Cumulative protocol revenue \\
+90\% revenue buyback-burn & $-25\%$ & Circulating supply at month 48 \\
+Composability rewards & $+8\times$ & Inter-agent connection density \\
+On-chain governance & $0.38$ & Voting power Gini (vs.\ 1.0 centralized) \\
+Crash recovery & $-43\%$ & Time to pre-crash TVL recovery \\
+\bottomrule
+\end{tabular}
+\end{table}

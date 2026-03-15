@@ -35,10 +35,12 @@ class VeCortexStaking(ARC4Contract):
 
         # Stakes: account_bytes -> encoded stake data
         # Encoding: amount(8) + unlock_round(8) + ve_power(8) + boost(8) = 32 bytes
-        self.stakes = BoxMap(Bytes, Bytes)
+        # key_prefix=b"s" so op.Box.get(b"s" + key) matches self.stakes[key]
+        self.stakes = BoxMap(Bytes, Bytes, key_prefix=b"s")
 
         # Delegations: account_bytes -> delegate_account_bytes
-        self.delegations = BoxMap(Bytes, Bytes)
+        # Uses distinct prefix "d" to avoid collisions with stakes
+        self.delegations = BoxMap(Bytes, Bytes, key_prefix=b"d")
 
         # Staking parameters
         self.MIN_LOCK_DAYS = UInt64(7)  # 1 week minimum
@@ -99,7 +101,7 @@ class VeCortexStaking(ARC4Contract):
 
         # Check that the sender does not already have an active stake
         stake_key = Txn.sender.bytes
-        assert not op.Box.get(stake_key)[1], "Already staking — unstake first"
+        assert not op.Box.get(b"s" + stake_key)[1], "Already staking — unstake first"
 
         # Calculate unlock round
         unlock_round = Global.round + (lock_days * self.ROUNDS_PER_DAY)
@@ -137,7 +139,7 @@ class VeCortexStaking(ARC4Contract):
         Removes the stake record and any active delegation.
         """
         stake_key = Txn.sender.bytes
-        assert op.Box.get(stake_key)[1], "No active stake"
+        assert op.Box.get(b"s" + stake_key)[1], "No active stake"
 
         stake_data = self.stakes[stake_key]
         amount = op.btoi(op.extract(stake_data, 0, 8))
@@ -156,8 +158,8 @@ class VeCortexStaking(ARC4Contract):
         # Remove stake record
         del self.stakes[stake_key]
 
-        # Remove delegation if one exists
-        if op.Box.get(stake_key)[1]:
+        # Remove delegation if one exists (check with "d" prefix for delegations BoxMap)
+        if op.Box.get(b"d" + stake_key)[1]:
             del self.delegations[stake_key]
 
         self.total_staked = self.total_staked - amount
@@ -173,7 +175,7 @@ class VeCortexStaking(ARC4Contract):
         The delegatee can then vote on governance proposals on your behalf.
         """
         stake_key = Txn.sender.bytes
-        assert op.Box.get(stake_key)[1], "No active stake"
+        assert op.Box.get(b"s" + stake_key)[1], "No active stake"
         self.delegations[stake_key] = lawmaker.bytes
 
     @abimethod()
@@ -183,10 +185,9 @@ class VeCortexStaking(ARC4Contract):
         Takes effect in the next governance epoch.
         """
         stake_key = Txn.sender.bytes
-        assert op.Box.get(stake_key)[1], "No active stake"
-        # Only delete if delegation exists
-        delegation_exists = op.Box.get(stake_key)[1]
-        if delegation_exists:
+        assert op.Box.get(b"s" + stake_key)[1], "No active stake"
+        # Only delete if delegation exists (check with "d" prefix for delegations BoxMap)
+        if op.Box.get(b"d" + stake_key)[1]:
             del self.delegations[stake_key]
 
     # ------------------------------------------------------------------ #
@@ -197,7 +198,7 @@ class VeCortexStaking(ARC4Contract):
     def get_ve_power(self, account: Account) -> UInt64:
         """Get the veCORTEX voting power for an account."""
         stake_key = account.bytes
-        if not op.Box.get(stake_key)[1]:
+        if not op.Box.get(b"s" + stake_key)[1]:
             return UInt64(0)
         stake_data = self.stakes[stake_key]
         return op.btoi(op.extract(stake_data, 16, 8))
@@ -210,7 +211,7 @@ class VeCortexStaking(ARC4Contract):
         Returns empty bytes if no stake exists.
         """
         stake_key = account.bytes
-        if not op.Box.get(stake_key)[1]:
+        if not op.Box.get(b"s" + stake_key)[1]:
             return Bytes(b"")
         return self.stakes[stake_key]
 
@@ -221,8 +222,7 @@ class VeCortexStaking(ARC4Contract):
         Returns 32-byte address or empty bytes if no delegation.
         """
         stake_key = account.bytes
-        delegation_data = op.Box.get(stake_key)
-        if not delegation_data[1]:
+        if not op.Box.get(b"d" + stake_key)[1]:
             return Bytes(b"")
         return self.delegations[stake_key]
 

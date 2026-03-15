@@ -1,26 +1,36 @@
 """
-Transparency API for PureCortex.
+Transparency API for PURECORTEX.
 
 Provides real-time on-chain data about CORTEX token supply,
 treasury balances, burn history, governance stats, and agent registry.
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from src.services.algorand import get_algorand_service, FACTORY_APP_ID, CORTEX_ASSET_ID
+from src.services.algorand import get_algorand_service, FACTORY_APP_ID
 from src.services.cache import cache_with_ttl, TTL_SUPPLY, TTL_TREASURY, TTL_BURNS, TTL_AGENTS, TTL_GOVERNANCE
+from src.services.protocol_config import (
+    ASSISTANCE_FUND_ADDRESS,
+    CORTEX_ASSET_ID,
+    OPERATIONS_ADDRESS,
+    TGE_DATE_ISO,
+    TOTAL_SUPPLY as PROTOCOL_TOTAL_SUPPLY,
+)
+
+logger = logging.getLogger("purecortex.api.transparency")
 
 router = APIRouter(prefix="/api/transparency", tags=["transparency"])
 
 # ──────────────────────────────────────────────
 # Constants
 # ──────────────────────────────────────────────
-TOTAL_SUPPLY = 10_000_000_000_000_000  # 10 quadrillion (6 decimals)
-TGE_DATE = datetime(2026, 3, 31, tzinfo=timezone.utc)
+TOTAL_SUPPLY = PROTOCOL_TOTAL_SUPPLY
+TGE_DATE = datetime.fromisoformat(TGE_DATE_ISO.replace("Z", "+00:00"))
 CREATOR_ALLOCATION = TOTAL_SUPPLY * 10 // 100  # 10% = 1Q
 CREATOR_TGE_UNLOCK_PCT = 10  # 10% at TGE
 CREATOR_VEST_DAYS = 180
@@ -156,6 +166,10 @@ def _compute_circulating(burned: int, vesting: VestingInfo) -> int:
     return genesis_airdrop
 
 
+def _wallet_label(address: Optional[str], label: str) -> str:
+    return address or f"{label} not assigned on testnet yet"
+
+
 # ──────────────────────────────────────────────
 # Endpoints
 # ──────────────────────────────────────────────
@@ -182,12 +196,12 @@ async def get_treasury():
     """Treasury wallet balances and revenue split."""
     return TreasuryResponse(
         assistance_fund=WalletInfo(
-            address="TBD_AT_MAINNET",
+            address=_wallet_label(ASSISTANCE_FUND_ADDRESS, "Assistance Fund"),
             balance_algo=0,
             balance_cortex=0,
         ),
         operations=WalletInfo(
-            address="TBD_AT_MAINNET",
+            address=_wallet_label(OPERATIONS_ADDRESS, "Operations"),
             balance_algo=0,
             balance_cortex=0,
         ),
@@ -235,9 +249,10 @@ async def get_agents():
             note="Live data from Algorand indexer",
         )
     except Exception as e:
+        logger.error("Failed to query agents from indexer: %s", e)
         return AgentsResponse(
             factory_app_id=FACTORY_APP_ID,
             total_agents=0,
             agents=[],
-            note=f"Query live data from Algorand indexer (error: {str(e)})",
+            note="Agent data temporarily unavailable",
         )

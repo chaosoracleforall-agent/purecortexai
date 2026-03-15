@@ -1,9 +1,9 @@
 """
-PureCortex AI Agent Framework — Phase 4.
+PURECORTEX AI Agent Framework — Phase 4.
 
 Provides the base agent abstraction, persistent memory with feedback loops,
 and concrete agent implementations (Senator, Curator, Social) that all use
-dual-brain consensus via the ConsensusOrchestrator.
+tri-brain consensus via the ConsensusOrchestrator.
 """
 
 from .base_agent import BaseAgent

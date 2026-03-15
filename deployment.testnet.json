@@ -1,0 +1,61 @@
+{
+  "name": "PURECORTEX",
+  "environment": "testnet",
+  "network": "testnet",
+  "chainName": "Algorand Testnet",
+  "publicAppUrl": "https://purecortex.ai",
+  "publicApiUrl": "https://purecortex.ai",
+  "publicWsUrl": "wss://purecortex.ai/ws/chat",
+  "repoUrl": "https://github.com/chaosoracleforall-agent/purecortexai",
+  "tgeDate": "2026-03-31T00:00:00Z",
+  "contracts": {
+    "agentFactory": {
+      "appId": 757172168,
+      "address": "RPBTMBSBFALFC4SOTUROMRBBSJGFOEGFFGULZEKPGHHXXFSHCNU247CJAM",
+      "status": "active"
+    },
+    "cortexToken": {
+      "assetId": 757172171,
+      "name": "PureCortex",
+      "unitName": "CORTEX",
+      "creatorAddress": "RPBTMBSBFALFC4SOTUROMRBBSJGFOEGFFGULZEKPGHHXXFSHCNU247CJAM"
+    },
+    "governance": {
+      "appId": 757157787,
+      "status": "active"
+    },
+    "staking": {
+      "appId": 757172306,
+      "status": "active"
+    },
+    "treasury": {
+      "appId": 757172354,
+      "status": "active"
+    }
+  },
+  "tokenomics": {
+    "totalSupply": 10000000000000000,
+    "decimals": 6,
+    "basePrice": 10000,
+    "slope": 1000,
+    "creationFee": 100000000,
+    "buyFeeBps": 100,
+    "sellFeeBps": 200,
+    "graduationThreshold": 50000000000
+  },
+  "wallets": {
+    "agentFactoryEscrow": "RPBTMBSBFALFC4SOTUROMRBBSJGFOEGFFGULZEKPGHHXXFSHCNU247CJAM",
+    "assistanceFund": null,
+    "operations": null,
+    "creatorVesting": null
+  },
+  "legacyDeployments": [
+    {
+      "label": "March 13 launchpad deployment",
+      "agentFactoryAppId": 757089323,
+      "cortexAssetId": 757092088,
+      "status": "deprecated",
+      "note": "Retained for auditability only. Do not target this deployment from active clients."
+    }
+  ]
+}

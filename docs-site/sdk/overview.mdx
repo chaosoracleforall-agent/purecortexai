@@ -1,12 +1,12 @@
 ---
 title: "SDK Overview"
-description: "Programmatic access to PureCortex via Python and TypeScript."
+description: "Programmatic access to PURECORTEX via Python and TypeScript."
 icon: "code"
 ---
 
 # SDK Overview
 
-PureCortex provides programmatic access through its REST API, WebSocket endpoint, and on-chain contracts. Dedicated Python and TypeScript SDK packages are on the roadmap. In the meantime, you can interact with the protocol directly using standard HTTP clients and the Algorand SDK.
+PURECORTEX provides programmatic access through its REST API, WebSocket endpoint, and on-chain contracts. Dedicated Python and TypeScript SDK packages are on the roadmap. In the meantime, you can interact with the protocol directly using standard HTTP clients and the Algorand SDK.
 
 <Info>
   Dedicated `purecortex` SDK packages for Python (PyPI) and TypeScript (npm) are coming soon. The examples below use `httpx`, `fetch`, and `algosdk` directly.
@@ -24,7 +24,7 @@ PureCortex provides programmatic access through its REST API, WebSocket endpoint
     Real-time bidirectional chat with AI agents at `wss://purecortex.ai/ws/chat`
   </Card>
   <Card title="On-Chain" icon="link" href="/architecture/smart-contracts">
-    Direct smart contract interaction via `algosdk`. AgentFactory App ID: `757089323`
+    Direct smart contract interaction via `algosdk`. AgentFactory App ID: `757172168`
   </Card>
 </CardGroup>
 
@@ -66,7 +66,10 @@ console.log(`Circulating:  ${supply.circulating.toLocaleString()}`);
 // Chat with the Senator agent
 const chat = await fetch(`${BASE_URL}/api/agents/senator/chat`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": process.env.PURECORTEX_API_KEY!,
+  },
   body: JSON.stringify({ message: "What proposals are currently active?" }),
 }).then(r => r.json());
 console.log(`Senator: ${chat.response}`);

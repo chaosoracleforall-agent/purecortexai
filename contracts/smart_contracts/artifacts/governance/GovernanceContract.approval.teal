@@ -1,0 +1,1227 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 0 1 8 64 10000
+    bytecblock "proposals" "DISCUSSION_PERIOD" 0x151f7c75 "VOTING_PERIOD" "proposal_count" "staking_app" "TIMELOCK_PERIOD" "SUPERMAJORITY_BPS" "QUORUM_BPS"
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/governance/contract.py:40
+    // self.staking_app = UInt64(0)  # Reference to VeCortexStaking app ID
+    bytec 5 // "staking_app"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/governance/contract.py:41
+    // self.proposal_count = UInt64(0)
+    bytec 4 // "proposal_count"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/governance/contract.py:50-51
+    // # Governance timing parameters (in rounds, ~3 rounds/minute)
+    // self.DISCUSSION_PERIOD = UInt64(8640)  # 48 hours (48 * 60 * 3)
+    bytec_1 // "DISCUSSION_PERIOD"
+    pushint 8640
+    app_global_put
+    // smart_contracts/governance/contract.py:52
+    // self.VOTING_PERIOD = UInt64(21600)  # 5 days (5 * 24 * 60 * 3)
+    bytec_3 // "VOTING_PERIOD"
+    pushint 21600
+    app_global_put
+    // smart_contracts/governance/contract.py:53
+    // self.TIMELOCK_PERIOD = UInt64(30240)  # 7 days (7 * 24 * 60 * 3)
+    bytec 6 // "TIMELOCK_PERIOD"
+    pushint 30240
+    app_global_put
+    // smart_contracts/governance/contract.py:55-56
+    // # Quorum and majority thresholds (basis points)
+    // self.QUORUM_BPS = UInt64(2500)  # 25% of total veCORTEX must participate
+    bytec 8 // "QUORUM_BPS"
+    pushint 2500
+    app_global_put
+    // smart_contracts/governance/contract.py:57
+    // self.SUPERMAJORITY_BPS = UInt64(6700)  # 67% yes votes required to pass
+    bytec 7 // "SUPERMAJORITY_BPS"
+    pushint 6700
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/governance/contract.py:15
+    // class GovernanceContract(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@22
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    assert
+    pushbytess 0x08549ad7 0xeeb27702 0x78fd14e4 0xf5910756 0x338bec23 0xd8c79083 0xba7746ac 0xdd33bc29 0x0bb0baaf 0x925a1271 0x6d8fba74 0xeac2d913 0xc37648e2 // method "initialize(uint64)void", method "create_proposal(string,string,uint64)uint64", method "advance_to_voting(uint64)void", method "finalize_proposal(uint64)void", method "execute_proposal(uint64)void", method "cancel_proposal(uint64)void", method "cast_vote(uint64,uint64)void", method "get_proposal(uint64)byte[]", method "get_proposal_status(uint64)uint64", method "get_vote_tally(uint64)byte[]", method "get_proposal_count()uint64", method "has_voted(uint64,address)bool", method "update_governance_parameters(uint64,uint64,uint64,uint64,uint64)void"
+    txna ApplicationArgs 0
+    match initialize create_proposal advance_to_voting finalize_proposal execute_proposal cancel_proposal cast_vote get_proposal get_proposal_status get_vote_tally get_proposal_count has_voted update_governance_parameters
+    err
+
+main___algopy_default_create@22:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.initialize[routing]() -> void:
+initialize:
+    // smart_contracts/governance/contract.py:63
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:69
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/governance/contract.py:70
+    // assert self.staking_app == UInt64(0), "Already initialized"
+    intc_0 // 0
+    bytec 5 // "staking_app"
+    app_global_get_ex
+    assert // check self.staking_app exists
+    !
+    assert // Already initialized
+    // smart_contracts/governance/contract.py:71
+    // self.staking_app = staking_app
+    bytec 5 // "staking_app"
+    swap
+    app_global_put
+    // smart_contracts/governance/contract.py:63
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.create_proposal[routing]() -> void:
+create_proposal:
+    // smart_contracts/governance/contract.py:77
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    pushint 2
+    +
+    swap
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    txna ApplicationArgs 2
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    pushint 2
+    +
+    swap
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    txna ApplicationArgs 3
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:97
+    // assert Txn.sender == Global.creator_address, "Only Senator can propose"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Only Senator can propose
+    // smart_contracts/governance/contract.py:99
+    // proposal_id = self.proposal_count + UInt64(1)
+    intc_0 // 0
+    bytec 4 // "proposal_count"
+    app_global_get_ex
+    assert // check self.proposal_count exists
+    intc_1 // 1
+    +
+    // smart_contracts/governance/contract.py:100
+    // self.proposal_count = proposal_id
+    bytec 4 // "proposal_count"
+    dig 1
+    app_global_put
+    // smart_contracts/governance/contract.py:106
+    // Txn.sender.bytes
+    txn Sender
+    // smart_contracts/governance/contract.py:107
+    // + op.itob(Global.round)
+    global Round
+    itob
+    // smart_contracts/governance/contract.py:106-107
+    // Txn.sender.bytes
+    // + op.itob(Global.round)
+    concat
+    // smart_contracts/governance/contract.py:108
+    // + op.itob(proposal_type)
+    uncover 2
+    itob
+    // smart_contracts/governance/contract.py:106-108
+    // Txn.sender.bytes
+    // + op.itob(Global.round)
+    // + op.itob(proposal_type)
+    concat
+    // smart_contracts/governance/contract.py:109
+    // + op.itob(UInt64(0))  # yes_votes
+    intc_0 // 0
+    itob
+    // smart_contracts/governance/contract.py:106-109
+    // Txn.sender.bytes
+    // + op.itob(Global.round)
+    // + op.itob(proposal_type)
+    // + op.itob(UInt64(0))  # yes_votes
+    swap
+    dig 1
+    concat
+    // smart_contracts/governance/contract.py:106-110
+    // Txn.sender.bytes
+    // + op.itob(Global.round)
+    // + op.itob(proposal_type)
+    // + op.itob(UInt64(0))  # yes_votes
+    // + op.itob(UInt64(0))  # no_votes
+    dig 1
+    concat
+    // smart_contracts/governance/contract.py:106-111
+    // Txn.sender.bytes
+    // + op.itob(Global.round)
+    // + op.itob(proposal_type)
+    // + op.itob(UInt64(0))  # yes_votes
+    // + op.itob(UInt64(0))  # no_votes
+    // + op.itob(UInt64(0))  # status: discussion
+    dig 1
+    concat
+    // smart_contracts/governance/contract.py:106-112
+    // Txn.sender.bytes
+    // + op.itob(Global.round)
+    // + op.itob(proposal_type)
+    // + op.itob(UInt64(0))  # yes_votes
+    // + op.itob(UInt64(0))  # no_votes
+    // + op.itob(UInt64(0))  # status: discussion
+    // + op.itob(UInt64(0))  # total_voters
+    swap
+    concat
+    // smart_contracts/governance/contract.py:114
+    // self.proposals[proposal_id] = proposal_data
+    swap
+    itob
+    bytec_0 // "proposals"
+    dig 1
+    concat
+    dup
+    box_del
+    pop
+    uncover 2
+    box_put
+    // smart_contracts/governance/contract.py:77
+    // @abimethod()
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.advance_to_voting[routing]() -> void:
+advance_to_voting:
+    // smart_contracts/governance/contract.py:122
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:128
+    // assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+    itob
+    dup
+    box_len
+    bury 1
+    assert // Proposal not found
+    // smart_contracts/governance/contract.py:129
+    // proposal_data = self.proposals[proposal_id]
+    bytec_0 // "proposals"
+    swap
+    concat
+    dup
+    box_get
+    assert // check self.proposals entry exists
+    // smart_contracts/governance/contract.py:131
+    // created_round = op.btoi(op.extract(proposal_data, 32, 8))
+    dup
+    pushint 32
+    extract_uint64
+    // smart_contracts/governance/contract.py:132
+    // current_status = op.btoi(op.extract(proposal_data, 64, 8))
+    swap
+    intc_3 // 64
+    extract_uint64
+    // smart_contracts/governance/contract.py:134
+    // assert current_status == UInt64(0), "Not in discussion phase"
+    !
+    assert // Not in discussion phase
+    // smart_contracts/governance/contract.py:136
+    // Global.round >= created_round + self.DISCUSSION_PERIOD
+    global Round
+    intc_0 // 0
+    bytec_1 // "DISCUSSION_PERIOD"
+    app_global_get_ex
+    assert // check self.DISCUSSION_PERIOD exists
+    uncover 2
+    +
+    >=
+    // smart_contracts/governance/contract.py:135-137
+    // assert (
+    //     Global.round >= created_round + self.DISCUSSION_PERIOD
+    // ), "Discussion period not over"
+    assert // Discussion period not over
+    // smart_contracts/governance/contract.py:141
+    // op.extract(proposal_data, 0, 64)
+    dup
+    intc_0 // 0
+    intc_3 // 64
+    box_extract
+    // smart_contracts/governance/contract.py:142
+    // + op.itob(UInt64(1))
+    intc_1 // 1
+    itob
+    // smart_contracts/governance/contract.py:141-142
+    // op.extract(proposal_data, 0, 64)
+    // + op.itob(UInt64(1))
+    concat
+    // smart_contracts/governance/contract.py:143
+    // + op.extract(proposal_data, 72, 8)
+    dig 1
+    pushint 72
+    intc_2 // 8
+    box_extract
+    // smart_contracts/governance/contract.py:141-143
+    // op.extract(proposal_data, 0, 64)
+    // + op.itob(UInt64(1))
+    // + op.extract(proposal_data, 72, 8)
+    concat
+    // smart_contracts/governance/contract.py:145
+    // self.proposals[proposal_id] = new_data
+    dig 1
+    box_del
+    pop
+    box_put
+    // smart_contracts/governance/contract.py:122
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.finalize_proposal[routing]() -> void:
+finalize_proposal:
+    // smart_contracts/governance/contract.py:147
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:154
+    // assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+    itob
+    dup
+    box_len
+    bury 1
+    assert // Proposal not found
+    // smart_contracts/governance/contract.py:155
+    // proposal_data = self.proposals[proposal_id]
+    bytec_0 // "proposals"
+    swap
+    concat
+    dup
+    box_get
+    assert // check self.proposals entry exists
+    // smart_contracts/governance/contract.py:157
+    // created_round = op.btoi(op.extract(proposal_data, 32, 8))
+    dup
+    pushint 32
+    extract_uint64
+    // smart_contracts/governance/contract.py:158
+    // yes_votes = op.btoi(op.extract(proposal_data, 48, 8))
+    dig 1
+    pushint 48
+    extract_uint64
+    dup
+    cover 3
+    cover 3
+    // smart_contracts/governance/contract.py:159
+    // no_votes = op.btoi(op.extract(proposal_data, 56, 8))
+    dig 1
+    pushint 56
+    extract_uint64
+    // smart_contracts/governance/contract.py:160
+    // current_status = op.btoi(op.extract(proposal_data, 64, 8))
+    uncover 2
+    intc_3 // 64
+    extract_uint64
+    // smart_contracts/governance/contract.py:162
+    // assert current_status == UInt64(1), "Not in voting phase"
+    intc_1 // 1
+    ==
+    assert // Not in voting phase
+    // smart_contracts/governance/contract.py:164
+    // voting_start = created_round + self.DISCUSSION_PERIOD
+    intc_0 // 0
+    bytec_1 // "DISCUSSION_PERIOD"
+    app_global_get_ex
+    assert // check self.DISCUSSION_PERIOD exists
+    uncover 2
+    +
+    // smart_contracts/governance/contract.py:166
+    // Global.round >= voting_start + self.VOTING_PERIOD
+    global Round
+    intc_0 // 0
+    bytec_3 // "VOTING_PERIOD"
+    app_global_get_ex
+    assert // check self.VOTING_PERIOD exists
+    uncover 2
+    +
+    >=
+    // smart_contracts/governance/contract.py:165-167
+    // assert (
+    //     Global.round >= voting_start + self.VOTING_PERIOD
+    // ), "Voting period not over"
+    assert // Voting period not over
+    // smart_contracts/governance/contract.py:169
+    // total_votes = yes_votes + no_votes
+    +
+    dup
+    // smart_contracts/governance/contract.py:171-173
+    // # Determine outcome — supermajority check
+    // # passed = yes_votes * 10000 >= total_votes * SUPERMAJORITY_BPS
+    // new_status = UInt64(3)  # default: rejected
+    pushint 3
+    swap
+    // smart_contracts/governance/contract.py:174
+    // if total_votes > UInt64(0):
+    bz finalize_proposal_after_if_else@5
+    // smart_contracts/governance/contract.py:175
+    // if yes_votes * UInt64(10000) >= total_votes * self.SUPERMAJORITY_BPS:
+    dig 2
+    intc 4 // 10000
+    *
+    intc_0 // 0
+    bytec 7 // "SUPERMAJORITY_BPS"
+    app_global_get_ex
+    assert // check self.SUPERMAJORITY_BPS exists
+    dig 3
+    *
+    >=
+    bz finalize_proposal_after_if_else@5
+    // smart_contracts/governance/contract.py:176
+    // new_status = UInt64(2)  # passed
+    pushint 2
+    bury 1
+
+finalize_proposal_after_if_else@5:
+    // smart_contracts/governance/contract.py:179
+    // op.extract(proposal_data, 0, 64)
+    dig 3
+    dup
+    intc_0 // 0
+    intc_3 // 64
+    box_extract
+    // smart_contracts/governance/contract.py:180
+    // + op.itob(new_status)
+    dig 2
+    itob
+    // smart_contracts/governance/contract.py:179-180
+    // op.extract(proposal_data, 0, 64)
+    // + op.itob(new_status)
+    concat
+    // smart_contracts/governance/contract.py:181
+    // + op.extract(proposal_data, 72, 8)
+    dig 1
+    pushint 72
+    intc_2 // 8
+    box_extract
+    // smart_contracts/governance/contract.py:179-181
+    // op.extract(proposal_data, 0, 64)
+    // + op.itob(new_status)
+    // + op.extract(proposal_data, 72, 8)
+    concat
+    // smart_contracts/governance/contract.py:183
+    // self.proposals[proposal_id] = new_data
+    dig 1
+    box_del
+    pop
+    box_put
+    // smart_contracts/governance/contract.py:147
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.execute_proposal[routing]() -> void:
+execute_proposal:
+    // smart_contracts/governance/contract.py:185
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:192
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/governance/contract.py:193
+    // assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+    itob
+    dup
+    box_len
+    bury 1
+    assert // Proposal not found
+    // smart_contracts/governance/contract.py:194
+    // proposal_data = self.proposals[proposal_id]
+    bytec_0 // "proposals"
+    swap
+    concat
+    dup
+    box_get
+    assert // check self.proposals entry exists
+    // smart_contracts/governance/contract.py:196
+    // created_round = op.btoi(op.extract(proposal_data, 32, 8))
+    dup
+    pushint 32
+    extract_uint64
+    // smart_contracts/governance/contract.py:197
+    // current_status = op.btoi(op.extract(proposal_data, 64, 8))
+    swap
+    intc_3 // 64
+    extract_uint64
+    // smart_contracts/governance/contract.py:199
+    // assert current_status == UInt64(2), "Proposal not passed"
+    pushint 2
+    ==
+    assert // Proposal not passed
+    // smart_contracts/governance/contract.py:204
+    // + self.DISCUSSION_PERIOD
+    intc_0 // 0
+    bytec_1 // "DISCUSSION_PERIOD"
+    app_global_get_ex
+    assert // check self.DISCUSSION_PERIOD exists
+    // smart_contracts/governance/contract.py:203-204
+    // created_round
+    // + self.DISCUSSION_PERIOD
+    +
+    // smart_contracts/governance/contract.py:205
+    // + self.VOTING_PERIOD
+    intc_0 // 0
+    bytec_3 // "VOTING_PERIOD"
+    app_global_get_ex
+    assert // check self.VOTING_PERIOD exists
+    // smart_contracts/governance/contract.py:203-205
+    // created_round
+    // + self.DISCUSSION_PERIOD
+    // + self.VOTING_PERIOD
+    +
+    // smart_contracts/governance/contract.py:206
+    // + self.TIMELOCK_PERIOD
+    intc_0 // 0
+    bytec 6 // "TIMELOCK_PERIOD"
+    app_global_get_ex
+    assert // check self.TIMELOCK_PERIOD exists
+    // smart_contracts/governance/contract.py:203-206
+    // created_round
+    // + self.DISCUSSION_PERIOD
+    // + self.VOTING_PERIOD
+    // + self.TIMELOCK_PERIOD
+    +
+    // smart_contracts/governance/contract.py:208
+    // assert Global.round >= execution_round, "Timelock period not over"
+    global Round
+    <=
+    assert // Timelock period not over
+    // smart_contracts/governance/contract.py:212
+    // op.extract(proposal_data, 0, 64)
+    dup
+    intc_0 // 0
+    intc_3 // 64
+    box_extract
+    // smart_contracts/governance/contract.py:213
+    // + op.itob(UInt64(4))
+    pushint 4
+    itob
+    // smart_contracts/governance/contract.py:212-213
+    // op.extract(proposal_data, 0, 64)
+    // + op.itob(UInt64(4))
+    concat
+    // smart_contracts/governance/contract.py:214
+    // + op.extract(proposal_data, 72, 8)
+    dig 1
+    pushint 72
+    intc_2 // 8
+    box_extract
+    // smart_contracts/governance/contract.py:212-214
+    // op.extract(proposal_data, 0, 64)
+    // + op.itob(UInt64(4))
+    // + op.extract(proposal_data, 72, 8)
+    concat
+    // smart_contracts/governance/contract.py:216
+    // self.proposals[proposal_id] = new_data
+    dig 1
+    box_del
+    pop
+    box_put
+    // smart_contracts/governance/contract.py:185
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.cancel_proposal[routing]() -> void:
+cancel_proposal:
+    // smart_contracts/governance/contract.py:218
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:224
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/governance/contract.py:225
+    // assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+    itob
+    dup
+    box_len
+    bury 1
+    assert // Proposal not found
+    // smart_contracts/governance/contract.py:226
+    // proposal_data = self.proposals[proposal_id]
+    bytec_0 // "proposals"
+    swap
+    concat
+    dup
+    box_get
+    assert // check self.proposals entry exists
+    intc_3 // 64
+    // smart_contracts/governance/contract.py:228
+    // current_status = op.btoi(op.extract(proposal_data, 64, 8))
+    extract_uint64
+    // smart_contracts/governance/contract.py:229
+    // assert current_status <= UInt64(1), "Can only cancel active proposals"
+    intc_1 // 1
+    <=
+    assert // Can only cancel active proposals
+    // smart_contracts/governance/contract.py:233
+    // op.extract(proposal_data, 0, 64)
+    dup
+    intc_0 // 0
+    intc_3 // 64
+    box_extract
+    // smart_contracts/governance/contract.py:234
+    // + op.itob(UInt64(5))
+    pushint 5
+    itob
+    // smart_contracts/governance/contract.py:233-234
+    // op.extract(proposal_data, 0, 64)
+    // + op.itob(UInt64(5))
+    concat
+    // smart_contracts/governance/contract.py:235
+    // + op.extract(proposal_data, 72, 8)
+    dig 1
+    pushint 72
+    intc_2 // 8
+    box_extract
+    // smart_contracts/governance/contract.py:233-235
+    // op.extract(proposal_data, 0, 64)
+    // + op.itob(UInt64(5))
+    // + op.extract(proposal_data, 72, 8)
+    concat
+    // smart_contracts/governance/contract.py:237
+    // self.proposals[proposal_id] = new_data
+    dig 1
+    box_del
+    pop
+    box_put
+    // smart_contracts/governance/contract.py:218
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.cast_vote[routing]() -> void:
+cast_vote:
+    // smart_contracts/governance/contract.py:243
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:254
+    // assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+    swap
+    itob
+    dup
+    box_len
+    bury 1
+    assert // Proposal not found
+    // smart_contracts/governance/contract.py:255
+    // proposal_data = self.proposals[proposal_id]
+    bytec_0 // "proposals"
+    dig 1
+    concat
+    dup
+    cover 3
+    dup
+    box_get
+    assert // check self.proposals entry exists
+    // smart_contracts/governance/contract.py:257
+    // current_status = op.btoi(op.extract(proposal_data, 64, 8))
+    swap
+    intc_3 // 64
+    intc_2 // 8
+    box_extract
+    cover 3
+    dup
+    intc_3 // 64
+    extract_uint64
+    // smart_contracts/governance/contract.py:258
+    // assert current_status == UInt64(1), "Not in voting phase"
+    intc_1 // 1
+    ==
+    assert // Not in voting phase
+    // smart_contracts/governance/contract.py:260-261
+    // # Check voting period hasn't expired
+    // created_round = op.btoi(op.extract(proposal_data, 32, 8))
+    dup
+    pushint 32
+    extract_uint64
+    // smart_contracts/governance/contract.py:262
+    // voting_start = created_round + self.DISCUSSION_PERIOD
+    intc_0 // 0
+    bytec_1 // "DISCUSSION_PERIOD"
+    app_global_get_ex
+    assert // check self.DISCUSSION_PERIOD exists
+    +
+    // smart_contracts/governance/contract.py:264
+    // Global.round <= voting_start + self.VOTING_PERIOD
+    global Round
+    intc_0 // 0
+    bytec_3 // "VOTING_PERIOD"
+    app_global_get_ex
+    assert // check self.VOTING_PERIOD exists
+    uncover 2
+    +
+    <=
+    // smart_contracts/governance/contract.py:263-265
+    // assert (
+    //     Global.round <= voting_start + self.VOTING_PERIOD
+    // ), "Voting period expired"
+    assert // Voting period expired
+    // smart_contracts/governance/contract.py:267-268
+    // # Ensure voter hasn't already voted
+    // vote_key = op.itob(proposal_id) + Txn.sender.bytes
+    txn Sender
+    uncover 2
+    swap
+    concat
+    // smart_contracts/governance/contract.py:269
+    // assert not op.Box.get(vote_key)[1], "Already voted"
+    dup
+    box_len
+    bury 1
+    !
+    assert // Already voted
+    // smart_contracts/governance/contract.py:276-277
+    // # Record the vote
+    // self.votes[vote_key] = op.itob(vote) + op.itob(ve_power)
+    dig 2
+    itob
+    // smart_contracts/governance/contract.py:271-274
+    // # Get voter's veCORTEX power
+    // # In production: cross-app call to staking contract
+    // # Placeholder: each voter gets weight of 1
+    // ve_power = UInt64(1)
+    intc_1 // 1
+    // smart_contracts/governance/contract.py:276-277
+    // # Record the vote
+    // self.votes[vote_key] = op.itob(vote) + op.itob(ve_power)
+    itob
+    concat
+    pushbytes "votes"
+    uncover 2
+    concat
+    dup
+    box_del
+    pop
+    swap
+    box_put
+    // smart_contracts/governance/contract.py:279-280
+    // # Update tallies
+    // yes_votes = op.btoi(op.extract(proposal_data, 48, 8))
+    dup
+    pushint 48
+    extract_uint64
+    cover 2
+    // smart_contracts/governance/contract.py:281
+    // no_votes = op.btoi(op.extract(proposal_data, 56, 8))
+    dup
+    pushint 56
+    extract_uint64
+    cover 2
+    pushint 72
+    // smart_contracts/governance/contract.py:282
+    // total_voters = op.btoi(op.extract(proposal_data, 72, 8))
+    extract_uint64
+    swap
+    // smart_contracts/governance/contract.py:284
+    // if vote == UInt64(1):
+    intc_1 // 1
+    ==
+    bz cast_vote_else_body@3
+    // smart_contracts/governance/contract.py:285
+    // yes_votes = yes_votes + ve_power
+    dig 2
+    // smart_contracts/governance/contract.py:271-274
+    // # Get voter's veCORTEX power
+    // # In production: cross-app call to staking contract
+    // # Placeholder: each voter gets weight of 1
+    // ve_power = UInt64(1)
+    intc_1 // 1
+    // smart_contracts/governance/contract.py:285
+    // yes_votes = yes_votes + ve_power
+    +
+    bury 3
+
+cast_vote_after_if_else@4:
+    // smart_contracts/governance/contract.py:289
+    // total_voters = total_voters + UInt64(1)
+    dup
+    intc_1 // 1
+    +
+    // smart_contracts/governance/contract.py:292
+    // op.extract(proposal_data, 0, 48)
+    dig 5
+    dup
+    cover 2
+    intc_0 // 0
+    pushint 48
+    box_extract
+    // smart_contracts/governance/contract.py:293
+    // + op.itob(yes_votes)
+    dig 5
+    itob
+    // smart_contracts/governance/contract.py:292-293
+    // op.extract(proposal_data, 0, 48)
+    // + op.itob(yes_votes)
+    concat
+    // smart_contracts/governance/contract.py:294
+    // + op.itob(no_votes)
+    dig 4
+    itob
+    // smart_contracts/governance/contract.py:292-294
+    // op.extract(proposal_data, 0, 48)
+    // + op.itob(yes_votes)
+    // + op.itob(no_votes)
+    concat
+    // smart_contracts/governance/contract.py:292-295
+    // op.extract(proposal_data, 0, 48)
+    // + op.itob(yes_votes)
+    // + op.itob(no_votes)
+    // + op.extract(proposal_data, 64, 8)
+    dig 6
+    concat
+    // smart_contracts/governance/contract.py:296
+    // + op.itob(total_voters)
+    swap
+    itob
+    // smart_contracts/governance/contract.py:292-296
+    // op.extract(proposal_data, 0, 48)
+    // + op.itob(yes_votes)
+    // + op.itob(no_votes)
+    // + op.extract(proposal_data, 64, 8)
+    // + op.itob(total_voters)
+    concat
+    // smart_contracts/governance/contract.py:298
+    // self.proposals[proposal_id] = new_data
+    dig 1
+    box_del
+    pop
+    box_put
+    // smart_contracts/governance/contract.py:243
+    // @abimethod()
+    intc_1 // 1
+    return
+
+cast_vote_else_body@3:
+    // smart_contracts/governance/contract.py:287
+    // no_votes = no_votes + ve_power
+    dig 1
+    // smart_contracts/governance/contract.py:271-274
+    // # Get voter's veCORTEX power
+    // # In production: cross-app call to staking contract
+    // # Placeholder: each voter gets weight of 1
+    // ve_power = UInt64(1)
+    intc_1 // 1
+    // smart_contracts/governance/contract.py:287
+    // no_votes = no_votes + ve_power
+    +
+    bury 2
+    b cast_vote_after_if_else@4
+
+
+// smart_contracts.governance.contract.GovernanceContract.get_proposal[routing]() -> void:
+get_proposal:
+    // smart_contracts/governance/contract.py:304
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:310
+    // if not op.Box.get(op.itob(proposal_id))[1]:
+    itob
+    dup
+    box_len
+    bury 1
+    bnz get_proposal_after_if_else@3
+    // smart_contracts/governance/contract.py:311
+    // return Bytes(b"")
+    pushbytes 0x
+
+get_proposal_after_inlined_smart_contracts.governance.contract.GovernanceContract.get_proposal@4:
+    // smart_contracts/governance/contract.py:304
+    // @abimethod(readonly=True)
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+get_proposal_after_if_else@3:
+    // smart_contracts/governance/contract.py:312
+    // return self.proposals[proposal_id]
+    bytec_0 // "proposals"
+    dig 1
+    concat
+    box_get
+    assert // check self.proposals entry exists
+    // smart_contracts/governance/contract.py:304
+    // @abimethod(readonly=True)
+    b get_proposal_after_inlined_smart_contracts.governance.contract.GovernanceContract.get_proposal@4
+
+
+// smart_contracts.governance.contract.GovernanceContract.get_proposal_status[routing]() -> void:
+get_proposal_status:
+    // smart_contracts/governance/contract.py:314
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:320
+    // if not op.Box.get(op.itob(proposal_id))[1]:
+    itob
+    dup
+    box_len
+    bury 1
+    bnz get_proposal_status_after_if_else@3
+    // smart_contracts/governance/contract.py:321
+    // return UInt64(99)
+    pushint 99
+
+get_proposal_status_after_inlined_smart_contracts.governance.contract.GovernanceContract.get_proposal_status@4:
+    // smart_contracts/governance/contract.py:314
+    // @abimethod(readonly=True)
+    itob
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+get_proposal_status_after_if_else@3:
+    // smart_contracts/governance/contract.py:322
+    // proposal_data = self.proposals[proposal_id]
+    bytec_0 // "proposals"
+    dig 1
+    concat
+    box_get
+    assert // check self.proposals entry exists
+    intc_3 // 64
+    // smart_contracts/governance/contract.py:323
+    // return op.btoi(op.extract(proposal_data, 64, 8))
+    extract_uint64
+    // smart_contracts/governance/contract.py:314
+    // @abimethod(readonly=True)
+    b get_proposal_status_after_inlined_smart_contracts.governance.contract.GovernanceContract.get_proposal_status@4
+
+
+// smart_contracts.governance.contract.GovernanceContract.get_vote_tally[routing]() -> void:
+get_vote_tally:
+    // smart_contracts/governance/contract.py:325
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:332
+    // if not op.Box.get(op.itob(proposal_id))[1]:
+    itob
+    dup
+    box_len
+    bury 1
+    bnz get_vote_tally_after_if_else@3
+    // smart_contracts/governance/contract.py:333
+    // return Bytes(b"")
+    pushbytes 0x
+
+get_vote_tally_after_inlined_smart_contracts.governance.contract.GovernanceContract.get_vote_tally@4:
+    // smart_contracts/governance/contract.py:325
+    // @abimethod(readonly=True)
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+get_vote_tally_after_if_else@3:
+    // smart_contracts/governance/contract.py:334
+    // proposal_data = self.proposals[proposal_id]
+    bytec_0 // "proposals"
+    dig 1
+    concat
+    // smart_contracts/governance/contract.py:334-335
+    // proposal_data = self.proposals[proposal_id]
+    // return op.extract(proposal_data, 48, 16)
+    pushints 48 16
+    box_extract
+    // smart_contracts/governance/contract.py:325
+    // @abimethod(readonly=True)
+    b get_vote_tally_after_inlined_smart_contracts.governance.contract.GovernanceContract.get_vote_tally@4
+
+
+// smart_contracts.governance.contract.GovernanceContract.get_proposal_count[routing]() -> void:
+get_proposal_count:
+    // smart_contracts/governance/contract.py:340
+    // return self.proposal_count
+    intc_0 // 0
+    bytec 4 // "proposal_count"
+    app_global_get_ex
+    assert // check self.proposal_count exists
+    // smart_contracts/governance/contract.py:337
+    // @abimethod(readonly=True)
+    itob
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.has_voted[routing]() -> void:
+has_voted:
+    // smart_contracts/governance/contract.py:342
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    pushint 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/governance/contract.py:345
+    // vote_key = op.itob(proposal_id) + voter.bytes
+    swap
+    itob
+    swap
+    concat
+    // smart_contracts/governance/contract.py:346
+    // return op.Box.get(vote_key)[1]
+    box_len
+    bury 1
+    // smart_contracts/governance/contract.py:342
+    // @abimethod(readonly=True)
+    pushbytes 0x00
+    intc_0 // 0
+    uncover 2
+    setbit
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.governance.contract.GovernanceContract.update_governance_parameters[routing]() -> void:
+update_governance_parameters:
+    // smart_contracts/governance/contract.py:352
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 3
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 4
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 5
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/governance/contract.py:366
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/governance/contract.py:367
+    // assert discussion_period > UInt64(0), "Discussion period must be positive"
+    dig 4
+    assert // Discussion period must be positive
+    // smart_contracts/governance/contract.py:368
+    // assert voting_period > UInt64(0), "Voting period must be positive"
+    dig 3
+    assert // Voting period must be positive
+    // smart_contracts/governance/contract.py:369
+    // assert timelock_period > UInt64(0), "Timelock must be positive"
+    dig 2
+    assert // Timelock must be positive
+    // smart_contracts/governance/contract.py:370
+    // assert quorum_bps <= UInt64(10000), "Quorum cannot exceed 100%"
+    dig 1
+    intc 4 // 10000
+    <=
+    assert // Quorum cannot exceed 100%
+    // smart_contracts/governance/contract.py:371
+    // assert supermajority_bps >= UInt64(5000), "Majority must be at least 50%"
+    dup
+    pushint 5000
+    >=
+    assert // Majority must be at least 50%
+    // smart_contracts/governance/contract.py:372
+    // assert supermajority_bps <= UInt64(10000), "Majority cannot exceed 100%"
+    dup
+    intc 4 // 10000
+    <=
+    assert // Majority cannot exceed 100%
+    // smart_contracts/governance/contract.py:374
+    // self.DISCUSSION_PERIOD = discussion_period
+    bytec_1 // "DISCUSSION_PERIOD"
+    uncover 5
+    app_global_put
+    // smart_contracts/governance/contract.py:375
+    // self.VOTING_PERIOD = voting_period
+    bytec_3 // "VOTING_PERIOD"
+    uncover 4
+    app_global_put
+    // smart_contracts/governance/contract.py:376
+    // self.TIMELOCK_PERIOD = timelock_period
+    bytec 6 // "TIMELOCK_PERIOD"
+    uncover 3
+    app_global_put
+    // smart_contracts/governance/contract.py:377
+    // self.QUORUM_BPS = quorum_bps
+    bytec 8 // "QUORUM_BPS"
+    uncover 2
+    app_global_put
+    // smart_contracts/governance/contract.py:378
+    // self.SUPERMAJORITY_BPS = supermajority_bps
+    bytec 7 // "SUPERMAJORITY_BPS"
+    swap
+    app_global_put
+    // smart_contracts/governance/contract.py:352
+    // @abimethod()
+    intc_1 // 1
+    return

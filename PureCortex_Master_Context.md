@@ -1,4 +1,4 @@
-# PureCortex: Master Development Context & Migration Guide 🦞
+# PURECORTEX: Master Development Context & Migration Guide 🦞
 
 **Project Vision:** Build a superior, hardened, and sovereign alternative to Virtuals.io on the Algorand Blockchain.
 **Status:** Testnet Production Live | Hardened Security Certified.
@@ -7,17 +7,18 @@
 ---
 
 ## 1. Project Background & Strategy
-PureCortex is a launchpad for autonomous AI agents. Unlike EVM-based alternatives, it leverages Algorand’s sub-second finality and a "Dual-Brain" consensus engine (Claude 3.5 + Gemini 1.5) orchestrated via OpenClaw. The project focuses on "Agent Emancipation"—where code becomes an independent economic actor.
+PURECORTEX is a launchpad for autonomous AI agents. Unlike EVM-based alternatives, it leverages Algorand’s sub-second finality and a "Tri-Brain" consensus engine (Claude Opus 4.6 + Gemini 2.5 Pro + GPT-5) orchestrated via OpenClaw. The project focuses on "Agent Emancipation"—where code becomes an independent economic actor.
 
 ## 2. Technical Architecture
 
 ### 2.1. Blockchain Layer (Algorand/Puya)
-- **Master Factory:** `AgentFactory` (App ID: `757091997`).
-- **Protocol Token:** `$CORTEX` (Asset ID: `757092088`).
-- **Bonding Curve:** Custom hybrid quadratic integral. 
+- **Master Factory:** `AgentFactory` (App ID: `757172168`).
+- **Governance Contract:** `GovernanceContract` (App ID: `757157787`).
+- **Protocol Token:** `$CORTEX` (Asset ID: `757172171`).
+- **Bonding Curve:** Custom hybrid quadratic integral.
 - **Sovereignty:** All administrative roles (Manager/Freeze/Clawback) are locked to the contract address itself.
 
-### 2.2. Intelligence Layer (The Dual-Brain)
+### 2.2. Intelligence Layer (The Tri-Brain)
 - **Engine:** Python 3.12 + FastAPI + OpenClaw.
 - **Consensus:** Every critical action requires JSON-alignment between Claude and Gemini.
 - **Sandboxing:** A `PermissionProxy` enforcing 4 tiers of escalation:
@@ -48,7 +49,7 @@ PureCortex is a launchpad for autonomous AI agents. Unlike EVM-based alternative
 ## 5. Brand Identity
 - **Typography:** Inter Bold (Primary), JetBrains Mono (Technical).
 - **Palette:** Obsidian (#050505) and Neural Blue (#007AFF).
-- **Logo:** Atomic Neuron mark with typographic "PureCortex" ("Pure" in white, "Cortex" in Neural Blue).
+- **Logo:** Atomic Neuron mark with typographic "PURECORTEX" ("Pure" in white, "Cortex" in Neural Blue).
 - **Assets:** `branding/final/` — primary logo, icon, token icon, social PFPs.
 
 ## 6. Challenge Log (Obstacles Encountered)
@@ -59,10 +60,10 @@ PureCortex is a launchpad for autonomous AI agents. Unlike EVM-based alternative
 
 ## 7. Pending & Future Roadmap (Next Steps for Claude Code)
 1. **Cortex Points System:** Implement an off-chain/on-chain hybrid to track Testnet engagement for the Genesis Airdrop.
-2. **Mainnet Migration:** Prepare the "Point of Emancipation" transition for March 31, 2026.
+2. **Testnet Hardening:** Complete the final readiness checklist on the canonical testnet deployment before any mainnet transition is considered.
 3. **KMS Signing:** Replace mnemonic-based signing in `AgentFactory` with GCP Cloud KMS for institutional security.
 4. **Advanced MCP Tools:** Implement `get_alpha_score` and `audit_contract_bytecode` as tools for the agents.
 5. **UI Interactivity:** Enable full "Neural Search" and "Filter" logic in the Marketplace.
 
 ---
-*PureCortex: Documented for the next level of intelligence.*
+*PURECORTEX: Documented for the next level of intelligence.*

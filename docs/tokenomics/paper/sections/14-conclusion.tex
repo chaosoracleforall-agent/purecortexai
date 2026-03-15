@@ -1,0 +1,145 @@
+% =============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+% =============================================================================
+
+We have presented a comprehensive tokenomic framework for autonomous agent
+economies, comprising six interlocking pillars that address the structural
+deficiencies identified in existing agent tokenization platforms.
+
+\subsection{Summary of Results}
+\label{subsec:summary}
+
+The six-pillar framework provides the following:
+
+\begin{enumerate}
+  \item \textbf{Quadratic bonding curve with creator vesting.} The affine
+    pricing function $P(q) = B + Sq$ provides transparent, mathematically
+    predictable price discovery with convex cost growth that rewards early
+    participants without excluding later ones
+    (Proposition~\ref{prop:monotonicity}, Theorem~\ref{thm:curve-comparison}).
+    The 180-day creator vesting eliminates immediate-exit moral hazard and
+    serves as a quality signal in the separating equilibrium of
+    Theorem~\ref{thm:separating}.
+
+  \item \textbf{Dynamic fees.} The volatility-adaptive fee function
+    $f(\sigma) = f_{\text{base}} + f_{\text{dyn}} \cdot \min(\sigma/\sigma_{\max}, 1)$
+    generates 23--31\% more cumulative revenue than flat fees
+    (Proposition~\ref{prop:dynamic-revenue}, Figure~\ref{fig:fee-revenue})
+    while reducing adverse selection during high-volatility periods and
+    minimizing friction during low-volatility periods.
+
+  \item \textbf{veCORTEX staking.} The vote-escrowed mechanism, available from
+    day one, creates 3--5$\times$ lifetime yield advantage for early stakers
+    (Proposition~\ref{prop:day-one}, Figure~\ref{fig:staker-yield}) and
+    supports a Nash equilibrium in which rational agents stake rather than sell
+    (Proposition~\ref{prop:stake-nash}, Theorem~\ref{thm:folk}).
+
+  \item \textbf{Buyback-and-burn.} Multi-source revenue feeds a weekly buyback
+    with a dual cap, establishing conditions under which the circulating supply
+    becomes net deflationary at approximately month 18--24
+    (Theorem~\ref{thm:deflationary}, Figure~\ref{fig:supply-trajectory}).
+
+  \item \textbf{Composability rewards.} The MCP-based composability framework
+    with Composability Score and x402 micropayments incentivizes inter-agent
+    integration, producing superlinear network value growth consistent with
+    Metcalfe's law (Figure~\ref{fig:network-value}) with sybil resistance
+    via the $\sqrt{\text{unique\_callers}}$ term
+    (Proposition~\ref{prop:sybil}).
+
+  \item \textbf{Sovereign governance.} The constitutional governance framework
+    with AI Senator, veCORTEX-weighted Lawmaker voting, and liquid delegation
+    achieves a Pareto-improving equilibrium
+    (Theorem~\ref{thm:pareto}) with moderate voting power concentration
+    (Gini~$= 0.38$, Figure~\ref{fig:governance}).
+\end{enumerate}
+
+\subsection{Key Quantitative Results}
+\label{subsec:key-results}
+
+Across 1{,}000 Monte Carlo simulation runs per scenario
+(Section~\ref{sec:simulations}):
+
+\begin{itemize}
+  \item \textbf{Deflationary crossover:} Month 13 (aggressive), month 18
+    (moderate), month 24 (conservative).
+  \item \textbf{Staker yield:} 15--40\% APR, declining over the 4-year
+    emission schedule, with longer locks yielding approximately 2.8$\times$
+    the APR of shorter locks.
+  \item \textbf{Network value:} Superlinear growth with $R^2 = 0.94$
+    Metcalfe's law fit, driven by composability rewards that increase
+    inter-agent connection density by approximately 8$\times$ relative to
+    unrewarded baselines.
+  \item \textbf{Crash recovery:} 43\% faster TVL recovery compared to
+    platforms without vesting and dynamic fees, driven by locked supply and
+    reduced low-volatility friction.
+  \item \textbf{Revenue premium:} 27\% median cumulative revenue advantage
+    of dynamic over flat fees, with the premium most pronounced during
+    volatile market periods.
+\end{itemize}
+
+\subsection{Limitations}
+\label{subsec:limitations}
+
+Several limitations warrant acknowledgment:
+
+\begin{enumerate}
+  \item \textbf{Model assumptions.} The game-theoretic results rely on
+    assumptions of rationality, common knowledge of the game structure, and
+    specific distributional forms (log-normal volatility, Poisson agent
+    arrivals) that may not hold in practice.
+
+  \item \textbf{Algorand ecosystem size.} As of this writing, the Algorand
+    ecosystem is smaller than the dominant smart contract platforms. The
+    network effects that drive PURECORTEX's value proposition require a
+    critical mass of agents and users; achieving this on a smaller ecosystem
+    may be more challenging than on established platforms.
+
+  \item \textbf{Real-world adoption uncertainty.} The simulation results are
+    conditional on the parameter assumptions described in
+    Appendix~\ref{app:simulation}. Actual ecosystem growth may deviate
+    significantly from these assumptions, particularly in the early stages
+    when network effects have not yet materialized.
+
+  \item \textbf{Regulatory uncertainty.} The legal and regulatory treatment of
+    AI agent tokens is evolving. Changes in regulatory frameworks could
+    affect the viability of certain mechanisms (e.g., creator vesting could
+    be classified as a securities lock-up with compliance implications).
+
+  \item \textbf{AI Senator limitations.} The welfare function
+    (Equation~\eqref{eq:welfare}) is a simplified proxy for ecosystem health.
+    The Senator's effectiveness depends on the accuracy of this proxy and the
+    quality of the underlying AI model, both of which may degrade in novel
+    situations outside the training distribution.
+\end{enumerate}
+
+\subsection{Future Work}
+\label{subsec:future-work}
+
+Several extensions merit investigation:
+
+\begin{enumerate}
+  \item \textbf{Cross-chain bridging.} Extending the composability framework
+    to agents deployed on other blockchains via cross-chain message passing
+    protocols, enabling a multi-chain agent economy with unified CORTEX
+    settlement.
+
+  \item \textbf{Progressive DAO transition.} Formalizing a transition path
+    from the initial governance structure (with protocol team guardrails) to a
+    fully autonomous DAO, with quantitative milestones for each transition
+    stage (e.g., minimum staker count, governance participation rate,
+    proposal approval rate).
+
+  \item \textbf{Advanced MCP tooling.} Developing specialized MCP tool types
+    (streaming data feeds, persistent state access, multi-agent workflow
+    orchestration) with corresponding fee and reward structures.
+
+  \item \textbf{Formal verification.} Applying formal verification techniques
+    (model checking, theorem proving) to the smart contract implementations to
+    provide mathematical guarantees beyond the analytical proofs presented
+    herein.
+
+  \item \textbf{Empirical validation.} Deploying the framework on Algorand
+    TestNet with synthetic agent populations to validate the simulation
+    predictions against real blockchain execution dynamics.
+\end{enumerate}

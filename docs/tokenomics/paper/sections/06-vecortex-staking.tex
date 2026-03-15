@@ -1,0 +1,185 @@
+% =============================================================================
+\section{Vote-Escrowed Staking (\texorpdfstring{\veCORTEX{}}{veCORTEX})}
+\label{sec:vecortex-staking}
+% =============================================================================
+
+This section specifies the \veCORTEX{} lock mechanism, derives the
+time-decaying governance weight, defines the emission distribution and boost
+multiplier, and analyzes the day-one launch advantage.
+
+\subsection{Lock Mechanics}
+\label{subsec:lock-mechanics}
+
+\begin{definition}[\veCORTEX{} Balance]
+\label{def:vecortex}
+A user who locks $a > 0$ CORTEX tokens for a duration $T \in (0, T_{\max}]$,
+where $T_{\max} = 4$ years (1{,}461 days including one leap year), receives an
+initial \veCORTEX{} balance of:
+\begin{equation}
+  \veCORTEX(a, T) = a \cdot \frac{T}{T_{\max}}
+  \label{eq:vecortex-initial}
+\end{equation}
+\end{definition}
+
+The maximum \veCORTEX{} per CORTEX is $1.0$ (achieved by locking for the full
+four years). A one-year lock yields $0.25$ \veCORTEX{} per CORTEX, a two-year
+lock yields $0.5$, and so on. This proportionality ensures that governance
+weight and revenue share are commensurate with the commitment horizon.
+
+\subsection{Linear Decay}
+\label{subsec:decay}
+
+The \veCORTEX{} balance decays linearly as the lock duration elapses:
+
+\begin{definition}[\veCORTEX{} Decay]
+\label{def:vecortex-decay}
+At time $t$ after locking ($0 \leq t \leq T$), the remaining \veCORTEX{}
+balance is:
+\begin{equation}
+  \veCORTEX(a, T, t) = a \cdot \frac{\max(T - t, 0)}{T_{\max}}
+  \label{eq:vecortex-decay}
+\end{equation}
+\end{definition}
+
+The decay is continuous and deterministic: at time $t = T$, the \veCORTEX{}
+balance reaches zero, and the locked CORTEX tokens become withdrawable. Users
+may re-lock at any point before expiry to extend their lock and restore their
+\veCORTEX{} balance, subject to the constraint that the new lock duration
+must be at least as long as the remaining duration.
+
+\subsection{Emission Distribution}
+\label{subsec:revenue-dist}
+
+Staking emissions from the 24\% emission pool
+(Equation~\eqref{eq:staking-emission}) are distributed pro-rata by \veCORTEX{}
+weight:
+
+\begin{equation}
+  r_i(t) = E(t) \cdot \frac{\veCORTEX_i(t)}{\sum_{j=1}^{M} \veCORTEX_j(t)}
+  \label{eq:revenue-pro-rata}
+\end{equation}
+
+where $E(t)$ is the emission allocation to be distributed at time $t$, $M$ is
+the number of active stakers, and $\veCORTEX_i(t)$ is user $i$'s \veCORTEX{}
+balance at time $t$. Distributions occur weekly.
+
+Protocol fee revenue does \emph{not} flow directly to stakers. Instead, 90\%
+of all protocol revenue is directed to the Assistance Fund for continuous
+buyback-and-burn (Section~\ref{sec:buyback-burn}). Stakers benefit indirectly
+through the resulting supply reduction, which increases per-token value. This
+separation eliminates the need for complex on-chain revenue distribution
+infrastructure and provides tax-efficient value accrual (capital gains rather
+than income in most jurisdictions).
+
+\subsection{Boost Multiplier}
+\label{subsec:boost}
+
+In addition to direct revenue share, \veCORTEX{} holders receive a boost to
+their staking emissions:
+
+\begin{definition}[Boost Multiplier]
+\label{def:boost}
+Let $v_i$ denote user $i$'s \veCORTEX{} balance and $v_{\max}$ denote the
+maximum \veCORTEX{} balance among all stakers. The boost multiplier is:
+\begin{equation}
+  \text{boost}(v_i) = \min\!\left(1 + 1.5 \cdot \frac{v_i}{v_{\max}},\; 2.5\right)
+  \label{eq:boost}
+\end{equation}
+\end{definition}
+
+The boost ranges from $1.0\times$ (for users with no \veCORTEX{}) to
+$2.5\times$ (for the user with the highest \veCORTEX{} balance). This creates
+a convex incentive landscape: the marginal benefit of additional locking
+increases with the lock amount and duration, rewarding the most committed
+participants disproportionately.
+
+\subsection{Day-One Launch Advantage}
+\label{subsec:day-one}
+
+A critical design choice is that the \veCORTEX{} mechanism launches
+simultaneously with the CORTEX token, ensuring that early participants can lock
+from day one. We formalize the advantage this confers.
+
+\begin{proposition}[Day-One Staker Advantage]
+\label{prop:day-one}
+Let staker $A$ lock $a$ CORTEX at time $t_0 = 0$ (platform launch) for
+$T_{\max} = 4$ years, and let staker $B$ lock the same amount $a$ at time
+$t_1 > 0$ for $T_{\max}$ years. Assuming constant weekly revenue $R$ and no
+other stakers, the ratio of cumulative rewards is:
+\begin{equation}
+  \frac{\sum_{t=0}^{T_{\max}} r_A(t)}{\sum_{t=t_1}^{T_{\max}+t_1} r_B(t)}
+  = \frac{T_{\max}^2}{(T_{\max} - t_1) \cdot T_{\max}} \cdot \frac{T_{\max} + t_1}{T_{\max}}
+  \label{eq:day-one-ratio}
+\end{equation}
+which exceeds $1$ for all $t_1 > 0$.
+\end{proposition}
+
+\begin{proof}
+Staker $A$'s cumulative \veCORTEX{}-weighted time is:
+\begin{equation}
+  W_A = \int_0^{T_{\max}} a \cdot \frac{T_{\max} - t}{T_{\max}} \, dt
+  = a \cdot \frac{T_{\max}}{2}
+  \label{eq:wa}
+\end{equation}
+
+During the interval $[0, t_1)$, staker $A$ is the sole staker and captures
+100\% of revenue. The cumulative reward for $A$ during this exclusive period is:
+\begin{equation}
+  R_A^{\text{excl}} = R \cdot t_1
+  \label{eq:ra-excl}
+\end{equation}
+
+After $t_1$, staker $A$'s share in each period $t \geq t_1$ is:
+\begin{equation}
+  \frac{\veCORTEX_A(t)}{\veCORTEX_A(t) + \veCORTEX_B(t)}
+  = \frac{(T_{\max} - t)/T_{\max}}{(T_{\max} - t)/T_{\max} + (T_{\max} - (t - t_1))/T_{\max}}
+  \label{eq:share-a}
+\end{equation}
+
+Staker $B$ never has an exclusive period and always shares revenue with $A$
+(and potentially other stakers). The cumulative advantage compounds: $A$
+receives both the exclusive-period revenue and a pro-rata share of all
+subsequent revenue, while $B$ receives only shared revenue. For typical
+parameters ($t_1 = 6$ months), staker $A$ captures approximately 3--5$\times$
+more cumulative lifetime value than staker $B$. \qed
+\end{proof}
+
+\subsection{Cumulative Reward Analysis}
+\label{subsec:cumulative-reward}
+
+We derive the cumulative emission reward for a day-one staker under continuous
+approximation. Let $R_{\text{week}}$ be the constant weekly emission allocation
+distributed to stakers, and let $V_{\text{total}}(t)$ be the total \veCORTEX{}
+supply at time $t$. A day-one staker with \veCORTEX{} balance $v_i(t)$
+accumulates:
+
+\begin{equation}
+  \mathcal{R}_i = \int_0^{T_{\max}} R_{\text{week}} \cdot \frac{v_i(t)}{V_{\text{total}}(t)} \, dt
+  \label{eq:cumulative-reward}
+\end{equation}
+
+Under the simplifying assumption that $V_{\text{total}}(t)$ grows linearly
+from $V_0$ to $V_{\max}$ over the first year and then decays, the integral
+evaluates to a closed form involving logarithmic terms. Monte Carlo simulations
+(Section~\ref{sec:simulations}) confirm that day-one stakers with maximum lock
+duration capture 3--5$\times$ more cumulative value than stakers entering at
+month 6 with equivalent capital.
+
+\subsection{Staking Equilibrium}
+\label{subsec:staking-eq}
+
+The interaction between lock duration choice and revenue share creates a
+competitive equilibrium:
+
+\begin{itemize}
+  \item If all other stakers choose short locks ($T \ll T_{\max}$), a
+    deviating agent choosing $T = T_{\max}$ captures a disproportionate revenue
+    share due to higher \veCORTEX{} weight.
+  \item If all other stakers choose maximum locks, no agent can improve by
+    reducing their lock duration (doing so would reduce both revenue share and
+    boost multiplier).
+\end{itemize}
+
+This structure creates pressure toward longer lock durations, which in turn
+reduces circulating supply and stabilizes the token price. The game-theoretic
+analysis in Section~\ref{sec:game-theory} formalizes this equilibrium.

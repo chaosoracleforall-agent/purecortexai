@@ -14,22 +14,24 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PureCortex | Sovereign AI Agent Infrastructure",
-  description: "Deploy, tokenize, and engage with autonomous AI agents on Algorand. Powered by Dual-Brain cognitive consensus and the $CORTEX token.",
+  title: "PURECORTEX | Sovereign AI Agent Infrastructure",
+  description: "Deploy, tokenize, and engage with autonomous AI agents on Algorand. Powered by Tri-Brain cognitive consensus and the $CORTEX token.",
   openGraph: {
-    title: "PureCortex | Sovereign AI Agent Infrastructure",
+    title: "PURECORTEX | Sovereign AI Agent Infrastructure",
     description: "The premier infrastructure for autonomous agentic commerce on Algorand.",
     url: "https://purecortex.ai",
-    siteName: "PureCortex",
+    siteName: "PURECORTEX",
     type: "website",
+    images: [{ url: "https://purecortex.ai/og-image.png", width: 1200, height: 630, alt: "PURECORTEX" }],
   },
   twitter: {
     card: "summary_large_image",
     site: "@purecortexai",
-    title: "PureCortex | Sovereign AI Agent Infrastructure",
+    title: "PURECORTEX | Sovereign AI Agent Infrastructure",
     description: "Deploy, tokenize, and engage with autonomous AI agents on Algorand.",
+    images: ["https://purecortex.ai/og-image.png"],
   },
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: "/favicon.png" },
 };
 
 export default function RootLayout({

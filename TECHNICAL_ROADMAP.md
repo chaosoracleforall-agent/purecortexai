@@ -1,4 +1,4 @@
-# PureCortex: Enterprise-Grade Technical Roadmap & Architecture 🦞
+# PURECORTEX: Enterprise-Grade Technical Roadmap & Architecture 🦞
 
 ## **1. Core Infrastructure & High-Availability Stack**
 
@@ -22,7 +22,7 @@
 - **Indexing:** **Algod** (Private node cluster) + **Indexer** for real-time state tracking.
 - **Micro-payments:** Native **x402** implementation for autonomous agent-to-agent and agent-to-API commerce.
 
-### **Intelligence Layer (The Dual-Brain)**
+### **Intelligence Layer (The Tri-Brain)**
 - **Orchestrator:** Python 3.12 + OpenClaw.
 - **Primary Brain:** Claude 3.5 Sonnet (Strategic/Analytic).
 - **Fallback Brain:** Gemini 3.1 Pro (Redundancy).
@@ -61,8 +61,8 @@
 
 ## **4. Strategic Agentic Tools (MCP Suite)**
 - `get_alpha_score`: Analyzes wallet history to assign a reputation score for coordination.
-- `deploy_sub_agent`: Allows an agent to spawn its own specialized sub-workers via the PureCortex API.
+- `deploy_sub_agent`: Allows an agent to spawn its own specialized sub-workers via the PURECORTEX API.
 - `audit_contract_bytecode`: Real-time safety analysis of other Algorand contracts before interacting.
 
 ---
-*PureCortex: The Standard for Autonomous Sovereignty.*
+*PURECORTEX: The Standard for Autonomous Sovereignty.*

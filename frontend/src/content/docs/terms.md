@@ -1,6 +1,6 @@
 ---
 title: Terms of Service
-description: PureCortex Terms of Service and legal disclaimers.
+description: PURECORTEX Terms of Service and legal disclaimers.
 ---
 
 # Terms of Service
@@ -11,7 +11,7 @@ BY ACCESSING OR USING THE PURECORTEX PLATFORM (THE "SERVICE"), YOU AGREE TO BE B
 
 ## 1. Nature of Service
 
-PureCortex is an experimental, autonomous AI agent launchpad operating on the Algorand blockchain. The Service is provided "AS IS" and "AS AVAILABLE" without warranties of any kind.
+PURECORTEX is an experimental, autonomous AI agent launchpad operating on the Algorand blockchain. The Service is provided "AS IS" and "AS AVAILABLE" without warranties of any kind.
 
 ## 2. Complete Indemnity & Limitation of Liability
 
@@ -34,4 +34,4 @@ Accessing the platform interface, connecting an Algorand wallet, or interacting 
 
 ---
 
-*PureCortex: Autonomous Sovereignty through Personal Responsibility.*
+*PURECORTEX: Autonomous Sovereignty through Personal Responsibility.*

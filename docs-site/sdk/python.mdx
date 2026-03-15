@@ -1,12 +1,12 @@
 ---
 title: "Python SDK"
-description: "Interact with PureCortex from Python using httpx, websockets, and algosdk."
+description: "Interact with PURECORTEX from Python using httpx, websockets, and algosdk."
 icon: "python"
 ---
 
 # Python SDK
 
-This guide covers PureCortex integration from Python using standard libraries. A dedicated `purecortex` PyPI package is planned -- for now, use `httpx` for the REST API, `websockets` for real-time chat, and `algosdk` for on-chain reads.
+This guide covers PURECORTEX integration from Python using standard libraries. A dedicated `purecortex` PyPI package is planned -- for now, use `httpx` for the REST API, `websockets` for real-time chat, and `algosdk` for on-chain reads.
 
 ## Installation
 
@@ -22,6 +22,7 @@ pip install py-algorand-sdk httpx websockets
 
 ```python
 import httpx
+import os
 
 BASE_URL = "https://purecortex.ai"
 
@@ -71,6 +72,7 @@ async def chat_with_agent(agent_name: str, message: str):
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{BASE_URL}/api/agents/{agent_name}/chat",
+            headers={"X-API-Key": os.environ["PURECORTEX_API_KEY"]},
             json={"message": message},
         )
         response.raise_for_status()
@@ -118,14 +120,26 @@ async def get_governance():
 
 ## WebSocket Chat
 
-Real-time bidirectional chat with PureCortex AI agents.
+Real-time bidirectional chat with PURECORTEX AI agents.
 
 ```python
 import asyncio
+import os
+import httpx
 import websockets
 
+BASE_URL = "https://purecortex.ai"
+
 async def websocket_chat():
-    uri = "wss://purecortex.ai/ws/chat"
+    async with httpx.AsyncClient() as client:
+        session = await client.post(
+            f"{BASE_URL}/api/chat/session",
+            headers={"X-API-Key": os.environ["PURECORTEX_API_KEY"]},
+        )
+        session.raise_for_status()
+        session_token = session.json()["session_token"]
+
+    uri = f"wss://purecortex.ai/ws/chat?session={session_token}"
 
     async with websockets.connect(uri) as ws:
         # Send a message
@@ -150,11 +164,26 @@ asyncio.run(websocket_chat())
 ### Interactive Chat Loop
 
 ```python
+import asyncio
+import os
+import httpx
+import websockets
+
+BASE_URL = "https://purecortex.ai"
+
 async def interactive_chat():
-    uri = "wss://purecortex.ai/ws/chat"
+    async with httpx.AsyncClient() as client:
+        session = await client.post(
+            f"{BASE_URL}/api/chat/session",
+            headers={"X-API-Key": os.environ["PURECORTEX_API_KEY"]},
+        )
+        session.raise_for_status()
+        session_token = session.json()["session_token"]
+
+    uri = f"wss://purecortex.ai/ws/chat?session={session_token}"
 
     async with websockets.connect(uri) as ws:
-        print("Connected to PureCortex. Type 'quit' to exit.\n")
+        print("Connected to PURECORTEX. Type 'quit' to exit.\n")
 
         while True:
             message = input("You: ")
@@ -179,8 +208,8 @@ Use `algosdk` to query the AgentFactory contract state and agent token data dire
 ```python
 from algosdk.v2client import indexer
 
-FACTORY_APP_ID = 757089323
-CORTEX_ASSET_ID = 757092088
+FACTORY_APP_ID = 757172168
+CORTEX_ASSET_ID = 757172171
 INDEXER_URL = "https://testnet-idx.algonode.cloud"
 
 def get_factory_info():
@@ -273,6 +302,7 @@ async def main():
         # 3. Chat with the Senator
         chat = (await client.post(
             f"{BASE_URL}/api/agents/senator/chat",
+            headers={"X-API-Key": os.environ["PURECORTEX_API_KEY"]},
             json={"message": "Summarize the governance framework."},
         )).json()
         print(f"\nSenator says: {chat['response']}")

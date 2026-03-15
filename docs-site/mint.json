@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "PureCortex",
+  "name": "PURECORTEX",
   "logo": {
     "dark": "/images/logo-dark.svg",
     "light": "/images/logo-light.svg"
@@ -93,7 +93,7 @@
     {
       "group": "Architecture",
       "pages": [
-        "architecture/dual-brain",
+        "architecture/tri-brain",
         "architecture/agent-framework",
         "architecture/smart-contracts"
       ]

@@ -1,0 +1,139 @@
+% =============================================================================
+\section{Introduction}
+\label{sec:introduction}
+% =============================================================================
+
+The emergence of large language models and autonomous AI agents has catalyzed a
+paradigm shift in decentralized infrastructure. Where blockchains once served
+primarily as ledgers for value transfer and smart contract execution, they now
+function as \emph{coordination substrates} for economically sovereign AI
+agents---entities capable of invoking tools, managing treasuries, and
+transacting with both humans and other agents without centralized intermediation.
+This transformation demands tokenomic architectures purpose-built for agent
+economies, yet the prevailing designs inherit assumptions from human-centric
+decentralized finance (DeFi) that fail under the distinct incentive landscape of
+autonomous actors.
+
+\subsection{Motivation}
+\label{subsec:motivation}
+
+An AI agent operating within an on-chain economy requires infrastructure that
+simultaneously satisfies five desiderata:
+
+\begin{enumerate}
+  \item \textbf{Capital formation.} Agents must raise initial capital through
+    mechanisms that price discovery fairly and reward early supporters without
+    enabling manipulative extraction.
+  \item \textbf{Revenue sustainability.} The protocol must generate fee revenue
+    that adapts to market conditions, ensuring solvency during low-activity
+    periods without extracting punitive rents during calm markets.
+  \item \textbf{Stakeholder alignment.} Creators, stakers, users, and the
+    protocol treasury must share revenue in proportions that sustain
+    participation across all roles.
+  \item \textbf{Composability.} Agents must be able to invoke one another's
+    capabilities (tools, data feeds, inference endpoints) through standardized
+    protocols, with economic incentives that reward interoperability.
+  \item \textbf{Governance.} Protocol parameters, treasury allocations, and
+    constitutional norms must be governable by stakeholders, with safeguards
+    against both capture and ossification.
+\end{enumerate}
+
+\subsection{Problem Statement}
+\label{subsec:problem}
+
+Existing agent tokenization platforms exhibit five structural deficiencies that
+undermine long-term ecosystem health:
+
+\begin{description}
+  \item[P1: No creator vesting.] Creators receive their full token allocation at
+    launch, enabling immediate liquidation. This misaligns creator incentives
+    with long-term agent development and facilitates pump-and-dump dynamics
+    wherein creators abandon agents after extracting initial liquidity.
+
+  \item[P2: Post-hoc staking disadvantage.] When staking mechanisms are
+    introduced after token launch, early adopters who provided initial liquidity
+    and bore maximum risk receive no preferential treatment. Late entrants
+    capture identical yields despite contributing no price-discovery capital.
+
+  \item[P3: Flat fee structures.] A fixed percentage trading fee (e.g., 1\%)
+    fails to adapt to volatility regimes. During high-volatility periods, flat
+    fees are insufficient to compensate liquidity providers for adverse
+    selection; during low-volatility periods, they impose unnecessary friction
+    that suppresses trading volume.
+
+  \item[P4: Agent silos.] Without standardized inter-agent communication
+    protocols and economic incentives for composability, each agent operates as
+    an isolated service. This prevents the emergence of compound agent
+    workflows---multi-agent pipelines where specialized agents collaborate on
+    complex tasks.
+
+  \item[P5: No on-chain governance.] Protocol parameters are controlled by
+    centralized teams with no formal governance mechanism, no constitutional
+    framework, and no stakeholder recourse. This introduces platform risk and
+    regulatory uncertainty.
+\end{description}
+
+\subsection{Contributions}
+\label{subsec:contributions}
+
+We present a six-pillar tokenomic framework that addresses each deficiency:
+
+\begin{enumerate}
+  \item \textbf{Bonding curve graduation with creator vesting}
+    (Section~\ref{sec:bonding-curve}). A quadratic bonding curve provides
+    transparent price discovery during agent launch, with mandatory 180-day
+    creator vesting that releases 1\% immediately and the remainder linearly.
+    Upon reaching a graduation threshold, liquidity atomically migrates to a
+    decentralized exchange with a 10-year LP lock.
+
+  \item \textbf{Volatility-adaptive dynamic fees}
+    (Section~\ref{sec:dynamic-fees}). A continuous fee function maps realized
+    volatility to trading fees in the range $[0.5\%, 2.0\%]$, with a five-way
+    revenue split among stakers, creators, treasury, referrers, and
+    composability rewards.
+
+  \item \textbf{Vote-escrowed staking} (Section~\ref{sec:vecortex-staking}).
+    The \veCORTEX{} mechanism, available from day one of platform launch,
+    grants governance weight and revenue share proportional to both the quantity
+    staked and the lock duration, with a maximum four-year commitment.
+
+  \item \textbf{Protocol-level buyback-and-burn}
+    (Section~\ref{sec:buyback-burn}). Multiple revenue streams fund a weekly
+    buyback with a supply-proportional cap, establishing conditions under which
+    the token supply becomes net deflationary.
+
+  \item \textbf{Composability rewards} (Section~\ref{sec:composability}).
+    Cross-agent tool invocation via the Model Context Protocol (MCP) generates
+    micropayment flows with a composability tax, and a Composability Score
+    distributes weekly rewards to the most-integrated agents.
+
+  \item \textbf{Sovereign on-chain governance}
+    (Section~\ref{sec:governance}). A constitutional governance framework
+    features a protocol-owned AI Senator that proposes but cannot vote,
+    \veCORTEX{}-weighted Lawmaker Agents with liquid delegation, and a
+    multi-tiered proposal lifecycle anchored by an on-chain constitution.
+\end{enumerate}
+
+We provide formal game-theoretic analysis (Section~\ref{sec:game-theory})
+demonstrating that the mechanism admits equilibria aligned with ecosystem
+health, Monte Carlo simulations (Section~\ref{sec:simulations}) validating
+quantitative predictions, security analysis (Section~\ref{sec:security}), and a
+14-dimension comparative analysis (Section~\ref{sec:comparative}) against
+existing platforms.
+
+\subsection{Paper Organization}
+\label{subsec:organization}
+
+Section~\ref{sec:related-work} surveys related work in bonding curves,
+vote-escrowed tokenomics, agent tokenization, and game-theoretic mechanism
+design. Section~\ref{sec:architecture} presents the overall token architecture,
+allocation, and vesting schedules. Sections~\ref{sec:bonding-curve}
+through~\ref{sec:governance} detail each of the six pillars. Section~\ref{sec:game-theory}
+provides formal game-theoretic analysis. Section~\ref{sec:simulations} presents
+simulation results. Section~\ref{sec:security} addresses security
+considerations. Section~\ref{sec:comparative} provides comparative analysis.
+Section~\ref{sec:conclusion} concludes. The appendices contain full proofs
+(Appendix~\ref{app:proofs}), simulation methodology
+(Appendix~\ref{app:simulation}), contract ABIs
+(Appendix~\ref{app:contracts}), and the full constitutional text
+(Appendix~\ref{app:constitution}).

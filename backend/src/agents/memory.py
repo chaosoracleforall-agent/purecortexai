@@ -1,5 +1,5 @@
 """
-Agent Memory & Feedback Loop for PureCortex.
+Agent Memory & Feedback Loop for PURECORTEX.
 
 Provides three memory tiers backed by Redis:
   - Short-term memory (1 h TTL) — current context, scratchpad
@@ -13,6 +13,7 @@ system prompt before each decision.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -23,12 +24,15 @@ import redis.asyncio as aioredis
 
 logger = logging.getLogger("purecortex.agents.memory")
 
-# TTL constants
-SHORT_TERM_TTL = 3600          # 1 hour
-EPISODE_TTL = 90 * 24 * 3600  # 90 days for episodic memory
+# Redis command timeout (seconds)
+REDIS_CMD_TIMEOUT = int(os.getenv("REDIS_CMD_TIMEOUT", "5"))
+
+# TTL constants (configurable via env vars)
+SHORT_TERM_TTL = int(os.getenv("AGENT_SHORT_TERM_TTL", "3600"))       # 1 hour
+EPISODE_TTL = int(os.getenv("AGENT_EPISODE_TTL", str(90 * 24 * 3600)))  # 90 days
 
 # Maximum number of episodes kept per agent (ring buffer via LTRIM)
-MAX_EPISODES = 1000
+MAX_EPISODES = int(os.getenv("AGENT_MAX_EPISODES", "1000"))
 
 
 class AgentMemory:
@@ -61,9 +65,10 @@ class AgentMemory:
             self.redis_url,
             decode_responses=True,
             socket_connect_timeout=5,
+            socket_timeout=REDIS_CMD_TIMEOUT,
         )
         try:
-            await self._redis.ping()
+            await asyncio.wait_for(self._redis.ping(), timeout=REDIS_CMD_TIMEOUT)
             logger.info("Memory connected for agent '%s'", self.agent_name)
         except Exception as exc:
             logger.warning(
@@ -85,12 +90,17 @@ class AgentMemory:
     # ------------------------------------------------------------------
 
     async def remember_short(self, key: str, value: Any) -> None:
-        """Store a short-lived value (expires after 1 hour)."""
+        """Store a short-lived value (expires after SHORT_TERM_TTL)."""
         if not self._redis:
             return
         try:
             full_key = f"{self._short_prefix}:{key}"
-            await self._redis.setex(full_key, SHORT_TERM_TTL, json.dumps(value, default=str))
+            await asyncio.wait_for(
+                self._redis.setex(full_key, SHORT_TERM_TTL, json.dumps(value, default=str)),
+                timeout=REDIS_CMD_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            logger.error("remember_short timed out for key: %s", key)
         except Exception as exc:
             logger.error("remember_short failed: %s", exc)
 
@@ -100,8 +110,13 @@ class AgentMemory:
             return None
         try:
             full_key = f"{self._short_prefix}:{key}"
-            raw = await self._redis.get(full_key)
+            raw = await asyncio.wait_for(
+                self._redis.get(full_key), timeout=REDIS_CMD_TIMEOUT
+            )
             return json.loads(raw) if raw else None
+        except asyncio.TimeoutError:
+            logger.error("recall_short timed out for key: %s", key)
+            return None
         except Exception as exc:
             logger.error("recall_short failed: %s", exc)
             return None
@@ -116,7 +131,12 @@ class AgentMemory:
             return
         try:
             full_key = f"{self._long_prefix}:{key}"
-            await self._redis.set(full_key, json.dumps(value, default=str))
+            await asyncio.wait_for(
+                self._redis.set(full_key, json.dumps(value, default=str)),
+                timeout=REDIS_CMD_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            logger.error("remember_long timed out for key: %s", key)
         except Exception as exc:
             logger.error("remember_long failed: %s", exc)
 
@@ -126,8 +146,13 @@ class AgentMemory:
             return None
         try:
             full_key = f"{self._long_prefix}:{key}"
-            raw = await self._redis.get(full_key)
+            raw = await asyncio.wait_for(
+                self._redis.get(full_key), timeout=REDIS_CMD_TIMEOUT
+            )
             return json.loads(raw) if raw else None
+        except asyncio.TimeoutError:
+            logger.error("recall_long timed out for key: %s", key)
+            return None
         except Exception as exc:
             logger.error("recall_long failed: %s", exc)
             return None
@@ -158,8 +183,16 @@ class AgentMemory:
             "score": score,
         }
         try:
-            await self._redis.lpush(self._episode_key, json.dumps(episode, default=str))
-            await self._redis.ltrim(self._episode_key, 0, MAX_EPISODES - 1)
+            await asyncio.wait_for(
+                self._redis.lpush(self._episode_key, json.dumps(episode, default=str)),
+                timeout=REDIS_CMD_TIMEOUT,
+            )
+            await asyncio.wait_for(
+                self._redis.ltrim(self._episode_key, 0, MAX_EPISODES - 1),
+                timeout=REDIS_CMD_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            logger.error("log_episode timed out for agent: %s", self.agent_name)
         except Exception as exc:
             logger.error("log_episode failed: %s", exc)
 
@@ -168,8 +201,14 @@ class AgentMemory:
         if not self._redis:
             return []
         try:
-            raw_list = await self._redis.lrange(self._episode_key, 0, limit - 1)
+            raw_list = await asyncio.wait_for(
+                self._redis.lrange(self._episode_key, 0, limit - 1),
+                timeout=REDIS_CMD_TIMEOUT,
+            )
             return [json.loads(r) for r in raw_list]
+        except asyncio.TimeoutError:
+            logger.error("get_recent_episodes timed out for agent: %s", self.agent_name)
+            return []
         except Exception as exc:
             logger.error("get_recent_episodes failed: %s", exc)
             return []

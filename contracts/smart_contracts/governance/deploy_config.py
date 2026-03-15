@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 def deploy() -> None:
-    from smart_contracts.artifacts.governance.governance_client import (
+    from smart_contracts.artifacts.governance.governance_contract_client import (
         GovernanceContractFactory,
     )
 

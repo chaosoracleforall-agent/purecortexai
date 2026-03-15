@@ -1,15 +1,15 @@
-# PureCortex: Sovereign AI Agent Platform 🦞
+# PURECORTEX: Sovereign AI Agent Platform
 
-PureCortex is a high-fidelity, production-hardened "Virtuals.io" clone built on the **Algorand Blockchain**. It enables the creation, tokenization, and conversational engagement of autonomous AI agents through a secure, dual-brain architecture.
+PURECORTEX is a high-fidelity, production-hardened "Virtuals.io" clone built on the **Algorand Blockchain**. It enables the creation, tokenization, and conversational engagement of autonomous AI agents through a secure, tri-brain architecture.
 
-## 🚀 Live Status
-- **App URL:** [http://34.122.128.229:3000](http://34.122.128.229:3000)
-- **API Status:** [http://34.122.128.229:8000/health](http://34.122.128.229:8000/health)
-- **Network:** Algorand Testnet (Mainnet Ready)
-- **Master Contract:** App ID `757089323` (Hardened AgentFactory)
+## Live Status
+- **App URL:** [https://purecortex.ai](https://purecortex.ai)
+- **API Status:** [https://purecortex.ai/health](https://purecortex.ai/health)
+- **Network:** Algorand Testnet
+- **Master Contract:** App ID `757172168` (Hardened AgentFactory)
 
-## 🧠 Core Architecture (Dual-Brain)
-PureCortex implements a **Fail-Closed Consensus Engine** powered by OpenClaw:
+## 🧠 Core Architecture (Tri-Brain)
+PURECORTEX implements a **Fail-Closed Consensus Engine** powered by OpenClaw:
 - **Claude 3.5 Sonnet:** Primary strategic reasoner.
 - **Gemini 1.5 Pro:** Secondary auditor and high-context processing.
 - **Consensus Requirement:** Both brains must align on critical actions (JSON-based) or the system halts for security review.
@@ -37,5 +37,12 @@ PureCortex implements a **Fail-Closed Consensus Engine** powered by OpenClaw:
 2. **Backend:** `cd backend && uv pip install -r requirements.txt`
 3. **Frontend:** `cd frontend && npm install`
 
+## Deployment
+PURECORTEX currently deploys to the `purecortex-master` GCP VM via the root `docker-compose.yml` stack. Cloud Run is not the supported deployment target in this repository today.
+
+- **Workstation deploy:** `bash scripts/deploy_remote_vm.sh --pull`
+- **On-VM deploy:** `bash scripts/deploy_vm.sh --pull`
+- **Runbook:** [DEPLOYMENT.md](./DEPLOYMENT.md)
+
 ---
-*PureCortex: The Standard for Autonomous Sovereignty. March 13, 2026.*
+*PURECORTEX: The Standard for Autonomous Sovereignty. March 13, 2026.*

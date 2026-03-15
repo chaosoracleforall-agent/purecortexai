@@ -1,4 +1,4 @@
-"""PureCortex CLI — Interact with sovereign AI agents on Algorand."""
+"""PURECORTEX CLI — Interact with sovereign AI agents on Algorand."""
 
 import json
 import os
@@ -11,7 +11,7 @@ from rich import box
 
 app = typer.Typer(
     name="pcx",
-    help="PureCortex CLI — Sovereign AI Agent Infrastructure on Algorand",
+    help="PURECORTEX CLI — Sovereign AI Agent Infrastructure on Algorand",
     no_args_is_help=True,
 )
 console = Console()
@@ -27,7 +27,7 @@ def get_api_url() -> str:
 
 @app.command()
 def status():
-    """Check the health and status of the PureCortex backend."""
+    """Check the health and status of the PURECORTEX backend."""
     api = get_api_url()
     try:
         r = httpx.get(f"{api}/health", timeout=10)
@@ -38,7 +38,7 @@ def status():
             f"[bold green]Backend Online[/bold green]\n"
             f"Version: {data.get('version', '?')}\n"
             f"Orchestrator: [{'green' if orch else 'red'}]{'Active' if orch else 'Inactive'}[/]",
-            title="PureCortex Status",
+            title="PURECORTEX Status",
             border_style="blue",
         ))
     except httpx.RequestError as e:
@@ -132,7 +132,7 @@ def agents():
                 agent.get("name", "?"),
                 agent.get("role", "?"),
                 f"[{status_style}]{agent.get('status', '?')}[/]",
-                agent.get("algorand_address", "TBD")[:16] + "...",
+                (agent.get("algorand_address") or "TBD")[:16] + "...",
             )
 
         console.print(table)
@@ -144,7 +144,7 @@ def agents():
 def chat(
     agent_name: str = typer.Argument("senator", help="Agent to chat with: senator, curator, social"),
 ):
-    """Chat with a PureCortex AI agent."""
+    """Chat with a PURECORTEX AI agent."""
     api = get_api_url()
     console.print(f"[bold blue]Connecting to {agent_name.title()} Agent...[/bold blue]")
     console.print("[dim]Type 'exit' to quit.[/dim]\n")
@@ -193,7 +193,7 @@ def proposals():
 
 @app.command()
 def constitution():
-    """Display the PureCortex Constitution preamble."""
+    """Display the PURECORTEX Constitution preamble."""
     api = get_api_url()
     try:
         r = httpx.get(f"{api}/api/governance/constitution", timeout=10)
@@ -201,7 +201,7 @@ def constitution():
         data = r.json()
         console.print(Panel(
             data.get("preamble", "")[:2000] + "\n\n[dim]Full text at https://purecortex.ai/governance[/dim]",
-            title="PureCortex Constitution — Preamble",
+            title="PURECORTEX Constitution — Preamble",
             border_style="blue",
         ))
     except httpx.RequestError as e:
@@ -212,9 +212,9 @@ def constitution():
 
 @app.command()
 def info():
-    """Show PureCortex protocol information."""
+    """Show PURECORTEX protocol information."""
     console.print(Panel(
-        "[bold]PureCortex[/bold] — Sovereign AI Agent Infrastructure\n\n"
+        "[bold]PURECORTEX[/bold] — Sovereign AI Agent Infrastructure\n\n"
         "Chain: Algorand\n"
         "Factory App ID: 757089323\n"
         "CORTEX Asset ID: 757092088\n"

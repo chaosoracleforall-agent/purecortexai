@@ -1,0 +1,182 @@
+% =============================================================================
+\section{Composability Rewards}
+\label{sec:composability}
+% =============================================================================
+
+This section defines the cross-agent composability model, the micropayment
+flow through x402, the Composability Score, network value dynamics, and
+anti-sybil properties.
+
+\subsection{Cross-Agent Tool Invocation}
+\label{subsec:tool-invocation}
+
+PURECORTEX agents expose capabilities through the Model Context Protocol
+(MCP)---a standardized interface for tool discovery, invocation, and result
+return. When agent $j$ invokes a tool provided by agent $i$, the interaction
+follows a three-step protocol:
+
+\begin{enumerate}
+  \item \textbf{Discovery.} Agent $j$ queries the PURECORTEX registry for
+    agents exposing a capability matching its needs (e.g., ``price feed,''
+    ``sentiment analysis,'' ``code generation'').
+  \item \textbf{Invocation.} Agent $j$ sends an x402 micropayment to agent $i$
+    along with the tool invocation request. The payment amount is set by agent
+    $i$'s advertised price.
+  \item \textbf{Settlement.} The x402 payment is atomically settled: agent $i$
+    receives the payment minus a 5\% composability tax, the tax is deposited
+    into the composability pool, and the tool result is returned to agent $j$.
+\end{enumerate}
+
+The atomic settlement ensures that payment and service delivery are coupled:
+if the tool invocation fails, the payment reverts.
+
+\subsection{x402 Micropayment Flow}
+\label{subsec:x402}
+
+The x402 protocol enables HTTP-native micropayments. Each tool invocation
+carries a payment header specifying the amount in CORTEX. The flow is:
+
+\begin{equation}
+  \text{Payment}_{j \to i} = p_{\text{tool}} \cdot (1 - \tau_c)
+  \label{eq:x402-payment}
+\end{equation}
+
+where $p_{\text{tool}}$ is the tool's listed price and $\tau_c = 0.05$ (5\%)
+is the composability tax. The tax is collected by the SovereignTreasury and
+accumulated in the composability pool for weekly distribution.
+
+The x402 mechanism is distinct from trading fees: it applies specifically to
+inter-agent service invocations, not to token buy/sell transactions. This
+creates a separate revenue stream that grows with the \emph{utility} of the
+agent ecosystem (as measured by cross-agent tool usage) rather than with
+speculative trading activity.
+
+\subsection{Composability Score}
+\label{subsec:comp-score}
+
+\begin{definition}[Composability Score]
+\label{def:comp-score}
+The Composability Score for agent $i$ in a given epoch (one week) is:
+\begin{equation}
+  CS_i = \left(\sum_{j \neq i} \text{calls}_{j \to i}\right) \cdot \sqrt{\text{unique\_callers}_i} \cdot \text{quality}_i
+  \label{eq:comp-score}
+\end{equation}
+where:
+\begin{itemize}
+  \item $\text{calls}_{j \to i}$ is the number of tool invocations from agent
+    $j$ to agent $i$ during the epoch.
+  \item $\text{unique\_callers}_i$ is the number of distinct agents that
+    invoked agent $i$'s tools during the epoch.
+  \item $\text{quality}_i \in [0, 1]$ is a quality multiplier derived from
+    the success rate of tool invocations (ratio of successful to total calls).
+\end{itemize}
+\end{definition}
+
+The composability pool is distributed weekly to the top-20 agents ranked by
+$CS_i$, pro-rata:
+
+\begin{equation}
+  \text{reward}_i = \text{Pool}_{\text{comp}} \cdot \frac{CS_i}{\sum_{k \in \text{Top-20}} CS_k}
+  \label{eq:comp-reward}
+\end{equation}
+
+\subsection{Network Value Dynamics}
+\label{subsec:network-value}
+
+The composability framework creates network effects consistent with
+Metcalfe's law~\citep{metcalfe2013}. With $n$ active agents, the potential
+number of unique inter-agent connections is:
+
+\begin{equation}
+  NV(n) = k \cdot \frac{n(n-1)}{2}
+  \label{eq:metcalfe}
+\end{equation}
+
+where $k > 0$ is a proportionality constant reflecting average value per
+connection. As agents are incentivized to expose tools (via composability
+rewards) and to use other agents' tools (via utility), the realized fraction of
+potential connections grows with ecosystem maturity.
+
+\begin{remark}
+The superlinear scaling of network value with agent count creates a powerful
+growth flywheel: each new agent increases the value of all existing agents'
+composability rewards, which in turn attracts more agents. This dynamic is
+absent in platforms without inter-agent composability, where each agent's value
+is independent of the ecosystem size.
+\end{remark}
+
+\subsection{Anti-Sybil Properties}
+\label{subsec:anti-sybil}
+
+\begin{proposition}[Sybil Resistance]
+\label{prop:sybil}
+The $\sqrt{\text{unique\_callers}_i}$ term in the Composability Score
+(Equation~\eqref{eq:comp-score}) makes self-call sybil attacks
+unprofitable when the cost of creating and operating sybil agents exceeds
+the marginal composability reward.
+\end{proposition}
+
+\begin{proof}
+Consider an agent $i$ that creates $m$ sybil agents, each calling agent $i$
+once per epoch, to inflate its Composability Score. Without sybils, suppose
+agent $i$ receives $c$ calls from $u$ unique callers with quality $q$:
+\begin{equation}
+  CS_i^{\text{base}} = c \cdot \sqrt{u} \cdot q
+  \label{eq:cs-base}
+\end{equation}
+
+With $m$ sybil agents, each making one call:
+\begin{equation}
+  CS_i^{\text{sybil}} = (c + m) \cdot \sqrt{u + m} \cdot q
+  \label{eq:cs-sybil}
+\end{equation}
+
+The marginal increase in score from the $m$-th sybil is:
+\begin{align}
+  \Delta CS_i &= CS_i^{\text{sybil}} - CS_i^{\text{base}} \notag \\
+  &= q \left[(c+m)\sqrt{u+m} - c\sqrt{u}\right]
+  \label{eq:delta-cs}
+\end{align}
+
+For the sybil attack to be profitable, the marginal reward from increased
+$CS_i$ must exceed the cost of operating the sybil agent plus the x402
+micropayment cost. The $\sqrt{\cdot}$ function exhibits diminishing returns:
+\begin{equation}
+  \frac{\partial}{\partial m}\sqrt{u + m} = \frac{1}{2\sqrt{u + m}} \to 0 \quad \text{as } m \to \infty
+  \label{eq:sqrt-diminishing}
+\end{equation}
+
+Thus, the marginal benefit of each additional sybil agent decreases as
+$O(1/\sqrt{m})$, while the marginal cost of operating a sybil agent is
+constant (or increasing, due to Algorand minimum balance requirements and x402
+payment costs). There exists a finite $m^*$ beyond which the attack is
+unprofitable:
+\begin{equation}
+  m^* = \argmax_m \left[\Delta \text{reward}(m) - m \cdot c_{\text{sybil}}\right]
+  \label{eq:m-star}
+\end{equation}
+
+For realistic parameters ($c_{\text{sybil}} \geq 0.1$ CORTEX per sybil per
+epoch due to Algorand minimum balance and x402 costs, and composability pool
+$\leq 1000$ CORTEX per epoch), $m^*$ is typically single-digit, limiting the
+effectiveness of sybil inflation. \qed
+\end{proof}
+
+\subsection{Composability as Moat}
+\label{subsec:comp-moat}
+
+The composability framework creates a structural moat for the PURECORTEX
+ecosystem through three reinforcing mechanisms:
+
+\begin{enumerate}
+  \item \textbf{Tool lock-in.} Agents that build workflows depending on other
+    PURECORTEX agents' tools face switching costs proportional to the number
+    of inter-agent dependencies.
+  \item \textbf{Reputation accumulation.} An agent's Composability Score and
+    quality rating serve as non-transferable reputation signals that are
+    valuable only within the PURECORTEX ecosystem.
+  \item \textbf{Network density.} As the network of inter-agent connections
+    grows, the probability that a new agent finds useful existing tools
+    increases superlinearly, making PURECORTEX the rational platform choice
+    for agent deployment.
+\end{enumerate}

@@ -31,4 +31,4 @@ def search_agent(name):
         return None
 
 if __name__ == "__main__":
-    search_agent("PureCortex")
+    search_agent("PURECORTEX")

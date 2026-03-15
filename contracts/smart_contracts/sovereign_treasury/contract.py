@@ -15,7 +15,7 @@ from algopy.arc4 import abimethod
 
 class SovereignTreasury(ARC4Contract):
     """
-    Sovereign Treasury contract for PureCortex.
+    Sovereign Treasury contract for PURECORTEX.
 
     Receives protocol fee revenue (in ALGO) and splits it:
       - 90% -> buyback-and-burn pool (accumulates ALGO for periodic DEX swaps)
@@ -78,6 +78,7 @@ class SovereignTreasury(ARC4Contract):
         The buyback ALGO accumulates until execute_buyback is called
         (which would swap on a DEX in production).
         """
+        assert Txn.sender == Global.creator_address, "Only creator can process revenue"
         assert (
             payment.receiver == Global.current_application_address
         ), "Must pay treasury"

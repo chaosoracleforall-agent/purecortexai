@@ -1,0 +1,112 @@
+% =============================================================================
+% Cortex Tokenomics: A Game-Theoretic Framework for Sustainable Value Accrual
+% in Autonomous Agent Economies
+%
+% Author: David Garcia, PURECORTEX Research
+% =============================================================================
+\documentclass[11pt,letterpaper]{article}
+
+% --- Packages ----------------------------------------------------------------
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=green!50!black,urlcolor=blue!70!black]{hyperref}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,decorations.pathmorphing}
+
+% --- Theorem environments ----------------------------------------------------
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% --- Custom commands ----------------------------------------------------------
+\newcommand{\CORTEX}{\textsc{cortex}}
+\newcommand{\veCORTEX}{\textsc{veCortex}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\mathrm{Var}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+% --- Title --------------------------------------------------------------------
+\title{\textbf{Cortex Tokenomics: A Game-Theoretic Framework for\\
+Sustainable Value Accrual in Autonomous Agent Economies}}
+\author{David Garcia\\
+\textit{PURECORTEX Research}\\
+\texttt{research@purecortex.io}}
+\date{March 2026}
+
+% ==============================================================================
+\begin{document}
+
+\maketitle
+
+% --- Abstract -----------------------------------------------------------------
+\begin{abstract}
+We present a comprehensive tokenomic framework for \emph{PURECORTEX}, an
+autonomous agent economy built on the Algorand blockchain. The framework
+comprises six interlocking pillars: (i)~quadratic bonding curve graduation
+with creator vesting, (ii)~volatility-adaptive dynamic fees,
+(iii)~vote-escrowed staking (\veCORTEX{}) with day-one launch parity,
+(iv)~protocol-level buyback-and-burn mechanics, (v)~composability rewards
+via cross-agent tool invocation, and (vi)~sovereign on-chain governance
+anchored by a constitutional AI Senator. We derive closed-form expressions
+for bonding curve cost, dynamic fee revenue, staking yield, and deflationary
+crossover conditions. Game-theoretic analysis demonstrates that the mechanism
+admits a unique Nash equilibrium in which rational agents stake rather than
+sell, creators commit to long-horizon vesting, and governance delegation is
+individually rational when information acquisition costs exceed voting costs.
+Monte Carlo simulations across 1{,}000 trajectories per scenario confirm a
+deflationary crossover at approximately month~18--24, staker yields in the
+15--40\% APR range, and superlinear network value growth consistent with
+Metcalfe's law. A 14-dimension comparative analysis against existing agent
+tokenization platforms reveals structural advantages across creator
+incentives, fee adaptation, composability, and governance. The full
+constitutional text, contract ABIs, and simulation methodology are provided
+in the appendices.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% --- Sections -----------------------------------------------------------------
+\input{sections/01-introduction}
+\input{sections/02-related-work}
+\input{sections/03-architecture}
+\input{sections/04-bonding-curve}
+\input{sections/05-dynamic-fees}
+\input{sections/06-vecortex-staking}
+\input{sections/07-buyback-burn}
+\input{sections/08-composability}
+\input{sections/09-governance}
+\input{sections/10-game-theory}
+\input{sections/11-simulations}
+\input{sections/12-security}
+\input{sections/13-comparative}
+\input{sections/14-conclusion}
+
+% --- Appendices ---------------------------------------------------------------
+\appendix
+\input{appendices/appendix-a-proofs}
+\input{appendices/appendix-b-simulation}
+\input{appendices/appendix-c-contracts}
+\input{appendices/appendix-d-constitution}
+
+% --- Bibliography -------------------------------------------------------------
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

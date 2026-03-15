@@ -1,4 +1,4 @@
-# Brand Manual: PureCortex
+# Brand Manual: PURECORTEX
 
 ## **1. The Identity**
 The "Modern Tech" identity focuses on clarity, modularity, and high-performance intelligence. It represents the standard for sovereign agents on Algorand.

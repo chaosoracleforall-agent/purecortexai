@@ -1,0 +1,357 @@
+% =============================================================================
+\section{Contract ABIs}
+\label{app:contracts}
+% =============================================================================
+
+This appendix specifies the Application Binary Interface (ABI) definitions for
+the three core PURECORTEX smart contracts in Algorand ARC-4 format. Each
+contract is an Algorand Application that exposes methods callable via
+application call transactions. Box storage is used for per-entity state
+(per-agent data, per-user staking data).
+
+\subsection{AgentFactory Contract}
+\label{subsec:abi-factory}
+
+The AgentFactory contract manages agent creation, bonding curve operations,
+graduation, and creator vesting.
+
+\subsubsection{State Schema}
+
+\begin{table}[H]
+\centering
+\caption{AgentFactory global state.}
+\label{tab:factory-global}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Key} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{total\_agents} & uint64 & Total number of agents created \\
+\texttt{graduated\_agents} & uint64 & Number of graduated agents \\
+\texttt{treasury\_addr} & address & SovereignTreasury application address \\
+\texttt{ve\_addr} & address & veCORTEX application address \\
+\texttt{graduation\_threshold} & uint64 & CORTEX threshold for graduation (scaled by $10^6$) \\
+\texttt{creation\_fee} & uint64 & Agent creation fee in $\mu$CORTEX \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{AgentFactory box storage (per-agent, key: agent ASA ID).}
+\label{tab:factory-box}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{creator} & address & Creator's Algorand address \\
+\texttt{asa\_id} & uint64 & Agent token ASA ID \\
+\texttt{base\_price} & uint64 & $B$ in $\mu$CORTEX per token \\
+\texttt{slope} & uint64 & $S$ in $\mu$CORTEX per token$^2$ (scaled by $\Lambda$) \\
+\texttt{current\_supply} & uint64 & Tokens sold via bonding curve \\
+\texttt{cortex\_raised} & uint64 & Total CORTEX raised \\
+\texttt{graduated} & bool & Whether agent has graduated \\
+\texttt{graduation\_ts} & uint64 & Graduation timestamp (0 if not graduated) \\
+\texttt{vest\_start} & uint64 & Vesting start timestamp \\
+\texttt{vest\_claimed} & uint64 & Tokens already claimed by creator \\
+\texttt{lp\_logicsig} & address & LogicSig address holding LP tokens \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{ARC-4 Methods}
+
+\begin{verbatim}
+{
+  "name": "AgentFactory",
+  "methods": [
+    {
+      "name": "create_agent",
+      "desc": "Create a new agent with bonding curve parameters",
+      "args": [
+        {"name": "name", "type": "string"},
+        {"name": "unit_name", "type": "string"},
+        {"name": "base_price", "type": "uint64"},
+        {"name": "slope", "type": "uint64"},
+        {"name": "total_supply", "type": "uint64"},
+        {"name": "creator_alloc_bps", "type": "uint16"}
+      ],
+      "returns": {"type": "uint64", "desc": "Agent ASA ID"}
+    },
+    {
+      "name": "buy",
+      "desc": "Buy agent tokens from bonding curve",
+      "args": [
+        {"name": "agent_id", "type": "uint64"},
+        {"name": "min_tokens", "type": "uint64"},
+        {"name": "cortex_payment", "type": "pay"}
+      ],
+      "returns": {"type": "uint64", "desc": "Tokens received"}
+    },
+    {
+      "name": "sell",
+      "desc": "Sell agent tokens back to bonding curve",
+      "args": [
+        {"name": "agent_id", "type": "uint64"},
+        {"name": "token_amount", "type": "uint64"},
+        {"name": "min_cortex", "type": "uint64"}
+      ],
+      "returns": {"type": "uint64", "desc": "CORTEX received"}
+    },
+    {
+      "name": "graduate",
+      "desc": "Graduate agent (atomic: freeze curve + form LP + lock + bonus)",
+      "args": [
+        {"name": "agent_id", "type": "uint64"}
+      ],
+      "returns": {"type": "bool", "desc": "Success"}
+    },
+    {
+      "name": "claim_vested",
+      "desc": "Creator claims vested tokens",
+      "args": [
+        {"name": "agent_id", "type": "uint64"}
+      ],
+      "returns": {"type": "uint64", "desc": "Tokens claimed"}
+    },
+    {
+      "name": "get_price",
+      "desc": "Get current bonding curve price",
+      "args": [
+        {"name": "agent_id", "type": "uint64"}
+      ],
+      "returns": {"type": "uint64", "desc": "Price in uCORTEX"}
+    },
+    {
+      "name": "get_cost",
+      "desc": "Get cost to buy n tokens at current supply",
+      "args": [
+        {"name": "agent_id", "type": "uint64"},
+        {"name": "n", "type": "uint64"}
+      ],
+      "returns": {"type": "uint64", "desc": "Cost in uCORTEX"}
+    }
+  ]
+}
+\end{verbatim}
+
+\subsection{SovereignTreasury Contract}
+\label{subsec:abi-treasury}
+
+The SovereignTreasury contract manages protocol revenue, buyback-and-burn
+operations, and revenue distribution.
+
+\subsubsection{State Schema}
+
+\begin{table}[H]
+\centering
+\caption{SovereignTreasury global state.}
+\label{tab:treasury-global}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Key} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{total\_burned} & uint64 & Cumulative tokens burned \\
+\texttt{treasury\_balance} & uint64 & Current CORTEX balance \\
+\texttt{last\_buyback\_round} & uint64 & Round of last buyback execution \\
+\texttt{weekly\_burn\_cap\_bps} & uint16 & Treasury\% cap (default: 1000 = 10\%) \\
+\texttt{supply\_burn\_cap\_bps} & uint16 & Supply\% cap (default: 100 = 1\%) \\
+\texttt{factory\_addr} & address & AgentFactory application address \\
+\texttt{ve\_addr} & address & veCORTEX application address \\
+\texttt{tinyman\_pool} & uint64 & Tinyman pool application ID \\
+\texttt{composability\_pool} & uint64 & Accumulated composability tax \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{ARC-4 Methods}
+
+\begin{verbatim}
+{
+  "name": "SovereignTreasury",
+  "methods": [
+    {
+      "name": "receive_fee",
+      "desc": "Receive trading fee and split to recipients",
+      "args": [
+        {"name": "agent_id", "type": "uint64"},
+        {"name": "fee_amount", "type": "uint64"},
+        {"name": "referrer", "type": "address"}
+      ],
+      "returns": {"type": "bool"}
+    },
+    {
+      "name": "receive_composability_tax",
+      "desc": "Receive x402 composability tax",
+      "args": [
+        {"name": "caller_agent", "type": "uint64"},
+        {"name": "callee_agent", "type": "uint64"},
+        {"name": "tax_amount", "type": "uint64"}
+      ],
+      "returns": {"type": "bool"}
+    },
+    {
+      "name": "execute_buyback",
+      "desc": "Execute weekly buyback-and-burn (permissionless)",
+      "args": [],
+      "returns": {"type": "uint64", "desc": "Tokens burned"}
+    },
+    {
+      "name": "distribute_composability",
+      "desc": "Distribute composability pool to top-20 agents",
+      "args": [
+        {"name": "agent_ids", "type": "uint64[20]"},
+        {"name": "scores", "type": "uint64[20]"}
+      ],
+      "returns": {"type": "bool"}
+    },
+    {
+      "name": "governance_withdraw",
+      "desc": "Governance-approved treasury withdrawal",
+      "args": [
+        {"name": "recipient", "type": "address"},
+        {"name": "amount", "type": "uint64"},
+        {"name": "proposal_id", "type": "uint64"}
+      ],
+      "returns": {"type": "bool"}
+    }
+  ]
+}
+\end{verbatim}
+
+\subsection{veCORTEX Contract}
+\label{subsec:abi-ve}
+
+The veCORTEX contract manages token locking, governance weight computation,
+boost multipliers, and revenue distribution to stakers.
+
+\subsubsection{State Schema}
+
+\begin{table}[H]
+\centering
+\caption{veCORTEX global state.}
+\label{tab:ve-global}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Key} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{total\_locked} & uint64 & Total CORTEX locked \\
+\texttt{total\_ve\_supply} & uint64 & Current total veCORTEX \\
+\texttt{max\_lock\_seconds} & uint64 & $T_{\max}$ in seconds (4 years) \\
+\texttt{last\_distribution} & uint64 & Timestamp of last revenue distribution \\
+\texttt{accumulated\_revenue} & uint64 & Revenue awaiting distribution \\
+\texttt{treasury\_addr} & address & SovereignTreasury address \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{veCORTEX box storage (per-user, key: user address).}
+\label{tab:ve-box}
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Description} \\
+\midrule
+\texttt{locked\_amount} & uint64 & CORTEX locked \\
+\texttt{lock\_duration} & uint64 & Lock duration in seconds \\
+\texttt{lock\_start} & uint64 & Lock start timestamp \\
+\texttt{ve\_balance} & uint64 & Current veCORTEX (decayed) \\
+\texttt{accumulated\_rewards} & uint64 & Unclaimed rewards \\
+\texttt{delegate} & address & Delegation target (zero if none) \\
+\texttt{boost\_multiplier} & uint64 & Current boost (scaled by 1000) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{ARC-4 Methods}
+
+\begin{verbatim}
+{
+  "name": "veCORTEX",
+  "methods": [
+    {
+      "name": "lock",
+      "desc": "Lock CORTEX tokens for governance weight",
+      "args": [
+        {"name": "amount", "type": "uint64"},
+        {"name": "duration_seconds", "type": "uint64"},
+        {"name": "cortex_payment", "type": "pay"}
+      ],
+      "returns": {"type": "uint64", "desc": "veCORTEX received"}
+    },
+    {
+      "name": "extend_lock",
+      "desc": "Extend lock duration (must exceed remaining)",
+      "args": [
+        {"name": "new_duration", "type": "uint64"}
+      ],
+      "returns": {"type": "uint64", "desc": "New veCORTEX balance"}
+    },
+    {
+      "name": "increase_lock",
+      "desc": "Add more CORTEX to existing lock",
+      "args": [
+        {"name": "additional_amount", "type": "uint64"},
+        {"name": "cortex_payment", "type": "pay"}
+      ],
+      "returns": {"type": "uint64", "desc": "New veCORTEX balance"}
+    },
+    {
+      "name": "withdraw",
+      "desc": "Withdraw CORTEX after lock expiry",
+      "args": [],
+      "returns": {"type": "uint64", "desc": "CORTEX withdrawn"}
+    },
+    {
+      "name": "claim_rewards",
+      "desc": "Claim accumulated revenue rewards",
+      "args": [],
+      "returns": {"type": "uint64", "desc": "Rewards claimed"}
+    },
+    {
+      "name": "delegate",
+      "desc": "Delegate voting power to another address",
+      "args": [
+        {"name": "delegate_to", "type": "address"}
+      ],
+      "returns": {"type": "bool"}
+    },
+    {
+      "name": "revoke_delegation",
+      "desc": "Revoke delegation",
+      "args": [],
+      "returns": {"type": "bool"}
+    },
+    {
+      "name": "get_ve_balance",
+      "desc": "Get current decayed veCORTEX balance",
+      "args": [
+        {"name": "user", "type": "address"}
+      ],
+      "returns": {"type": "uint64"}
+    },
+    {
+      "name": "get_boost",
+      "desc": "Get current boost multiplier",
+      "args": [
+        {"name": "user", "type": "address"}
+      ],
+      "returns": {"type": "uint64", "desc": "Boost * 1000"}
+    },
+    {
+      "name": "get_voting_power",
+      "desc": "Get effective voting power (own + delegated)",
+      "args": [
+        {"name": "user", "type": "address"}
+      ],
+      "returns": {"type": "uint64"}
+    },
+    {
+      "name": "distribute_revenue",
+      "desc": "Distribute accumulated revenue to stakers (permissionless)",
+      "args": [],
+      "returns": {"type": "uint64", "desc": "Total distributed"}
+    }
+  ]
+}
+\end{verbatim}
