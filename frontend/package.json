@@ -47,5 +47,9 @@
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "ws": "7.5.10",
+    "bn.js": "4.12.3"
   }
 }
