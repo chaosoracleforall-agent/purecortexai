@@ -32,6 +32,9 @@ class Settings:
     google_oauth_client_id: str | None
     google_oauth_client_secret: str | None
     oauth2_proxy_cookie_secret: str | None
+    turnstile_site_key: str | None
+    turnstile_secret_key: str | None
+    developer_access_cooldown_seconds: int
 
 
 @lru_cache(maxsize=1)
@@ -60,4 +63,10 @@ def get_settings() -> Settings:
         google_oauth_client_id=os.getenv("PURECORTEX_GOOGLE_OAUTH_CLIENT_ID"),
         google_oauth_client_secret=os.getenv("PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET"),
         oauth2_proxy_cookie_secret=os.getenv("PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET"),
+        turnstile_site_key=os.getenv("PURECORTEX_TURNSTILE_SITE_KEY"),
+        turnstile_secret_key=os.getenv("PURECORTEX_TURNSTILE_SECRET_KEY"),
+        developer_access_cooldown_seconds=max(
+            int(os.getenv("PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS", "300")),
+            0,
+        ),
     )

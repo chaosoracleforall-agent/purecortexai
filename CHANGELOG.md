@@ -19,6 +19,8 @@
 - Added separate Admin E2E Mocked and Admin E2E Live status badges to the README and expanded the live workflow-dispatch controls so CI runs can explicitly choose `dev-session` or `header` auth mode for stricter admin-surface validation.
 - Added a dedicated README `CI` section so contributors can quickly see which admin workflow runs automatically on PRs and when to manually launch the live admin workflow.
 - Documented the new fail-closed admin and proxy trust defaults in `DEPLOYMENT.md` and `.env.example`, including the production-only conditions for enabling `PURECORTEX_TRUST_PROXY_HEADERS=1` and `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=1`.
+- Added a top-level `LICENSE` and enabled GitHub vulnerability alerts plus automated security fixes so the repository is ready for a controlled move toward public visibility.
+- Added optional Cloudflare Turnstile, a hidden honeypot field, and Redis-backed per-email/per-IP submission cooldowns to the public developer-access request flow so the owner review queue is less exposed to bot spam and repeated form abuse.
 
 ### Root Cause
 - The async SQLAlchemy/Postgres path depends on `greenlet`, but the backend dependency manifest only included SQLAlchemy, drivers, and Alembic, so fresh local environments could migrate successfully yet still fail once the app opened an async session.
@@ -26,6 +28,8 @@
 - The previous dependency set pinned vulnerable FastAPI/MCP transitive versions, and the wallet connector ecosystem had not yet republished secure transitive patch levels even though compatible patched `ws` and `bn.js` releases were available.
 - Production model selection already supported `gpt-5`, but the backend did not expose an explicit organization binding for OpenAI accounts that span multiple organizations.
 - The admin and trusted-proxy hardening changed runtime defaults, but the deployment runbook and sample environment file still implied the older trust-on configuration and header-driven admin assumptions.
+- The repository was operationally ready to ship, but it still lacked an explicit public-use license and had GitHub security features disabled, leaving unnecessary blockers before opening visibility.
+- The public developer-access endpoint was intentionally open and rate-limited, but it still lacked dedicated bot verification and repeat-submission friction for abusive or automated request traffic.
 
 ### User Action
 - Reinstall backend Python dependencies or rebuild the backend image so the runtime picks up `greenlet` before exercising the PostgreSQL-backed admin control plane.
@@ -36,6 +40,8 @@
 - Redeploy the VM stack so the backend picks up the new Python dependency set, the frontend serves the patched wallet dependency graph, and the OpenAI org-aware runtime configuration is applied.
 - Set `OPENAI_ORG_ID` in the VM environment or Secret Manager if the OpenAI key is attached to a multi-organization OpenAI account and explicit org binding is required.
 - For production, enable `PURECORTEX_TRUST_PROXY_HEADERS=1` and `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=1` only behind the documented `nginx` plus `oauth2-proxy` boundary; leave both disabled for local or direct-service access paths.
+- Before flipping the repository public, keep the full-history secret scan report, confirm `LICENSE` is present on `main`, and enable branch protection on `main` immediately after visibility changes if your GitHub plan does not support it while private.
+- To activate the developer-access anti-bot controls, set both `PURECORTEX_TURNSTILE_SITE_KEY` and `PURECORTEX_TURNSTILE_SECRET_KEY`, then redeploy the VM stack so the backend exposes the Turnstile config to the public form.
 
 ## 0.7.6 - 2026-03-16
 

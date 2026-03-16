@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Script from 'next/script';
 import type { ComponentType, FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, KeyRound, LockKeyhole, Shield, TerminalSquare } from 'lucide-react';
 
 import { fetchJson } from '@/lib/api';
@@ -23,6 +24,29 @@ interface DeveloperAccessResponse {
   expected_rpm: number | null;
   created_at: string;
   message: string;
+}
+
+interface DeveloperAccessConfigResponse {
+  turnstile_site_key: string | null;
+  turnstile_required: boolean;
+}
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: HTMLElement,
+        options: {
+          sitekey: string;
+          theme?: 'auto' | 'light' | 'dark';
+          callback?: (token: string) => void;
+          'expired-callback'?: () => void;
+          'error-callback'?: () => void;
+        }
+      ) => string;
+      reset: (widgetId?: string) => void;
+    };
+  }
 }
 
 const SURFACE_OPTIONS: Array<{ value: Surface; label: string; detail: string }> = [
@@ -67,6 +91,7 @@ export default function DeveloperAccessPage() {
   const [requesterName, setRequesterName] = useState('');
   const [requesterEmail, setRequesterEmail] = useState('');
   const [organization, setOrganization] = useState('');
+  const [website, setWebsite] = useState('');
   const [useCase, setUseCase] = useState('');
   const [expectedRpm, setExpectedRpm] = useState('');
   const [requestedIps, setRequestedIps] = useState('');
@@ -75,6 +100,14 @@ export default function DeveloperAccessPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeveloperAccessResponse | null>(null);
+  const [turnstileConfig, setTurnstileConfig] = useState<DeveloperAccessConfigResponse>({
+    turnstile_site_key: null,
+    turnstile_required: false,
+  });
+  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
 
   const parsedIps = useMemo(
     () =>
@@ -94,12 +127,66 @@ export default function DeveloperAccessPage() {
     });
   };
 
+  useEffect(() => {
+    let active = true;
+    void fetchJson<DeveloperAccessConfigResponse>('/api/developer-access/config')
+      .then((config) => {
+        if (active) {
+          setTurnstileConfig(config);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setTurnstileConfig({
+            turnstile_site_key: null,
+            turnstile_required: false,
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !turnstileLoaded ||
+      !turnstileConfig.turnstile_site_key ||
+      !turnstileContainerRef.current ||
+      !window.turnstile ||
+      turnstileWidgetIdRef.current
+    ) {
+      return;
+    }
+
+    turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+      sitekey: turnstileConfig.turnstile_site_key,
+      theme: 'dark',
+      callback: (token) => setTurnstileToken(token),
+      'expired-callback': () => setTurnstileToken(''),
+      'error-callback': () => setTurnstileToken(''),
+    });
+  }, [turnstileConfig.turnstile_site_key, turnstileLoaded]);
+
+  const resetTurnstile = () => {
+    if (window.turnstile && turnstileWidgetIdRef.current) {
+      window.turnstile.reset(turnstileWidgetIdRef.current);
+    }
+    setTurnstileToken('');
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
     if (selectedSurfaces.length === 0) {
       setError('Select at least one surface: API, CLI, SDK, or MCP.');
+      return;
+    }
+
+    if (turnstileConfig.turnstile_required && !turnstileToken) {
+      setError('Complete the bot verification before submitting your request.');
       return;
     }
 
@@ -114,16 +201,20 @@ export default function DeveloperAccessPage() {
           requester_name: requesterName,
           requester_email: requesterEmail,
           organization: organization || null,
+          website,
           use_case: useCase,
           requested_surfaces: selectedSurfaces,
           requested_access_level: accessLevel,
           requested_ips: parsedIps,
           expected_rpm: expectedRpm ? Number(expectedRpm) : null,
+          turnstile_token: turnstileToken || null,
         }),
       });
       setResult(response);
+      resetTurnstile();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Failed to submit request.');
+      resetTurnstile();
     } finally {
       setIsSubmitting(false);
     }
@@ -131,6 +222,13 @@ export default function DeveloperAccessPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans">
+      {turnstileConfig.turnstile_site_key && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          onLoad={() => setTurnstileLoaded(true)}
+        />
+      )}
       <div className="absolute top-0 left-1/4 w-[420px] h-[420px] bg-[#007AFF]/5 blur-[140px] rounded-full -z-10" />
       <div className="absolute bottom-0 right-1/4 w-[420px] h-[420px] bg-blue-500/5 blur-[160px] rounded-full -z-10" />
 
@@ -229,6 +327,19 @@ export default function DeveloperAccessPage() {
                     placeholder="Optional"
                   />
                 </label>
+
+                <label
+                  className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden opacity-0 pointer-events-none"
+                  aria-hidden="true"
+                >
+                  <span>Website</span>
+                  <input
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={website}
+                    onChange={(event) => setWebsite(event.target.value)}
+                  />
+                </label>
               </div>
 
               <div className="space-y-3">
@@ -318,6 +429,21 @@ export default function DeveloperAccessPage() {
                   <div className="font-bold uppercase tracking-[0.2em] text-emerald-300">Request submitted</div>
                   <div>{result.message}</div>
                   <div className="font-mono text-emerald-200">Request ID: {result.id}</div>
+                </div>
+              )}
+
+              {turnstileConfig.turnstile_required && (
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-gray-500">
+                    Bot verification
+                  </div>
+                  <div
+                    ref={turnstileContainerRef}
+                    className="min-h-[66px] rounded-2xl border border-white/10 bg-black/30 px-3 py-3"
+                  />
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    This form uses Cloudflare Turnstile to reduce bot abuse and spam submissions.
+                  </p>
                 </div>
               )}
 

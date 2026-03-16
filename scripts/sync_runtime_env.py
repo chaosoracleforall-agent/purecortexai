@@ -134,6 +134,18 @@ def main() -> int:
     )
     ensure_secret_backed_value(
         values,
+        key="PURECORTEX_TURNSTILE_SITE_KEY",
+        project=project,
+        secret_name="PURECORTEX_TURNSTILE_SITE_KEY",
+    )
+    ensure_secret_backed_value(
+        values,
+        key="PURECORTEX_TURNSTILE_SECRET_KEY",
+        project=project,
+        secret_name="PURECORTEX_TURNSTILE_SECRET_KEY",
+    )
+    ensure_secret_backed_value(
+        values,
         key="OPENAI_ORG_ID",
         project=project,
         secret_name="OPENAI_ORG_ID",
@@ -159,6 +171,8 @@ def main() -> int:
         values["PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET"] = (
             base64.urlsafe_b64encode(os.urandom(32)).decode()
         )
+
+    values.setdefault("PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS", "300")
 
     write_env(ENV_PATH, original_lines, values)
     RUNTIME_DIR.mkdir(exist_ok=True)
