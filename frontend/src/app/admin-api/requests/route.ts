@@ -1,5 +1,5 @@
 import { getInternalBackendUrl, getTrustedAdminEmail, isAllowedAdminEmail } from '@/lib/admin';
-import { adminJson } from './_lib/proxy';
+import { adminJson } from '../_lib/proxy';
 
 
 export async function GET(request: Request) {
