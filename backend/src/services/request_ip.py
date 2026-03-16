@@ -38,14 +38,15 @@ def _is_trusted_proxy(remote_ip: str | None, trusted_proxy_cidrs: Iterable[str])
     return any(remote in network for network in _trusted_networks(tuple(trusted_proxy_cidrs)))
 
 
-def _first_valid_forwarded_ip(value: str | None) -> str | None:
+def _forwarded_ips(value: str | None) -> tuple[str, ...]:
     if not value:
-        return None
+        return ()
+    candidates: list[str] = []
     for item in value.split(","):
         candidate = item.strip()
         if _parse_ip(candidate) is not None:
-            return candidate
-    return None
+            candidates.append(candidate)
+    return tuple(candidates)
 
 
 def resolve_client_ip(
@@ -67,9 +68,19 @@ def resolve_client_ip(
     if not _is_trusted_proxy(client_host, trusted_proxy_cidrs):
         return client_host or "unknown"
 
-    forwarded_for = _first_valid_forwarded_ip(headers.get("x-forwarded-for"))
+    trusted_networks = _trusted_networks(tuple(trusted_proxy_cidrs))
+    forwarded_for = _forwarded_ips(headers.get("x-forwarded-for"))
     if forwarded_for:
-        return forwarded_for
+        # Walk from right to left and return the first hop that is not itself a
+        # trusted proxy. This blocks spoofed leftmost values while still working
+        # for sanitized multi-proxy chains.
+        for candidate in reversed(forwarded_for):
+            parsed = _parse_ip(candidate)
+            if parsed is None:
+                continue
+            if not any(parsed in network for network in trusted_networks):
+                return candidate
+        return forwarded_for[-1]
 
     real_ip = headers.get("x-real-ip")
     if _parse_ip(real_ip) is not None:

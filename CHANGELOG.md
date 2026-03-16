@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.6 - 2026-03-16
+
+### Fixed
+- Hardened reverse-proxy client IP handling by sanitizing `X-Forwarded-For` at Nginx and updating backend IP resolution to select the rightmost untrusted hop, preventing spoofed client IPs from bypassing rate limiting or contaminating future IP allowlist enforcement.
+- Made the isolated signer fail closed when `PURECORTEX_SIGNER_SHARED_TOKEN` is missing and switched signer request token checks to constant-time comparison so the daemon cannot run unauthenticated.
+- Updated the VM deploy flow to force-recreate the backend and Cloud SQL proxy together when Cloud SQL mode is active, preventing shared-network proxy drift during backend redeploys.
+
+### Root Cause
+- The initial production hardening pass trusted the leftmost forwarded IP value from a trusted proxy chain and allowed the signer daemon to continue operating when its shared token was empty, leaving avoidable gaps in two core security boundaries.
+
+### User Action
+- Redeploy the VM stack so Nginx, backend, and signer all pick up the new proxy and signer-token enforcement behavior.
+
 ## 0.7.5 - 2026-03-16
 
 ### Updated
