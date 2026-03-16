@@ -172,7 +172,8 @@ def main() -> int:
             base64.urlsafe_b64encode(os.urandom(32)).decode()
         )
 
-    values.setdefault("PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS", "300")
+    if not values.get("PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS"):
+        values["PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS"] = "300"
 
     write_env(ENV_PATH, original_lines, values)
     RUNTIME_DIR.mkdir(exist_ok=True)
