@@ -19,6 +19,18 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _as_int(value: str | None, default: int) -> int:
+    if value is None:
+        return default
+    stripped = value.strip()
+    if not stripped:
+        return default
+    try:
+        return int(stripped)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str | None
@@ -66,7 +78,7 @@ def get_settings() -> Settings:
         turnstile_site_key=os.getenv("PURECORTEX_TURNSTILE_SITE_KEY"),
         turnstile_secret_key=os.getenv("PURECORTEX_TURNSTILE_SECRET_KEY"),
         developer_access_cooldown_seconds=max(
-            int(os.getenv("PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS", "300")),
+            _as_int(os.getenv("PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS"), 300),
             0,
         ),
     )
