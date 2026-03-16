@@ -23,7 +23,7 @@ Example response:
 ```json
 {
   "status": "ok",
-  "version": "0.7.0",
+  "version": "0.7.7",
   "dependencies": {
     "redis": "connected",
     "orchestrator": "initialized",
@@ -44,7 +44,9 @@ Example response:
 - `GET /api/governance/overview`
 - `GET /api/governance/proposals`
 - `GET /api/governance/proposals/{proposal_id}`
+- `GET /api/governance/proposals/{proposal_id}/power/{address}`
 - `GET /api/governance/onchain`
+- `POST /api/governance/proposals/{proposal_id}/vote-signed`
 
 ### Agent Registry
 - `GET /api/agents/registry`
@@ -67,7 +69,7 @@ Requires `X-API-Key`.
 - `POST /api/admin/keys`
 - `POST /api/admin/keys/revoke`
 
-Bootstrap uses `X-Bootstrap-Token`. Subsequent admin operations can use either `X-Admin-Secret` or an admin-tier API key.
+Bootstrap uses `X-Bootstrap-Token`. Day-to-day admin operations should use an admin-tier API key.
 
 ## WebSocket Chat
 `WS /ws/chat?session={session_token}`
@@ -79,4 +81,5 @@ WebSocket chat requires a short-lived session token minted by `POST /api/chat/se
 - Protected REST endpoints require `X-API-Key`.
 - Auth fails closed when the API key service is unavailable.
 - WebSocket chat requires a short-lived session token derived from a valid API key.
+- Signed governance votes additionally require a wallet with active direct or delegated voting power.
 - Supported agent names are `senator`, `curator`, and `social`.

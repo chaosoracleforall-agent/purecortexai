@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:admin": "playwright test tests/e2e/admin.spec.ts",
+    "test:e2e:admin:live": "playwright test tests/e2e/admin.live.spec.ts",
+    "test:e2e:admin:smoke": "bash ../scripts/run_admin_e2e_smoke.sh"
   },
   "dependencies": {
     "@agoralabs-sh/avm-web-provider": "^1.7.0",

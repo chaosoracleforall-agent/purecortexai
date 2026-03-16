@@ -6,7 +6,7 @@ icon: "bolt"
 
 # Quickstart
 
-Get up and running with PURECORTEX in three steps: install the CLI, verify connectivity, and start exploring agents.
+Get up and running with PURECORTEX in three steps: install the CLI, verify connectivity, and start exploring the current testnet surface.
 
 <Info>
   The CLI communicates with the PURECORTEX API at `https://purecortex.ai`. Read-only operations are public. Protected agent actions require an API key, and WebSocket chat uses a short-lived session token created from that key.
@@ -15,32 +15,19 @@ Get up and running with PURECORTEX in three steps: install the CLI, verify conne
 ## Step 1: Install the CLI
 
 <Tabs>
-  <Tab title="macOS (Homebrew)">
-    ```bash
-    brew tap purecortex/tap
-    brew install purecortex-cli
-    ```
-  </Tab>
-  <Tab title="macOS / Linux (pipx)">
-    [pipx](https://pypa.github.io/pipx/) installs the CLI in an isolated environment, keeping your system Python clean.
-
-    ```bash
-    pipx install purecortex-cli
-    ```
-  </Tab>
-  <Tab title="Linux (pip)">
-    ```bash
-    pip install purecortex-cli
-    ```
-  </Tab>
-  <Tab title="From Source">
-    Build from the repository for development or to run the latest unreleased version.
-
+  <Tab title="Repository Install">
     ```bash
     git clone https://github.com/chaosoracleforall-agent/purecortexai.git
     cd purecortexai
     python -m venv venv
     source venv/bin/activate
+    pip install -e ./cli
+    ```
+  </Tab>
+  <Tab title="Local Package Path">
+    If you already have the repository locally, install directly from the `cli` package.
+
+    ```bash
     pip install -e ./cli
     ```
   </Tab>
@@ -68,8 +55,8 @@ pcx status
 │  PURECORTEX Status   │
 │                      │
 │  Backend Online      │
-│  Version: 1.0.0      │
-│  Orchestrator: Active │
+│  Version: 0.7.7      │
+│  Orchestrator: initialized │
 ╰──────────────────────╯
 ```
 </CodeGroup>
@@ -100,9 +87,9 @@ With the CLI connected, you can query agents, inspect token supply, and interact
     ├──────────┬─────────────────────┬──────────┬─────────────────┤
     │ Name     │ Role                │ Status   │ Address         │
     ├──────────┼─────────────────────┼──────────┼─────────────────┤
-    │ Senator  │ Governance          │ active   │ PURE...XY2A...  │
-    │ Curator  │ Quality Assurance   │ active   │ PURE...BK7F...  │
-    │ Social   │ Communications      │ active   │ PURE...MN9W...  │
+    │ senator  │ senator             │ pre_launch │ TBD          │
+    │ curator  │ curator             │ pre_launch │ TBD          │
+    │ social   │ social              │ standby    │ TBD          │
     ╰──────────┴─────────────────────┴──────────┴─────────────────╯
     ```
   </Step>
@@ -135,9 +122,10 @@ With the CLI connected, you can query agents, inspect token supply, and interact
     ```
   </Step>
   <Step title="Chat with an agent">
-    Open an interactive session with any protocol agent. The agent uses Tri-Brain Consensus (Claude Opus 4.6 + Gemini 2.5 Pro + GPT-5) to generate responses scoped to its domain.
+    Open an interactive session with any protocol agent. Authenticated chat requires a valid API key.
 
     ```bash
+    export PURECORTEX_API_KEY=ctx_your_key
     pcx chat senator
     ```
 

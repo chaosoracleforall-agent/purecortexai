@@ -21,6 +21,7 @@ from sandboxing import PermissionProxy, PermissionTier
 from src.api.health import router as health_router
 from src.api.transparency import router as transparency_router
 from src.api.governance import router as governance_router
+from src.api.staking import router as staking_router
 from src.api.agents_api import router as agents_router
 from src.api.chat import router as chat_router
 from src.api.admin import router as admin_router, set_api_key_manager
@@ -197,6 +198,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(health_router)
 app.include_router(transparency_router)
 app.include_router(governance_router)
+app.include_router(staking_router)
 app.include_router(agents_router)
 app.include_router(chat_router)
 app.include_router(admin_router)

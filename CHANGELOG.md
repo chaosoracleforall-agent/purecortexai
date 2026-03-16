@@ -2,20 +2,40 @@
 
 ## 0.7.7 - 2026-03-16
 
+### Fixed
+- Added `greenlet==3.3.2` to the backend runtime requirements so the new PostgreSQL-backed developer access and admin control-plane flows work locally and in fresh environments instead of crashing on first SQLAlchemy async session usage.
+- Restored legacy `owner` and `tier` compatibility fields for PostgreSQL-backed API keys so chat session bootstrap, CLI, SDK, and admin-protected backend routes stop downgrading validated database keys to `unknown` / `free`.
+
 ### Updated
 - Upgraded the backend runtime to `fastapi[all]==0.135.1`, `mcp==1.26.0`, and `pydantic==2.12.5`, which pulls in the patched Starlette/MCP dependency chain and clears the prior Python vulnerability findings.
 - Added frontend dependency overrides for `ws@7.5.10` and `bn.js@4.12.3`, eliminating the remaining production `npm audit` findings from the WalletConnect dependency tree without changing the wallet UX.
 - Added `OPENAI_ORG_ID` runtime support so the backend can explicitly bind OpenAI requests to the verified organization when `gpt-5` is re-enabled in production.
 - Centralized the backend app version at `0.7.7` so the FastAPI metadata and `/health` response stay in sync instead of drifting independently.
 - Changed the Compose `OPENAI_API_KEY` interpolation to an empty-default form so VM deploys stop logging a misleading missing-variable warning when the backend is intentionally reading that secret directly from Secret Manager at runtime.
+- Added a dev-only local admin session bridge on the frontend so `/admin` can be exercised in a browser during local development without manually injecting the trusted owner email header.
+- Added a gated live Playwright admin spec that seeds a real developer-access request, drives the browser approval/rotation/revocation flow, and verifies the revoked replacement key is rejected by the backend for repeatable local or staging smoke coverage.
+- Added a one-command admin smoke wrapper plus frontend npm aliases so mocked admin E2E coverage always runs and the gated live admin Playwright flow can be folded in with the same command when the live flag is enabled.
+- Added split GitHub Actions workflows at `.github/workflows/admin-e2e-mocked.yml` and `.github/workflows/admin-e2e-live.yml` so mocked admin browser coverage runs automatically while the live admin local-stack smoke remains separately dispatchable.
+- Added separate Admin E2E Mocked and Admin E2E Live status badges to the README and expanded the live workflow-dispatch controls so CI runs can explicitly choose `dev-session` or `header` auth mode for stricter admin-surface validation.
+- Added a dedicated README `CI` section so contributors can quickly see which admin workflow runs automatically on PRs and when to manually launch the live admin workflow.
+- Documented the new fail-closed admin and proxy trust defaults in `DEPLOYMENT.md` and `.env.example`, including the production-only conditions for enabling `PURECORTEX_TRUST_PROXY_HEADERS=1` and `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=1`.
 
 ### Root Cause
+- The async SQLAlchemy/Postgres path depends on `greenlet`, but the backend dependency manifest only included SQLAlchemy, drivers, and Alembic, so fresh local environments could migrate successfully yet still fail once the app opened an async session.
+- The new PostgreSQL-backed key records exposed richer `owner_name`, `owner_email`, and `runtime_tier` fields, but older auth and chat code still expected the legacy `owner` / `tier` shape used by the Redis-only key path.
 - The previous dependency set pinned vulnerable FastAPI/MCP transitive versions, and the wallet connector ecosystem had not yet republished secure transitive patch levels even though compatible patched `ws` and `bn.js` releases were available.
 - Production model selection already supported `gpt-5`, but the backend did not expose an explicit organization binding for OpenAI accounts that span multiple organizations.
+- The admin and trusted-proxy hardening changed runtime defaults, but the deployment runbook and sample environment file still implied the older trust-on configuration and header-driven admin assumptions.
 
 ### User Action
+- Reinstall backend Python dependencies or rebuild the backend image so the runtime picks up `greenlet` before exercising the PostgreSQL-backed admin control plane.
+- For local browser admin testing, visit `/admin/login` first to establish the dev-only admin session, then continue to `/admin`.
+- To run the live browser admin smoke test, set `PURECORTEX_RUN_LIVE_ADMIN_E2E=1` and point `PURECORTEX_E2E_BACKEND_URL` plus `PURECORTEX_ADMIN_E2E_AUTH_MODE` at the target environment before invoking `npx playwright test tests/e2e/admin.live.spec.ts`.
+- For the combined admin smoke path, run `cd frontend && npm run test:e2e:admin:smoke`; add the same live-test environment variables when you want the command to include the real browser flow.
+- In GitHub Actions, the mocked admin workflow runs automatically on pushes and pull requests touching the relevant files, while the live local-stack admin workflow is launched manually through `Admin E2E Live` workflow dispatch and now lets you choose `dev-session` or `header` auth mode.
 - Redeploy the VM stack so the backend picks up the new Python dependency set, the frontend serves the patched wallet dependency graph, and the OpenAI org-aware runtime configuration is applied.
-- Set `OPENAI_ORG_ID` in the VM environment or Secret Manager if the OpenAI API key is not already defaulting to `org-uvCDRTkmQN3Mz3xH99dXWg4K`.
+- Set `OPENAI_ORG_ID` in the VM environment or Secret Manager if the OpenAI key is attached to a multi-organization OpenAI account and explicit org binding is required.
+- For production, enable `PURECORTEX_TRUST_PROXY_HEADERS=1` and `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=1` only behind the documented `nginx` plus `oauth2-proxy` boundary; leave both disabled for local or direct-service access paths.
 
 ## 0.7.6 - 2026-03-16
 
