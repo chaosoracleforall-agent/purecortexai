@@ -6,6 +6,7 @@ import logging
 
 from fastapi import APIRouter
 
+from src import APP_VERSION
 from src.services.cache import get_cache_service
 
 router = APIRouter(tags=["health"])
@@ -32,7 +33,7 @@ async def health():
 
     return {
         "status": status,
-        "version": "0.7.0",
+        "version": APP_VERSION,
         "dependencies": {
             "redis": "connected" if redis_ok else "unavailable",
             "orchestrator": "initialized" if orchestrator else "unavailable",

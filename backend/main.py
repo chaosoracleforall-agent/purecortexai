@@ -29,6 +29,7 @@ from src.api.internal_admin import router as internal_admin_router
 
 # Auth
 from src.api.auth import APIKeyMiddleware
+from src import APP_VERSION
 from src.core.settings import get_settings
 from src.services.api_keys import APIKeyManager
 from src.services.chat_sessions import ChatSessionManager
@@ -127,7 +128,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="PURECORTEX API Gateway",
-    version="0.7.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 

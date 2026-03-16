@@ -42,6 +42,8 @@ class ConsensusOrchestrator:
         self.openai_client: Optional[AsyncOpenAI] = None
         self.claude_model = os.getenv("CLAUDE_MODEL", "claude-opus-4-6")
         self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+        openai_org = os.getenv("OPENAI_ORG_ID") or os.getenv("OPENAI_ORGANIZATION")
+        self.openai_org_id = openai_org.strip() if openai_org and openai_org.strip() else None
         self.openai_models = self._build_openai_model_chain()
         try:
             self.client = secretmanager.SecretManagerServiceClient()
@@ -161,6 +163,7 @@ class ConsensusOrchestrator:
             openai_api_key = self._get_secret("OPENAI_API_KEY")
             self.openai_client = AsyncOpenAI(
                 api_key=openai_api_key,
+                organization=self.openai_org_id,
                 timeout=httpx.Timeout(30.0, connect=5.0),
             )
         except Exception as e:

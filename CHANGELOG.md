@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.7 - 2026-03-16
+
+### Updated
+- Upgraded the backend runtime to `fastapi[all]==0.135.1`, `mcp==1.26.0`, and `pydantic==2.12.5`, which pulls in the patched Starlette/MCP dependency chain and clears the prior Python vulnerability findings.
+- Added frontend dependency overrides for `ws@7.5.10` and `bn.js@4.12.3`, eliminating the remaining production `npm audit` findings from the WalletConnect dependency tree without changing the wallet UX.
+- Added `OPENAI_ORG_ID` runtime support so the backend can explicitly bind OpenAI requests to the verified organization when `gpt-5` is re-enabled in production.
+- Centralized the backend app version at `0.7.7` so the FastAPI metadata and `/health` response stay in sync instead of drifting independently.
+- Changed the Compose `OPENAI_API_KEY` interpolation to an empty-default form so VM deploys stop logging a misleading missing-variable warning when the backend is intentionally reading that secret directly from Secret Manager at runtime.
+
+### Root Cause
+- The previous dependency set pinned vulnerable FastAPI/MCP transitive versions, and the wallet connector ecosystem had not yet republished secure transitive patch levels even though compatible patched `ws` and `bn.js` releases were available.
+- Production model selection already supported `gpt-5`, but the backend did not expose an explicit organization binding for OpenAI accounts that span multiple organizations.
+
+### User Action
+- Redeploy the VM stack so the backend picks up the new Python dependency set, the frontend serves the patched wallet dependency graph, and the OpenAI org-aware runtime configuration is applied.
+- Set `OPENAI_ORG_ID` in the VM environment or Secret Manager if the OpenAI API key is not already defaulting to `org-uvCDRTkmQN3Mz3xH99dXWg4K`.
+
 ## 0.7.6 - 2026-03-16
 
 ### Fixed

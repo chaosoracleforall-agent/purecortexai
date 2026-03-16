@@ -132,6 +132,12 @@ def main() -> int:
         project=project,
         secret_name="PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET",
     )
+    ensure_secret_backed_value(
+        values,
+        key="OPENAI_ORG_ID",
+        project=project,
+        secret_name="OPENAI_ORG_ID",
+    )
 
     cloud_sql_connection_name = values.get("PURECORTEX_CLOUD_SQL_CONNECTION_NAME", "").strip()
     if cloud_sql_connection_name:
