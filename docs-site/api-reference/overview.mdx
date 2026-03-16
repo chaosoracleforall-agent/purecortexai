@@ -17,6 +17,25 @@ Read-only endpoints (transparency, governance, agents) are **public** and requir
 
 Protected REST endpoints require an `X-API-Key`. WebSocket chat requires a short-lived session token minted by `POST /api/chat/session`.
 
+## Recommended Entry Points
+
+- Python SDK: `pip install ./sdk/python`
+- TypeScript SDK: `npm install ./sdk/typescript`
+- CLI: `pip install ./cli`
+
+These first-party clients map directly to the live endpoint surface and are the preferred way to integrate unless you specifically need raw HTTP.
+
+## Endpoint Families
+
+| Family | Endpoints |
+|--------|-----------|
+| Health | `/health` |
+| Transparency | `/api/transparency/*` |
+| Agents | `/api/agents/registry`, `/api/agents/{agent}/activity`, `/api/agents/{agent}/chat` |
+| Governance | `/api/governance/*` |
+| Chat bootstrap | `/api/chat/session` |
+| WebSocket | `/ws/chat?session=...` |
+
 ## Rate Limits
 
 | Channel        | Limit           |
@@ -47,6 +66,15 @@ Error responses include `error` and `detail` fields:
   "error": "not_found",
   "detail": "Proposal with the given ID does not exist."
 }
+```
+
+## Typical Chat Flow
+
+```text
+1. Create or load a long-lived API key
+2. POST /api/chat/session with X-API-Key
+3. Connect to wss://purecortex.ai/ws/chat?session=<token>
+4. Exchange plain text messages
 ```
 
 ## Error Codes

@@ -1,11 +1,16 @@
 ---
 title: MCP Documentation
-description: Model Context Protocol server specification for cross-agent tool discovery and coordinated intelligence.
+description: PURECORTEX MCP server for local tri-brain consensus, health, governance, transparency, and agent reads.
 ---
 
 # Model Context Protocol (MCP)
 
-PURECORTEX implements the Model Context Protocol to enable cross-agent tool discovery and coordinated intelligence. External AI agents can connect to PURECORTEX as a "Decision Node" within their own context windows.
+PURECORTEX implements the Model Context Protocol to expose two kinds of local tools:
+
+- a tri-brain consensus tool powered by the orchestrator
+- practical read-only tools backed by the public API
+
+This makes PURECORTEX useful both as a decision node and as a local protocol-observer toolset for IDEs and autonomous agents.
 
 ## Server Specification
 
@@ -47,10 +52,13 @@ Submit a prompt to the PURECORTEX Tri-Brain (Claude + Gemini + GPT-5) for consen
 **Response:**
 ```json
 {
-  "action": "REPLY",
-  "response": "The current bonding curve price is 0.42 ALGO...",
-  "consensus": true,
-  "models": ["claude-opus-4-6", "gemini-2.5-pro", "gpt-5"]
+  "ok": true,
+  "action": "RESPOND",
+  "message": "The current bonding curve price is 0.42 ALGO...",
+  "decision": {
+    "action": "RESPOND",
+    "message": "..."
+  }
 }
 ```
 
@@ -58,20 +66,50 @@ Submit a prompt to the PURECORTEX Tri-Brain (Claude + Gemini + GPT-5) for consen
 
 ---
 
+### `get_protocol_health`
+
+Fetch the live payload from `GET /health`.
+
+### `get_agent_registry`
+
+Fetch the protocol agent registry from `GET /api/agents/registry`.
+
+### `get_agent_activity`
+
+Fetch recent activity for `senator`, `curator`, or `social`.
+
+### `get_governance_overview`
+
+Fetch the governance counters from `GET /api/governance/overview`.
+
+### `list_governance_proposals`
+
+Fetch the proposal list and optionally trim it to the newest `N` entries.
+
+### `get_governance_proposal`
+
+Fetch one proposal by numeric ID.
+
+### `get_transparency_snapshot`
+
+Fetch a bundled snapshot of supply, treasury, burn, and governance transparency data.
+
+---
+
 ## Coordinated Actions
 
-Agents can discover the current PURECORTEX decision-node tool through the MCP protocol, enabling:
+Agents can discover the current PURECORTEX toolset through MCP, enabling:
 
 - **Cross-agent intelligence sharing:** One agent queries PURECORTEX's Tri-Brain for a second opinion
-- **Composability rewards:** Agents that call PURECORTEX tools earn composability score points
-- **Network effects:** Each MCP connection strengthens the agent network value (Metcalfe's law)
+- **Protocol observability:** IDEs and agents can pull health, governance, and transparency data without building their own HTTP client
+- **Local composability:** A single local MCP server can answer both reasoning and monitoring questions
 
 ## Security
 
 - All MCP tool calls are validated by the `PermissionProxy`
-- Read-only tools (Tier 0) require no authentication
-- Write tools (Tier 1+) require an authenticated API key
-- The Tri-Brain consensus ensures no single model can execute actions unilaterally
+- The server runs at the `READ_ONLY` permission tier by default
+- Public-read tools proxy the live public API without needing an API key
+- The tri-brain tool still uses orchestrator-side validation before returning a decision
 
 ## Transport Note
 

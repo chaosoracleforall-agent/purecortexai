@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PureCortexLogo } from '@/components/Logo';
 import { Menu, X, ArrowLeft } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const DOC_NAV = [
@@ -19,9 +19,13 @@ const DOC_NAV = [
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const previousPathnameRef = useRef(pathname);
 
   useEffect(() => {
-    setMenuOpen(false);
+    if (previousPathnameRef.current !== pathname) {
+      previousPathnameRef.current = pathname;
+      queueMicrotask(() => setMenuOpen(false));
+    }
   }, [pathname]);
 
   const handleEscape = useCallback((e: KeyboardEvent) => {

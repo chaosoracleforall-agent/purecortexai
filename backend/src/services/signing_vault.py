@@ -1,7 +1,8 @@
 """
 PURECORTEX Isolated Signing Vault.
 
-Enterprise-grade transaction signing in a completely isolated environment.
+Local signing implementation used by the isolated signer service and
+development-only fallbacks.
 The signing process is separated from the broadcast process:
 
   1. Agent constructs an unsigned transaction (in the main environment)
@@ -11,19 +12,25 @@ The signing process is separated from the broadcast process:
   5. Vault returns ONLY the signed transaction bytes (key is zeroed)
   6. Agent broadcasts the signed transaction from the main environment
 
-Security guarantees:
+Security properties:
   - Private keys NEVER exist in the main process memory
-  - Signing happens in an isolated subprocess with restricted capabilities
+  - Signing happens in an isolated subprocess with a minimal environment
   - Mnemonic is decrypted only for the duration of signing (<100ms)
-  - Subprocess has no network access during signing (iptables/seccomp)
+  - Signing materials can be fetched per-operation instead of being retained in memory
   - All key material is zeroed after use
   - GPG passphrase is fetched from Secret Manager per-operation (not cached)
+
+Notes:
+  - The subprocess uses resource limits and a stripped environment, but it is
+    not a full HSM or kernel-enforced network sandbox.
+  - For stronger isolation, run the signer in a dedicated container or VM with
+    network egress disabled externally.
 
 Architecture:
   ┌─────────────────┐     unsigned_txn      ┌──────────────────────┐
   │   Main Process   │ ──────────────────► │   Signing Vault       │
   │   (Agent/API)    │                      │   (Isolated Subprocess)│
-  │                  │ ◄────────────────── │   - No network         │
+  │                  │ ◄────────────────── │   - Minimal env        │
   │   Has network    │     signed_txn       │   - GPG decrypt        │
   │   Can broadcast  │                      │   - Sign in memory     │
   └─────────────────┘                      │   - Zero key material  │
@@ -35,13 +42,56 @@ import base64
 import json
 import logging
 import os
+import resource
+import signal
 import subprocess
 import sys
 import tempfile
 import time
 from typing import Optional
 
+from .gpg_crypto import (
+    LEGACY_SHARED_MNEMONIC_SECRET_NAME,
+    get_expected_algorand_address_env_name,
+    get_gpg_passphrase_secret_name,
+    get_gpg_secret_key_secret_name,
+    get_mnemonic_secret_candidates,
+    load_first_available_secret,
+    load_secret_value,
+)
+
 logger = logging.getLogger("purecortex.signing_vault")
+
+
+def _wipe_secret(secret: Optional[str]) -> str:
+    if not secret:
+        return ""
+    return "0" * len(secret)
+
+
+def _apply_posix_sandbox() -> None:
+    """Best-effort resource limits for the signer subprocess."""
+    try:
+        os.umask(0o077)
+    except Exception:
+        pass
+
+    limits = [
+        ("RLIMIT_CORE", (0, 0)),
+        ("RLIMIT_CPU", (5, 5)),
+        ("RLIMIT_FSIZE", (1024 * 1024, 1024 * 1024)),
+        ("RLIMIT_NOFILE", (32, 32)),
+        ("RLIMIT_NPROC", (8, 8)),
+    ]
+
+    for name, value in limits:
+        limit = getattr(resource, name, None)
+        if limit is None:
+            continue
+        try:
+            resource.setrlimit(limit, value)
+        except Exception:
+            continue
 
 # The signing subprocess script (executed in isolation)
 _SIGNING_SCRIPT = '''
@@ -58,9 +108,16 @@ def main():
                                   gpg_secret_key, unsigned_txn_b64}
     Writes to stdout: JSON with {signed_txn_b64} or {error}
 
-    This process has NO network access and NO filesystem access
-    beyond what's needed for GPG operations.
+    This process inherits a stripped environment and relies on the parent
+    process for timeout + resource enforcement.
     """
+    gpg_home = None
+    mnemonic = ""
+    private_key = ""
+    gpg_passphrase = ""
+    gpg_secret_key = ""
+    encrypted_mnemonic = ""
+
     try:
         # Read input from stdin (passed by parent process)
         input_data = json.loads(sys.stdin.read())
@@ -70,6 +127,7 @@ def main():
         gpg_secret_key = input_data["gpg_secret_key"]
         gpg_public_keys = input_data.get("gpg_public_keys", "")
         unsigned_txn_b64 = input_data["unsigned_txn_b64"]
+        expected_sender = input_data.get("expected_sender")
 
         # Step 1: Create temporary GPG home
         import tempfile
@@ -117,6 +175,11 @@ def main():
         private_key = mn_module.to_private_key(mnemonic)
         sender_address = account.address_from_private_key(private_key)
 
+        if expected_sender and sender_address != expected_sender:
+            raise RuntimeError(
+                f"Signer address {sender_address} does not match expected sender {expected_sender}"
+            )
+
         # Decode the unsigned transaction
         unsigned_txn_bytes = base64.b64decode(unsigned_txn_b64)
         txn = encoding.msgpack_decode(unsigned_txn_bytes)
@@ -135,21 +198,26 @@ def main():
                                            if isinstance(signed_txn_bytes, str)
                                            else signed_txn_bytes).decode()
 
-        # Step 5: ZERO all key material
-        private_key = "0" * len(private_key) if private_key else ""
-        mnemonic = "0" * len(mnemonic) if mnemonic else ""
-        del private_key, mnemonic
-
-        # Step 6: Cleanup GPG home
-        import shutil
-        shutil.rmtree(gpg_home, ignore_errors=True)
-
         # Output the signed transaction
         json.dump({"signed_txn_b64": signed_txn_b64, "sender": sender_address}, sys.stdout)
 
     except Exception as e:
         json.dump({"error": str(e)}, sys.stdout)
         sys.exit(1)
+    finally:
+        private_key = "0" * len(private_key) if private_key else ""
+        mnemonic = "0" * len(mnemonic) if mnemonic else ""
+        gpg_passphrase = "0" * len(gpg_passphrase) if gpg_passphrase else ""
+        gpg_secret_key = "0" * len(gpg_secret_key) if gpg_secret_key else ""
+        encrypted_mnemonic = "0" * len(encrypted_mnemonic) if encrypted_mnemonic else ""
+        try:
+            del private_key, mnemonic, gpg_passphrase, gpg_secret_key, encrypted_mnemonic
+        except Exception:
+            pass
+
+        if gpg_home:
+            import shutil
+            shutil.rmtree(gpg_home, ignore_errors=True)
 
 if __name__ == "__main__":
     main()
@@ -163,6 +231,13 @@ import os
 import sys
 
 def main():
+    gpg_home = None
+    mnemonic = ""
+    private_key = ""
+    gpg_passphrase = ""
+    gpg_secret_key = ""
+    encrypted_mnemonic = ""
+
     try:
         input_data = json.loads(sys.stdin.read())
 
@@ -171,6 +246,7 @@ def main():
         gpg_secret_key = input_data["gpg_secret_key"]
         gpg_public_keys = input_data.get("gpg_public_keys", "")
         unsigned_txns_b64 = input_data["unsigned_txns_b64"]  # list
+        expected_sender = input_data.get("expected_sender")
 
         import tempfile, subprocess, shutil
         gpg_home = tempfile.mkdtemp(prefix="pcx_vault_grp_")
@@ -202,6 +278,11 @@ def main():
         private_key = mn_module.to_private_key(mnemonic)
         sender_address = account.address_from_private_key(private_key)
 
+        if expected_sender and sender_address != expected_sender:
+            raise RuntimeError(
+                f"Signer address {sender_address} does not match expected sender {expected_sender}"
+            )
+
         signed_txns = []
         for utxn_b64 in unsigned_txns_b64:
             unsigned_bytes = base64.b64decode(utxn_b64)
@@ -220,16 +301,23 @@ def main():
                                  else signed_bytes).decode()
             )
 
-        private_key = "0" * len(private_key)
-        mnemonic = "0" * len(mnemonic)
-        del private_key, mnemonic
-        shutil.rmtree(gpg_home, ignore_errors=True)
-
         json.dump({"signed_txns_b64": signed_txns}, sys.stdout)
 
     except Exception as e:
         json.dump({"error": str(e)}, sys.stdout)
         sys.exit(1)
+    finally:
+        private_key = "0" * len(private_key) if private_key else ""
+        mnemonic = "0" * len(mnemonic) if mnemonic else ""
+        gpg_passphrase = "0" * len(gpg_passphrase) if gpg_passphrase else ""
+        gpg_secret_key = "0" * len(gpg_secret_key) if gpg_secret_key else ""
+        encrypted_mnemonic = "0" * len(encrypted_mnemonic) if encrypted_mnemonic else ""
+        try:
+            del private_key, mnemonic, gpg_passphrase, gpg_secret_key, encrypted_mnemonic
+        except Exception:
+            pass
+        if gpg_home:
+            shutil.rmtree(gpg_home, ignore_errors=True)
 
 if __name__ == "__main__":
     main()
@@ -255,21 +343,38 @@ class SigningVault:
         self._encrypted_mnemonic: Optional[str] = None
         self._gpg_secret_key: Optional[str] = None
         self._gpg_public_keys: Optional[str] = None
+        self._mnemonic_secret_candidates: list[str] = []
+        self._gpg_secret_key_secret_name: Optional[str] = None
+        self._gpg_public_keys_secret_name: str = "PURECORTEX_GPG_PUBLIC_KEYS"
+        self._expected_sender: Optional[str] = None
+        self._legacy_warning_emitted = False
         # Passphrase is fetched fresh each time, never cached
 
     async def initialize(
         self,
-        encrypted_mnemonic: str,
-        gpg_secret_key: str,
-        gpg_public_keys: str,
+        encrypted_mnemonic: str = "",
+        gpg_secret_key: str = "",
+        gpg_public_keys: str = "",
+        *,
+        mnemonic_secret_candidates: Optional[list[str]] = None,
+        gpg_secret_key_secret_name: Optional[str] = None,
+        gpg_public_keys_secret_name: str = "PURECORTEX_GPG_PUBLIC_KEYS",
+        expected_sender: Optional[str] = None,
     ) -> None:
         """
-        Store references to encrypted materials (NOT decrypted keys).
-        The actual decryption happens only inside the signing subprocess.
+        Configure how the vault should retrieve signing material.
+
+        Preferred mode stores only secret names and fetches the encrypted
+        mnemonic + GPG key material immediately before signing. The positional
+        arguments remain for backward compatibility with older callers.
         """
-        self._encrypted_mnemonic = encrypted_mnemonic
-        self._gpg_secret_key = gpg_secret_key
-        self._gpg_public_keys = gpg_public_keys
+        self._encrypted_mnemonic = encrypted_mnemonic or None
+        self._gpg_secret_key = gpg_secret_key or None
+        self._gpg_public_keys = gpg_public_keys or None
+        self._mnemonic_secret_candidates = list(mnemonic_secret_candidates or [])
+        self._gpg_secret_key_secret_name = gpg_secret_key_secret_name
+        self._gpg_public_keys_secret_name = gpg_public_keys_secret_name
+        self._expected_sender = expected_sender.strip() if expected_sender else None
         logger.info("Signing vault initialized for %s", self.identity)
 
     async def _get_passphrase(self) -> str:
@@ -277,31 +382,70 @@ class SigningVault:
         Fetch the GPG passphrase from Secret Manager on every signing operation.
         NEVER cached in memory — fetched fresh each time.
         """
-        # Map identity to secret name
-        secret_map = {
-            "agent": "PURECORTEX_AGENT_GPG_PASSPHRASE",
-            "senator": "PURECORTEX_SENATOR_GPG_PASSPHRASE",
-            "curator": "PURECORTEX_CURATOR_GPG_PASSPHRASE",
-            "social": "PURECORTEX_SOCIAL_GPG_PASSPHRASE",
-            "vm": "PURECORTEX_VM_GPG_PASSPHRASE",
-        }
-        secret_name = secret_map.get(self.identity, "PURECORTEX_AGENT_GPG_PASSPHRASE")
-
-        # Try env var first (for testing)
-        env_val = os.getenv(secret_name, "")
-        if env_val:
-            return env_val
-
-        # Fetch from Secret Manager
         try:
-            from google.cloud import secretmanager
-            client = secretmanager.SecretManagerServiceClient()
-            project_id = os.getenv("GCP_PROJECT_ID", "purecortexai")
-            name = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
-            response = client.access_secret_version(request={"name": name})
-            return response.payload.data.decode("utf-8")
+            return load_secret_value(get_gpg_passphrase_secret_name(self.identity))
         except Exception as e:
             raise RuntimeError(f"Cannot fetch GPG passphrase for {self.identity}: {e}")
+
+    def _is_initialized(self) -> bool:
+        return bool(
+            self._encrypted_mnemonic
+            or self._mnemonic_secret_candidates
+            or self._gpg_secret_key
+            or self._gpg_secret_key_secret_name
+        )
+
+    def _resolve_expected_sender(self) -> Optional[str]:
+        if self._expected_sender:
+            return self._expected_sender
+
+        env_name = get_expected_algorand_address_env_name(self.identity)
+        value = os.getenv(env_name, "").strip()
+        return value or None
+
+    def _load_runtime_materials(self) -> tuple[str, str, str, Optional[str]]:
+        encrypted_mnemonic = self._encrypted_mnemonic or ""
+        gpg_secret_key = self._gpg_secret_key or ""
+        gpg_public_keys = self._gpg_public_keys or ""
+        mnemonic_secret_name: Optional[str] = None
+
+        if self._mnemonic_secret_candidates:
+            mnemonic_secret_name, encrypted_mnemonic = load_first_available_secret(
+                self._mnemonic_secret_candidates
+            )
+            if not encrypted_mnemonic:
+                raise RuntimeError(
+                    f"No encrypted mnemonic available for {self.identity}"
+                )
+
+        if self._gpg_secret_key_secret_name:
+            gpg_secret_key = load_secret_value(self._gpg_secret_key_secret_name)
+
+        if self._gpg_public_keys_secret_name:
+            gpg_public_keys = load_secret_value(self._gpg_public_keys_secret_name)
+
+        if not encrypted_mnemonic or not gpg_secret_key:
+            raise RuntimeError(f"Signing material is incomplete for {self.identity}")
+
+        if (
+            mnemonic_secret_name == LEGACY_SHARED_MNEMONIC_SECRET_NAME
+            and not self._legacy_warning_emitted
+        ):
+            preferred = self._mnemonic_secret_candidates[0]
+            logger.warning(
+                "Signing vault for %s is using legacy shared mnemonic secret %s. Configure %s to isolate signer identities.",
+                self.identity,
+                LEGACY_SHARED_MNEMONIC_SECRET_NAME,
+                preferred,
+            )
+            self._legacy_warning_emitted = True
+
+        return (
+            encrypted_mnemonic,
+            gpg_secret_key,
+            gpg_public_keys,
+            self._resolve_expected_sender(),
+        )
 
     async def sign_transaction(self, unsigned_txn_bytes: bytes) -> bytes:
         """
@@ -313,32 +457,50 @@ class SigningVault:
         Returns:
             msgpack-encoded signed transaction bytes
         """
-        if not self._encrypted_mnemonic:
+        if not self._is_initialized():
             raise RuntimeError("Signing vault not initialized")
 
         async with self._signing_semaphore:
             passphrase = await self._get_passphrase()
+            encrypted_mnemonic = ""
+            gpg_secret_key = ""
+            gpg_public_keys = ""
+            input_data = ""
 
-            input_data = json.dumps({
-                "encrypted_mnemonic": self._encrypted_mnemonic,
-                "gpg_passphrase": passphrase,
-                "gpg_secret_key": self._gpg_secret_key,
-                "gpg_public_keys": self._gpg_public_keys or "",
-                "unsigned_txn_b64": base64.b64encode(unsigned_txn_bytes).decode(),
-            })
+            try:
+                (
+                    encrypted_mnemonic,
+                    gpg_secret_key,
+                    gpg_public_keys,
+                    expected_sender,
+                ) = self._load_runtime_materials()
 
-            # Zero passphrase from this process immediately
-            passphrase = "0" * len(passphrase)
-            del passphrase
+                payload = {
+                    "encrypted_mnemonic": encrypted_mnemonic,
+                    "gpg_passphrase": passphrase,
+                    "gpg_secret_key": gpg_secret_key,
+                    "gpg_public_keys": gpg_public_keys or "",
+                    "unsigned_txn_b64": base64.b64encode(unsigned_txn_bytes).decode(),
+                }
+                if expected_sender:
+                    payload["expected_sender"] = expected_sender
 
-            start = time.monotonic()
-            result = await self._run_isolated(
-                _SIGNING_SCRIPT, input_data, timeout=30
-            )
-            elapsed = time.monotonic() - start
+                input_data = json.dumps(payload)
+
+                start = time.monotonic()
+                result = await self._run_isolated(
+                    _SIGNING_SCRIPT, input_data, timeout=30
+                )
+                elapsed = time.monotonic() - start
+            finally:
+                passphrase = _wipe_secret(passphrase)
+                encrypted_mnemonic = _wipe_secret(encrypted_mnemonic)
+                gpg_secret_key = _wipe_secret(gpg_secret_key)
+                input_data = _wipe_secret(input_data)
+                del passphrase, encrypted_mnemonic, gpg_secret_key, input_data
 
             if "error" in result:
-                raise RuntimeError("Vault signing failed")
+                raise RuntimeError(result["error"])
 
             logger.info(
                 "Transaction signed in vault (%s) in %.1fms — sender: %s",
@@ -351,31 +513,50 @@ class SigningVault:
         self, unsigned_txn_bytes_list: list[bytes]
     ) -> list[bytes]:
         """Sign a group of transactions atomically in the vault."""
-        if not self._encrypted_mnemonic:
+        if not self._is_initialized():
             raise RuntimeError("Signing vault not initialized")
 
         async with self._signing_semaphore:
             passphrase = await self._get_passphrase()
+            encrypted_mnemonic = ""
+            gpg_secret_key = ""
+            gpg_public_keys = ""
+            input_data = ""
 
-            input_data = json.dumps({
-                "encrypted_mnemonic": self._encrypted_mnemonic,
-                "gpg_passphrase": passphrase,
-                "gpg_secret_key": self._gpg_secret_key,
-                "gpg_public_keys": self._gpg_public_keys or "",
-                "unsigned_txns_b64": [
-                    base64.b64encode(txn).decode() for txn in unsigned_txn_bytes_list
-                ],
-            })
+            try:
+                (
+                    encrypted_mnemonic,
+                    gpg_secret_key,
+                    gpg_public_keys,
+                    expected_sender,
+                ) = self._load_runtime_materials()
 
-            passphrase = "0" * len(passphrase)
-            del passphrase
+                payload = {
+                    "encrypted_mnemonic": encrypted_mnemonic,
+                    "gpg_passphrase": passphrase,
+                    "gpg_secret_key": gpg_secret_key,
+                    "gpg_public_keys": gpg_public_keys or "",
+                    "unsigned_txns_b64": [
+                        base64.b64encode(txn).decode() for txn in unsigned_txn_bytes_list
+                    ],
+                }
+                if expected_sender:
+                    payload["expected_sender"] = expected_sender
 
-            result = await self._run_isolated(
-                _GROUP_SIGNING_SCRIPT, input_data, timeout=60
-            )
+                input_data = json.dumps(payload)
+
+                result = await self._run_isolated(
+                    _GROUP_SIGNING_SCRIPT, input_data, timeout=60
+                )
+            finally:
+                passphrase = _wipe_secret(passphrase)
+                encrypted_mnemonic = _wipe_secret(encrypted_mnemonic)
+                gpg_secret_key = _wipe_secret(gpg_secret_key)
+                input_data = _wipe_secret(input_data)
+                del passphrase, encrypted_mnemonic, gpg_secret_key, input_data
 
             if "error" in result:
-                raise RuntimeError("Vault group signing failed")
+                raise RuntimeError(result["error"])
 
             return [base64.b64decode(s) for s in result["signed_txns_b64"]]
 
@@ -388,8 +569,11 @@ class SigningVault:
         The subprocess:
         - Inherits NO environment variables except PATH and HOME
         - Has a tight timeout
-        - Communicates only via stdin/stdout (no filesystem, no network)
+        - Communicates only via stdin/stdout
+        - Runs with restrictive file/process limits on POSIX systems
         """
+        proc = None
+
         # Write script to a temp file (not the key material)
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, prefix="pcx_vault_"
@@ -411,6 +595,10 @@ class SigningVault:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=clean_env,
+                cwd=tempfile.gettempdir(),
+                close_fds=True,
+                start_new_session=True,
+                preexec_fn=_apply_posix_sandbox if os.name == "posix" else None,
             )
 
             stdout, stderr = await asyncio.wait_for(
@@ -429,7 +617,15 @@ class SigningVault:
             return json.loads(stdout.decode())
 
         except asyncio.TimeoutError:
-            proc.kill()
+            if proc is not None:
+                try:
+                    if os.name == "posix":
+                        os.killpg(proc.pid, signal.SIGKILL)
+                    else:
+                        proc.kill()
+                except Exception:
+                    proc.kill()
+                await proc.wait()
             return {"error": "Vault signing timed out"}
         finally:
             os.unlink(script_path)
@@ -453,44 +649,12 @@ async def create_signing_vault(identity: str = "agent") -> SigningVault:
     Create and initialize a signing vault from GCP Secret Manager.
     """
     vault = SigningVault(identity=identity)
-
-    encrypted_mnemonic = ""
-    gpg_secret_key = ""
-    gpg_public_keys = ""
-
-    # Map identity to secret names
-    key_secret = {
-        "agent": "PURECORTEX_AGENT_GPG_SECRET_KEY",
-        "senator": "PURECORTEX_SENATOR_GPG_SECRET_KEY",
-        "curator": "PURECORTEX_CURATOR_GPG_SECRET_KEY",
-        "social": "PURECORTEX_SOCIAL_GPG_SECRET_KEY",
-        "vm": "PURECORTEX_VM_GPG_SECRET_KEY",
-    }
-
-    secret_key_name = key_secret.get(identity, "PURECORTEX_AGENT_GPG_SECRET_KEY")
-
-    try:
-        from google.cloud import secretmanager
-        client = secretmanager.SecretManagerServiceClient()
-        project_id = os.getenv("GCP_PROJECT_ID", "purecortexai")
-
-        def _access(name: str) -> str:
-            resource = f"projects/{project_id}/secrets/{name}/versions/latest"
-            resp = client.access_secret_version(request={"name": resource})
-            return resp.payload.data.decode("utf-8")
-
-        encrypted_mnemonic = _access("PURECORTEX_DEPLOYER_MNEMONIC_GPG")
-        gpg_secret_key = _access(secret_key_name)
-        gpg_public_keys = _access("PURECORTEX_GPG_PUBLIC_KEYS")
-    except Exception as e:
-        # Fallback to env vars
-        encrypted_mnemonic = os.getenv("PURECORTEX_DEPLOYER_MNEMONIC_GPG", "")
-        gpg_secret_key = os.getenv(secret_key_name, "")
-        gpg_public_keys = os.getenv("PURECORTEX_GPG_PUBLIC_KEYS", "")
-        if not encrypted_mnemonic:
-            logger.warning("Signing vault: no encrypted mnemonic available for %s", identity)
-
-    if encrypted_mnemonic and gpg_secret_key:
-        await vault.initialize(encrypted_mnemonic, gpg_secret_key, gpg_public_keys)
+    expected_sender = os.getenv(get_expected_algorand_address_env_name(identity), "").strip()
+    await vault.initialize(
+        mnemonic_secret_candidates=get_mnemonic_secret_candidates(identity),
+        gpg_secret_key_secret_name=get_gpg_secret_key_secret_name(identity),
+        gpg_public_keys_secret_name="PURECORTEX_GPG_PUBLIC_KEYS",
+        expected_sender=expected_sender or None,
+    )
 
     return vault

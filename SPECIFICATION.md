@@ -7,6 +7,11 @@
 4. **Frontend Surface:** Next.js marketplace, governance, transparency, docs, and chat experiences.
 5. **Treasury / Governance / Staking Contracts:** Dedicated smart contracts alongside the core AgentFactory.
 6. **MCP Integration:** FastMCP decision-node support for agent-to-agent tool use.
+7. **Developer Access Control Plane:** Enterprise-grade request, issuance, admin SSO, API key, audit, and allowlist architecture for API, CLI, SDK, and future hosted MCP access.
+
+## Detailed Design Specs
+
+- `docs/ENTERPRISE_DEVELOPER_ACCESS_SPEC.md` — approved implementation design for developer access requests, owner-only admin SSO, key lifecycle management, IP allowlists, and phased rollout.
 
 ## Algorand Primitives Used
 - **ASAs:** Agent tokenization.

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { PureCortexLogo } from '@/components/Logo';
 import WalletButton from '@/components/WalletButton';
 import { BarChart3, MessageSquare, Eye, Scale, ShieldCheck, Menu, X, Github } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const NAV_ITEMS = [
@@ -18,10 +18,14 @@ const NAV_ITEMS = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const previousPathnameRef = useRef(pathname);
 
   // Close mobile menu on route change
   useEffect(() => {
-    setMobileMenuOpen(false);
+    if (previousPathnameRef.current !== pathname) {
+      previousPathnameRef.current = pathname;
+      queueMicrotask(() => setMobileMenuOpen(false));
+    }
   }, [pathname]);
 
   // Close on escape

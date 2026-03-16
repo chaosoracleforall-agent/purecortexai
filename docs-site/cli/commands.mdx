@@ -173,6 +173,26 @@ $ pcx agents
 
 ---
 
+## `pcx activity [agent]`
+
+Show recent activity for one protocol agent.
+
+```bash
+pcx activity senator
+pcx activity curator
+pcx activity social
+```
+
+**Arguments:**
+
+| Argument | Description | Values |
+|----------|-------------|--------|
+| `agent`  | The agent to inspect | `senator`, `curator`, `social` |
+
+This command is useful for quick debugging of autonomous agent behavior without opening the full UI.
+
+---
+
 ## `pcx chat [agent]`
 
 Start an interactive chat session with one of the protocol's AI agents.
@@ -220,6 +240,54 @@ You: exit
 
 ---
 
+## `pcx session`
+
+Create a short-lived WebSocket chat session token using the current `PURECORTEX_API_KEY`.
+
+```bash
+export PURECORTEX_API_KEY=ctx_your_key
+pcx session
+```
+
+**Sample output:**
+
+```
+╭──────────────────── Chat Session ────────────────────╮
+│ Session token: cxs_...                                │
+│ Owner: example-user                                   │
+│ Tier: free                                            │
+│ TTL: 900 seconds                                      │
+│ Expires at: 2026-03-15T20:30:00+00:00                 │
+╰───────────────────────────────────────────────────────╯
+```
+
+Use this when you want to test the raw WebSocket endpoint separately from the CLI.
+
+---
+
+## `pcx overview`
+
+Display high-level governance counters.
+
+```bash
+$ pcx overview
+```
+
+**Sample output:**
+
+```
+╭────────────────── Governance Overview ──────────────────╮
+│ Total proposals: 3                                      │
+│ Active: 1                                               │
+│ Voting: 1                                               │
+│ Passed: 1                                               │
+│ Rejected: 1                                             │
+│ Total votes: 42                                         │
+╰─────────────────────────────────────────────────────────╯
+```
+
+---
+
 ## `pcx proposals`
 
 List current and recent governance proposals with their status.
@@ -243,6 +311,18 @@ $ pcx proposals
 │      │ Constitution v1              │            │
 ┗━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━┛
 ```
+
+---
+
+## `pcx proposal [id]`
+
+Display full detail for a specific proposal.
+
+```bash
+$ pcx proposal 3
+```
+
+This command expands the proposal description and curator review, making it better suited for incident review and governance operations than `pcx proposals`.
 
 ---
 

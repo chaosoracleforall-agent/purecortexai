@@ -6,10 +6,10 @@ icon: "code"
 
 # SDK Overview
 
-PURECORTEX provides programmatic access through its REST API, WebSocket endpoint, and on-chain contracts. Dedicated Python and TypeScript SDK packages are on the roadmap. In the meantime, you can interact with the protocol directly using standard HTTP clients and the Algorand SDK.
+PURECORTEX now includes first-party SDK packages in this repository for Python and TypeScript/JavaScript. They wrap the live REST API, authenticated chat-session bootstrap flow, and governance/transparency reads so new integrations can start with an official client instead of raw `fetch` or `httpx` snippets.
 
 <Info>
-  Dedicated `purecortex` SDK packages for Python (PyPI) and TypeScript (npm) are coming soon. The examples below use `httpx`, `fetch`, and `algosdk` directly.
+  Registry publishing is still on the roadmap. Today, install the packages from the repository or a local checkout.
 </Info>
 
 ---
@@ -30,50 +30,62 @@ PURECORTEX provides programmatic access through its REST API, WebSocket endpoint
 
 ---
 
-## Quick Start: Python
+## Package Locations
+
+| Package | Path | Install today |
+|---------|------|---------------|
+| Python SDK | `sdk/python` | `pip install ./sdk/python` |
+| TypeScript SDK | `sdk/typescript` | `npm install ./sdk/typescript` |
+| CLI | `cli` | `pip install ./cli` |
+
+---
+
+## Quick Start: Python SDK
 
 ```python
-import httpx
+from purecortex_sdk import PureCortexClient
 
-BASE_URL = "https://purecortex.ai"
+with PureCortexClient(api_key="ctx_your_key") as client:
+    health = client.health()
+    print(health["status"])
 
-# Get CORTEX token supply
-response = httpx.get(f"{BASE_URL}/api/transparency/supply")
-data = response.json()
-print(f"Total supply: {data['total_supply']:,}")
-print(f"Circulating:  {data['circulating']:,}")
-print(f"Burned:       {data['burned']:,}")
+    supply = client.supply()
+    print(supply["total_supply"])
 
-# List protocol agents
-response = httpx.get(f"{BASE_URL}/api/agents/registry")
-for agent in response.json()["agents"]:
-    print(f"  {agent['name']} ({agent['role']}) — {agent['status']}")
+    reply = client.chat("senator", "Summarize the governance framework.")
+    print(reply["response"])
 ```
 
 ---
 
-## Quick Start: TypeScript
+## Quick Start: TypeScript SDK
 
 ```typescript
-const BASE_URL = "https://purecortex.ai";
+import { PureCortexClient } from "@purecortex/sdk";
 
-// Get CORTEX token supply
-const supply = await fetch(`${BASE_URL}/api/transparency/supply`)
-  .then(r => r.json());
-console.log(`Total supply: ${supply.total_supply.toLocaleString()}`);
-console.log(`Circulating:  ${supply.circulating.toLocaleString()}`);
+const client = new PureCortexClient({ apiKey: "ctx_your_key" });
 
-// Chat with the Senator agent
-const chat = await fetch(`${BASE_URL}/api/agents/senator/chat`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "X-API-Key": process.env.PURECORTEX_API_KEY!,
-  },
-  body: JSON.stringify({ message: "What proposals are currently active?" }),
-}).then(r => r.json());
-console.log(`Senator: ${chat.response}`);
+const health = await client.health();
+console.log(health.status);
+
+const overview = await client.governanceOverview();
+console.log(overview.total_proposals);
+
+const reply = await client.chat("social", "Give me a positioning summary.");
+console.log(reply.response);
 ```
+
+---
+
+## Covered Features
+
+- Health and dependency status
+- Transparency: supply, treasury, burns, governance, live agent ASAs
+- Agent registry and agent activity
+- Authenticated agent chat
+- Chat-session bootstrap and WebSocket URL helpers
+- Governance overview, proposal listing, proposal detail, and on-chain reads
+- Governance writes and admin key-management helpers
 
 ---
 
@@ -81,9 +93,9 @@ console.log(`Senator: ${chat.response}`);
 
 <CardGroup cols={2}>
   <Card title="Python SDK" icon="python" href="/sdk/python">
-    Full Python examples including WebSocket connections, Algorand indexer queries, and agent interaction patterns.
+    Install, usage patterns, WebSocket bootstrap, and all current client methods.
   </Card>
   <Card title="TypeScript SDK" icon="js" href="/sdk/typescript">
-    Full TypeScript examples including WebSocket, algosdk contract reads, and integration patterns for Node.js agents.
+    Browser and Node.js integration patterns, typed responses, and WebSocket helpers.
   </Card>
 </CardGroup>

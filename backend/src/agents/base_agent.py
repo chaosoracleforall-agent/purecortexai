@@ -6,12 +6,12 @@ Every PURECORTEX AI agent inherits from BaseAgent, which wires up:
   - Permission sandboxing via PermissionProxy
   - Persistent memory with feedback loops via AgentMemory
   - GPG encryption for inter-agent secret communication
-  - Isolated Signing Vault for Algorand transaction signing
+  - Isolated signer backend for Algorand transaction signing
   - A conversational chat interface scoped to the agent's domain
 
 Security protocol:
   - All inter-agent secrets MUST be GPG-encrypted to the recipient
-  - Transaction signing ALWAYS happens in the isolated SigningVault subprocess
+  - Transaction signing SHOULD route through the dedicated isolated signer service
   - Private keys NEVER exist in the main agent process memory
   - GPG passphrases are fetched per-operation from Secret Manager (never cached)
 """
@@ -59,9 +59,9 @@ class BaseAgent(ABC):
         # Each agent gets its own sandboxed proxy at its declared tier
         self.proxy = PermissionProxy(current_tier=permission_tier)
 
-        # GPG + Signing Vault (initialized async via init_crypto())
+        # GPG + signing backend (initialized async via init_crypto())
         self._gpg = None           # GPGCrypto instance
-        self._signing_vault = None  # SigningVault instance
+        self._signing_vault = None  # Signing backend instance
 
         logger.info(
             "Agent '%s' initialised  role=%s  tier=%s  algo=%s",
@@ -187,11 +187,11 @@ class BaseAgent(ABC):
         ...
 
     # ------------------------------------------------------------------
-    # GPG + Signing Vault
+    # GPG + Signing
     # ------------------------------------------------------------------
 
     async def init_crypto(self) -> None:
-        """Initialize GPG encryption and the isolated signing vault.
+        """Initialize GPG encryption and the configured signing backend.
 
         Must be called after __init__ (async operations can't run in __init__).
         The orchestration loop calls this during startup.
@@ -206,11 +206,12 @@ class BaseAgent(ABC):
             logger.warning("[%s] GPG init failed (non-fatal): %s", self.name, e)
 
         try:
-            from ..services.signing_vault import create_signing_vault
-            self._signing_vault = await create_signing_vault(identity=identity)
-            logger.info("[%s] Signing vault initialized.", self.name)
+            from ..services.signer_client import create_signing_backend
+            self._signing_vault = await create_signing_backend(identity=identity)
+            mode = getattr(self._signing_vault, "mode", "unknown")
+            logger.info("[%s] Signing backend initialized (mode=%s).", self.name, mode)
         except Exception as e:
-            logger.warning("[%s] Signing vault init failed (non-fatal): %s", self.name, e)
+            logger.warning("[%s] Signing backend init failed (non-fatal): %s", self.name, e)
 
     async def encrypt_to(self, plaintext: str, recipients: list[str]) -> str:
         """Encrypt a message to one or more recipients using GPG.
@@ -240,7 +241,7 @@ class BaseAgent(ABC):
         return await self._gpg.verify(signed_message)
 
     async def sign_transaction(self, unsigned_txn_bytes: bytes) -> bytes:
-        """Sign an Algorand transaction in the isolated signing vault.
+        """Sign an Algorand transaction with the configured signing backend.
 
         The private key is NEVER loaded into this process — signing happens
         in an isolated subprocess that decrypts the GPG-encrypted mnemonic,
@@ -249,22 +250,24 @@ class BaseAgent(ABC):
         """
         if not self._signing_vault:
             raise RuntimeError(
-                f"[{self.name}] Signing vault not initialized — call init_crypto() first"
+                f"[{self.name}] Signing backend not initialized — call init_crypto() first"
             )
         return await self._signing_vault.sign_transaction(unsigned_txn_bytes)
 
     async def sign_transaction_group(self, unsigned_txns: list[bytes]) -> list[bytes]:
-        """Sign a group of Algorand transactions atomically in the vault."""
+        """Sign a group of Algorand transactions atomically via the signer."""
         if not self._signing_vault:
             raise RuntimeError(
-                f"[{self.name}] Signing vault not initialized — call init_crypto() first"
+                f"[{self.name}] Signing backend not initialized — call init_crypto() first"
             )
         return await self._signing_vault.sign_transaction_group(unsigned_txns)
 
     async def cleanup_crypto(self) -> None:
-        """Clean up GPG keyrings on shutdown."""
+        """Clean up GPG keyrings and signing clients on shutdown."""
         if self._gpg:
             await self._gpg.cleanup()
+        if self._signing_vault and hasattr(self._signing_vault, "cleanup"):
+            await self._signing_vault.cleanup()
         self._signing_vault = None
 
     # ------------------------------------------------------------------
@@ -281,6 +284,7 @@ class BaseAgent(ABC):
             "permission_tier": self.permission_tier.name,
             "gpg_ready": self._gpg is not None and self._gpg._initialized,
             "vault_ready": self._signing_vault is not None,
+            "vault_mode": getattr(self._signing_vault, "mode", None),
             "metrics": metrics,
         }
 

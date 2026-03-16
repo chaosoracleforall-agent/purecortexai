@@ -4,6 +4,9 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from src.core.settings import get_settings
+from src.services.request_ip import resolve_client_ip
+
 logger = logging.getLogger("purecortex.auth")
 
 # Public paths that don't require authentication (any method)
@@ -19,6 +22,8 @@ PUBLIC_PATHS = {
 PUBLIC_PREFIXES = (
     "/api/transparency",
     "/api/governance/onchain",
+    "/api/developer-access",
+    "/internal/admin",
 )
 
 # GET endpoints that are explicitly public (PEN-019: no blanket GET passthrough)
@@ -28,7 +33,8 @@ PUBLIC_GET_PREFIXES = (
     "/api/governance/proposals",
     "/api/agents/registry",
     "/api/agents/senator/activity",
-    "/api/agents/curator/reviews",
+    "/api/agents/curator/activity",
+    "/api/agents/social/activity",
 )
 
 
@@ -36,6 +42,14 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         api_key_manager = getattr(request.app.state, "api_key_manager", None)
+        settings = get_settings()
+
+        request.state.client_ip = resolve_client_ip(
+            request.headers,
+            request.client.host if request.client else None,
+            trust_proxy_headers=settings.trust_proxy_headers,
+            trusted_proxy_cidrs=settings.trusted_proxy_cidrs,
+        )
 
         # Allow public paths (any method)
         if path in PUBLIC_PATHS or any(path.startswith(p) for p in PUBLIC_PREFIXES):

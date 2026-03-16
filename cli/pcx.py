@@ -63,6 +63,35 @@ def get_api_key(required: bool = False) -> str | None:
     return api_key
 
 
+def request_json(
+    path: str,
+    *,
+    method: str = "GET",
+    api_key_required: bool = False,
+    api_key: str | None = None,
+    json_body: dict | None = None,
+    headers: dict | None = None,
+    timeout: float = 10,
+) -> dict:
+    request_headers = {"Accept": "application/json"}
+    if headers:
+        request_headers.update(headers)
+
+    token = api_key or get_api_key(required=api_key_required)
+    if token:
+        request_headers["X-API-Key"] = token
+
+    response = httpx.request(
+        method,
+        f"{get_api_url()}{path}",
+        headers=request_headers,
+        json=json_body,
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 # ── Status & Health ──────────────────────────────────────────────
 
 @app.command()
@@ -86,7 +115,7 @@ def status():
                 border_style="blue",
             )
         )
-    except httpx.RequestError as e:
+    except httpx.HTTPError as e:
         console.print(f"[bold red]Connection failed:[/bold red] {e}")
         raise typer.Exit(1)
 
@@ -117,7 +146,7 @@ def supply():
         console.print(table)
         console.print(f"\n  Total: [bold]{data.get('total_supply', 0):,.0f}[/bold] CORTEX")
         console.print(f"  Burned: [bold red]{data.get('burned', 0):,.0f}[/bold red]")
-    except httpx.RequestError as e:
+    except httpx.HTTPError as e:
         console.print(f"[red]Error:[/red] {e}")
 
 
@@ -130,7 +159,7 @@ def treasury():
         r.raise_for_status()
         data = r.json()
         console.print_json(json.dumps(data, indent=2))
-    except httpx.RequestError as e:
+    except httpx.HTTPError as e:
         console.print(f"[red]Error:[/red] {e}")
 
 
@@ -150,7 +179,7 @@ def burns():
         else:
             for entry in history:
                 console.print(f"  {entry}")
-    except httpx.RequestError as e:
+    except httpx.HTTPError as e:
         console.print(f"[red]Error:[/red] {e}")
 
 
@@ -173,15 +202,46 @@ def agents():
 
         for agent in data.get("agents", []):
             status_style = "green" if agent.get("status") == "active" else "yellow"
+            address = agent.get("algorand_address") or "TBD"
             table.add_row(
                 agent.get("name", "?"),
                 agent.get("role", "?"),
                 f"[{status_style}]{agent.get('status', '?')}[/]",
-                (agent.get("algorand_address") or "TBD")[:16] + "...",
+                address if address == "TBD" else f"{address[:16]}...",
             )
 
         console.print(table)
-    except httpx.RequestError as e:
+    except httpx.HTTPError as e:
+        console.print(f"[red]Error:[/red] {e}")
+
+
+@app.command()
+def activity(
+    agent_name: str = typer.Argument("senator", help="Agent name: senator, curator, social"),
+):
+    """Show recent activity for a protocol agent."""
+    try:
+        data = request_json(f"/api/agents/{agent_name}/activity")
+        table = Table(
+            title=f"{agent_name.title()} Activity",
+            box=box.ROUNDED,
+            border_style="blue",
+        )
+        table.add_column("Action", style="bold")
+        table.add_column("Detail")
+        table.add_column("Timestamp", style="cyan")
+
+        for item in data.get("recent_activity", []):
+            table.add_row(
+                item.get("action", "?"),
+                item.get("detail", "?"),
+                item.get("timestamp", "?"),
+            )
+
+        console.print(table)
+        if note := data.get("note"):
+            console.print(f"[dim]{note}[/dim]")
+    except httpx.HTTPError as e:
         console.print(f"[red]Error:[/red] {e}")
 
 
@@ -214,7 +274,7 @@ def chat(
             data = r.json()
             response = data.get("response", data.get("message", "No response"))
             console.print(f"[bold green]{agent_name.title()}:[/bold green] {response}\n")
-        except httpx.RequestError as e:
+        except httpx.HTTPError as e:
             console.print(f"[red]Error:[/red] {e}\n")
 
 
@@ -234,7 +294,7 @@ def proposals():
         else:
             for p in props:
                 console.print(f"  #{p['id']} — {p['title']} [{p['status']}]")
-    except httpx.RequestError as e:
+    except httpx.HTTPError as e:
         console.print(f"[red]Error:[/red] {e}")
 
 
@@ -251,7 +311,79 @@ def constitution():
             title="PURECORTEX Constitution — Preamble",
             border_style="blue",
         ))
-    except httpx.RequestError as e:
+    except httpx.HTTPError as e:
+        console.print(f"[red]Error:[/red] {e}")
+
+
+@app.command()
+def overview():
+    """Show a governance overview summary."""
+    try:
+        data = request_json("/api/governance/overview")
+        console.print(
+            Panel(
+                f"Total proposals: {data.get('total_proposals', 0)}\n"
+                f"Active: {data.get('active_proposals', 0)}\n"
+                f"Voting: {data.get('voting_proposals', 0)}\n"
+                f"Passed: {data.get('passed_proposals', 0)}\n"
+                f"Rejected: {data.get('rejected_proposals', 0)}\n"
+                f"Total votes: {data.get('total_votes', 0)}",
+                title="Governance Overview",
+                border_style="blue",
+            )
+        )
+    except httpx.HTTPError as e:
+        console.print(f"[red]Error:[/red] {e}")
+
+
+@app.command()
+def proposal(
+    proposal_id: int = typer.Argument(..., help="Proposal ID"),
+):
+    """Show detailed information for a single governance proposal."""
+    try:
+        data = request_json(f"/api/governance/proposals/{proposal_id}")
+        review = data.get("curator_review")
+        review_summary = (
+            f"Curator review: {review.get('recommendation')} ({'compliant' if review.get('compliant') else 'non-compliant'})"
+            if isinstance(review, dict)
+            else "Curator review: pending"
+        )
+        console.print(
+            Panel(
+                f"Title: {data.get('title', '?')}\n"
+                f"Type: {data.get('type', '?')}\n"
+                f"Status: {data.get('status', '?')}\n"
+                f"Proposer: {data.get('proposer', '?')}\n"
+                f"Votes: {data.get('votes_for', 0)} for / {data.get('votes_against', 0)} against\n"
+                f"Voters: {len(data.get('voters', []))}\n\n"
+                f"{data.get('description', '')}\n\n"
+                f"{review_summary}",
+                title=f"Proposal #{proposal_id}",
+                border_style="blue",
+            )
+        )
+    except httpx.HTTPError as e:
+        console.print(f"[red]Error:[/red] {e}")
+
+
+@app.command()
+def session():
+    """Create a short-lived WebSocket chat session from the current API key."""
+    try:
+        data = request_json("/api/chat/session", method="POST", api_key_required=True)
+        console.print(
+            Panel(
+                f"Session token: {data.get('session_token', '')}\n"
+                f"Owner: {data.get('owner', '?')}\n"
+                f"Tier: {data.get('tier', '?')}\n"
+                f"TTL: {data.get('ttl_seconds', '?')} seconds\n"
+                f"Expires at: {data.get('expires_at', '?')}",
+                title="Chat Session",
+                border_style="blue",
+            )
+        )
+    except httpx.HTTPError as e:
         console.print(f"[red]Error:[/red] {e}")
 
 

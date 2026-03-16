@@ -51,6 +51,33 @@ To make this permanent, add the export to your shell profile (`~/.bashrc`,
 
 ---
 
+### `PURECORTEX_API_KEY`
+
+Provide a long-lived API key for authenticated CLI commands.
+
+| Property | Value |
+|----------|-------|
+| Default  | unset |
+| Required | Only for `pcx chat` and `pcx session` |
+
+<CodeGroup>
+```bash bash / zsh
+export PURECORTEX_API_KEY="ctx_your_key"
+```
+
+```fish fish
+set -gx PURECORTEX_API_KEY "ctx_your_key"
+```
+
+```powershell PowerShell
+$env:PURECORTEX_API_KEY = "ctx_your_key"
+```
+</CodeGroup>
+
+Use an admin-tier key only when you explicitly need admin workflows. For normal chat and app usage, prefer the lowest privilege tier possible.
+
+---
+
 ## Shell Completion
 
 The CLI is built with [Typer](https://typer.tiangolo.com/), which supports

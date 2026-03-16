@@ -6,150 +6,79 @@ icon: "js"
 
 # TypeScript SDK
 
-This guide covers PURECORTEX integration from TypeScript and Node.js. A dedicated npm package is planned -- for now, use the native `fetch` API for REST endpoints, the `WebSocket` API for real-time chat, and `algosdk` for on-chain reads.
+This guide covers the official TypeScript/JavaScript SDK in `sdk/typescript`. It wraps the live REST API, authenticated chat-session bootstrap flow, and governance/transparency reads. Use raw `algosdk` only when you need direct on-chain access outside the HTTP API surface.
 
 ## Installation
 
 ```bash
-npm install algosdk
+npm install ./sdk/typescript
 ```
 
-No additional packages are needed for REST and WebSocket -- the built-in `fetch` and `WebSocket` APIs are sufficient in modern Node.js (v18+) and all browsers.
+<Info>
+  The package is installable from a local checkout today. Registry publication to npm is still on the roadmap.
+</Info>
 
 ---
 
-## REST API
-
-### Fetch CORTEX Supply
+## Quick Start
 
 ```typescript
-const BASE_URL = "https://purecortex.ai";
+import { PureCortexClient } from "@purecortex/sdk";
 
-interface SupplyResponse {
-  total_supply: number;
-  circulating: number;
-  burned: number;
-  vesting: {
-    released: number;
-    remaining: number;
-    pct_released: number;
-    tge_date: string;
-    vest_days: number;
-  };
-  allocation: Array<{
-    label: string;
-    pct: number;
-    amount: number;
-  }>;
-}
+const client = new PureCortexClient({ apiKey: "ctx_your_key" });
 
-async function getSupply(): Promise<SupplyResponse> {
-  const response = await fetch(`${BASE_URL}/api/transparency/supply`);
-  const data: SupplyResponse = await response.json();
+const health = await client.health();
+console.log(health.status);
 
-  console.log(`Total supply:  ${data.total_supply.toLocaleString()}`);
-  console.log(`Circulating:   ${data.circulating.toLocaleString()}`);
-  console.log(`Burned:        ${data.burned.toLocaleString()}`);
+const supply = await client.supply();
+console.log(supply.total_supply);
 
-  console.log("\nAllocation:");
-  for (const item of data.allocation) {
-    console.log(`  ${item.label}: ${item.pct}% (${item.amount.toLocaleString()})`);
-  }
-
-  return data;
-}
+const reply = await client.chat("social", "Give me a positioning summary.");
+console.log(reply.response);
 ```
 
-### Fetch Protocol Agents
+## Current Client Methods
+
+- `health()`
+- `supply()`, `treasury()`, `burns()`, `governanceTransparency()`, `transparencyAgents()`
+- `listAgents()`, `agentActivity(agentName)`, `chat(agentName, message)`
+- `constitution()`, `governanceOverview()`, `listProposals()`, `proposal(id)`, `onchainProposals()`
+- `createProposal(...)`, `reviewProposal(...)`, `vote(...)`
+- `createChatSession()`, `websocketUrl(sessionToken)`, `connectChat()`
+- `bootstrapAdminKey(...)`, `createApiKey(...)`, `revokeApiKey(...)`
+
+---
+
+## REST Examples
+
+### Supply, Agents, and Governance
 
 ```typescript
-interface AgentRecord {
-  name: string;
-  role: string;
-  description: string;
-  algorand_address: string | null;
-  status: string;
-  permission_tier: number;
-  capabilities: string[];
-  created_at: string;
-}
+import { PureCortexClient } from "@purecortex/sdk";
 
-interface AgentRegistryResponse {
-  total_agents: number;
-  agents: AgentRecord[];
-}
+const client = new PureCortexClient();
 
-async function getAgents(): Promise<AgentRegistryResponse> {
-  const response = await fetch(`${BASE_URL}/api/agents/registry`);
-  const data: AgentRegistryResponse = await response.json();
+const agents = await client.listAgents();
+const overview = await client.governanceOverview();
+const supply = await client.supply();
 
-  console.log(`Total agents: ${data.total_agents}`);
-  for (const agent of data.agents) {
-    console.log(`\n  ${agent.name} (${agent.role})`);
-    console.log(`  Status: ${agent.status}`);
-    console.log(`  Tier: ${agent.permission_tier}`);
-    console.log(`  Capabilities: ${agent.capabilities.join(", ")}`);
-  }
-
-  return data;
-}
+console.log(agents.total_agents);
+console.log(overview.total_votes);
+console.log(supply.circulating);
 ```
 
-### Chat with an Agent
+### Proposal Detail and Chat
 
 ```typescript
-interface ChatResponse {
-  agent: string;
-  response: string;
-  timestamp: string;
-}
+import { PureCortexClient } from "@purecortex/sdk";
 
-async function chatWithAgent(
-  agentName: string,
-  message: string
-): Promise<ChatResponse> {
-  const response = await fetch(`${BASE_URL}/api/agents/${agentName}/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": process.env.PURECORTEX_API_KEY!,
-    },
-    body: JSON.stringify({ message }),
-  });
+const client = new PureCortexClient({ apiKey: "ctx_your_key" });
 
-  const data: ChatResponse = await response.json();
-  console.log(`[${data.agent}] ${data.response}`);
-  return data;
-}
+const proposal = await client.proposal(1);
+const reply = await client.chat("senator", "What proposals are active?");
 
-// Usage
-await chatWithAgent("senator", "What governance proposals are active?");
-await chatWithAgent("curator", "Explain the composability scoring system.");
-```
-
-### Query Treasury and Governance
-
-```typescript
-async function getTreasury() {
-  const response = await fetch(`${BASE_URL}/api/transparency/treasury`);
-  const data = await response.json();
-
-  console.log(
-    `Revenue split: ${data.revenue_split.buyback_burn_pct}% buyback ` +
-    `/ ${data.revenue_split.operations_pct}% operations`
-  );
-  return data;
-}
-
-async function getGovernance() {
-  const response = await fetch(`${BASE_URL}/api/transparency/governance`);
-  const data = await response.json();
-
-  console.log(`Total proposals: ${data.total_proposals}`);
-  console.log(`Participation rate: ${data.participation_rate}%`);
-  console.log(`Total veCORTEX: ${data.total_vecortex}`);
-  return data;
-}
+console.log(proposal.title);
+console.log(reply.response);
 ```
 
 ---
@@ -161,14 +90,14 @@ Real-time bidirectional chat with PURECORTEX AI agents.
 <Tabs>
   <Tab title="Node.js">
     ```typescript
-    const session = await fetch("https://purecortex.ai/api/chat/session", {
-      method: "POST",
-      headers: {
-        "X-API-Key": process.env.PURECORTEX_API_KEY!,
-      },
-    }).then((r) => r.json());
+    import { PureCortexClient } from "@purecortex/sdk";
 
-    const ws = new WebSocket(`wss://purecortex.ai/ws/chat?session=${session.session_token}`);
+    const client = new PureCortexClient({
+      apiKey: process.env.PURECORTEX_API_KEY!,
+      WebSocketImpl: WebSocket,
+    });
+
+    const ws = await client.connectChat();
 
     ws.addEventListener("open", () => {
       console.log("Connected to PURECORTEX");
@@ -189,14 +118,13 @@ Real-time bidirectional chat with PURECORTEX AI agents.
   </Tab>
   <Tab title="Browser">
     ```typescript
-    const session = await fetch("https://purecortex.ai/api/chat/session", {
-      method: "POST",
-      headers: {
-        "X-API-Key": window.sessionStorage.getItem("purecortex_api_key")!,
-      },
-    }).then((r) => r.json());
+    import { PureCortexClient } from "@purecortex/sdk";
 
-    const ws = new WebSocket(`wss://purecortex.ai/ws/chat?session=${session.session_token}`);
+    const client = new PureCortexClient({
+      apiKey: window.sessionStorage.getItem("purecortex_api_key")!,
+    });
+
+    const ws = await client.connectChat();
 
     ws.onopen = () => {
       console.log("Connected");
@@ -218,6 +146,10 @@ Real-time bidirectional chat with PURECORTEX AI agents.
 <Warning>
   WebSocket messages are limited to 4,096 characters. Messages exceeding this limit are rejected with an error response.
 </Warning>
+
+<Note>
+  If your runtime does not expose a global `WebSocket`, inject one with `WebSocketImpl`.
+</Note>
 
 ---
 

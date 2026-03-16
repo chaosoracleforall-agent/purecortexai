@@ -12,7 +12,7 @@ This guide covers the current supported integration path: local connection via C
 
 ## Claude Desktop
 
-Claude Desktop supports MCP servers natively. Add PURECORTEX to your configuration file to make all three tools available inside Claude conversations.
+Claude Desktop supports MCP servers natively. Add PURECORTEX to your configuration file to make the consensus, governance, transparency, and agent tools available inside Claude conversations.
 
 <Steps>
   <Step title="Clone the repository">
@@ -58,6 +58,7 @@ Claude Desktop supports MCP servers natively. Add PURECORTEX to your configurati
           "command": "python",
           "args": ["/absolute/path/to/purecortexai/backend/mcp_server.py"],
           "env": {
+            "PURECORTEX_API_URL": "https://purecortex.ai",
             "CLAUDE_API_KEY": "your-claude-api-key",
             "GEMINI_API_KEY": "your-gemini-api-key"
           }
@@ -67,7 +68,7 @@ Claude Desktop supports MCP servers natively. Add PURECORTEX to your configurati
     ```
   </Step>
   <Step title="Restart Claude Desktop">
-    Restart the application. You should see PURECORTEX listed in the MCP tools panel. You can now ask Claude to invoke tools like `get_tri_brain_consensus`.
+    Restart the application. You should see PURECORTEX listed in the MCP tools panel. You can now ask Claude to invoke tools like `get_tri_brain_consensus`, `get_protocol_health`, and `list_governance_proposals`.
   </Step>
 </Steps>
 
@@ -109,12 +110,16 @@ async def autonomous_loop():
             await session.initialize()
 
             while True:
-                result = await session.call_tool(
+                health = await session.call_tool("get_protocol_health", {})
+                proposals = await session.call_tool("list_governance_proposals", {"limit": 3})
+                consensus = await session.call_tool(
                     "get_tri_brain_consensus",
                     {"prompt": "Should I rebalance my portfolio given current conditions?"}
                 )
-                response = result.content[0].text
-                print(f"PURECORTEX says: {response}")
+
+                print(f"Health: {health.content[0].text}")
+                print(f"Proposals: {proposals.content[0].text}")
+                print(f"Consensus: {consensus.content[0].text}")
 
                 # Act on the response...
                 await asyncio.sleep(3600)
