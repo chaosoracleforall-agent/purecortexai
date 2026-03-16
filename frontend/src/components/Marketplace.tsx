@@ -10,10 +10,12 @@ import {
   buildAssetOptInTxn,
   buildBuyTokensTxns,
   buildCreateAgentTxns,
+  buildSellTokensTxns,
+  getAccountAssetBalance,
   submitSignedTransactions,
   waitForConfirmation,
 } from '@/lib/transactions';
-import { BUY_FEE_BPS, calculateBuyPrice } from '@/lib/algorand';
+import { BUY_FEE_BPS, calculateBuyPrice, calculateNetSellReturn, calculateSellPrice } from '@/lib/algorand';
 import type { AgentData } from '@/lib/marketplace';
 
 const MAX_MARKET_TRADE_AMOUNT = 100_000_000_000n;
@@ -49,6 +51,16 @@ function calculateBuyQuote(currentSupply: bigint, amount: bigint) {
   };
 }
 
+function calculateSellQuote(currentSupply: bigint, amount: bigint) {
+  const grossReturn = calculateSellPrice(currentSupply, amount);
+  const netReturn = calculateNetSellReturn(currentSupply, amount);
+  return {
+    grossReturn,
+    fee: grossReturn - netReturn,
+    netReturn,
+  };
+}
+
 export default function Marketplace() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
@@ -63,6 +75,12 @@ export default function Marketplace() {
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState<string | null>(null);
   const [buySuccess, setBuySuccess] = useState<string | null>(null);
+  const [sellAmount, setSellAmount] = useState('1');
+  const [selling, setSelling] = useState(false);
+  const [sellError, setSellError] = useState<string | null>(null);
+  const [sellSuccess, setSellSuccess] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<bigint | null>(null);
+  const [loadingWalletBalance, setLoadingWalletBalance] = useState(false);
 
   const { agents, loading, error, refresh } = useMarketplace();
   const { activeAccount, activeWallet, transactionSigner } = useWallet();
@@ -97,13 +115,55 @@ export default function Marketplace() {
   const buyQuote = liveSelectedAgent && parsedBuyAmount && parsedBuyAmount > 0n
     ? calculateBuyQuote(liveSelectedAgent.supply, parsedBuyAmount)
     : null;
+  const parsedSellAmount = parseTokenAmountToMicroUnits(sellAmount);
+  const sellQuote = liveSelectedAgent && parsedSellAmount && parsedSellAmount > 0n && parsedSellAmount <= liveSelectedAgent.supply
+    ? calculateSellQuote(liveSelectedAgent.supply, parsedSellAmount)
+    : null;
 
   function openAgent(agent: AgentData) {
     setSelectedAgent(agent);
+    setWalletBalance(null);
+    setLoadingWalletBalance(Boolean(activeAccount?.address));
     setBuyAmount('1');
+    setSellAmount('1');
     setBuyError(null);
     setBuySuccess(null);
+    setSellError(null);
+    setSellSuccess(null);
+    void refresh();
   }
+
+  useEffect(() => {
+    if (!liveSelectedAgent?.assetId || !activeAccount?.address) {
+      setWalletBalance(null);
+      setLoadingWalletBalance(false);
+      return;
+    }
+
+    let cancelled = false;
+    setWalletBalance(null);
+    setLoadingWalletBalance(true);
+    getAccountAssetBalance(activeAccount.address, liveSelectedAgent.assetId)
+      .then((balance) => {
+        if (!cancelled) {
+          setWalletBalance(balance);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setWalletBalance(0n);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingWalletBalance(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAccount?.address, liveSelectedAgent?.assetId]);
 
   async function handleDeploy() {
     if (!activeAccount || !transactionSigner || !activeWallet) {
@@ -222,6 +282,61 @@ export default function Marketplace() {
       setBuyError(msg.includes('rejected') ? 'Transaction rejected by wallet' : msg);
     } finally {
       setBuying(false);
+    }
+  }
+
+  async function handleSell() {
+    if (!liveSelectedAgent) {
+      return;
+    }
+    if (!activeAccount || !transactionSigner || !activeWallet) {
+      setSellError('Connect your wallet first');
+      return;
+    }
+    if (parsedSellAmount === null || parsedSellAmount <= 0n) {
+      setSellError('Enter a valid token amount with up to 6 decimals');
+      return;
+    }
+    if (loadingWalletBalance || walletBalance === null) {
+      setSellError('Wallet balance is still loading. Try again in a moment.');
+      return;
+    }
+    if (walletBalance !== null && parsedSellAmount > walletBalance) {
+      setSellError('Sell amount exceeds your wallet balance');
+      return;
+    }
+
+    setSelling(true);
+    setSellError(null);
+    setSellSuccess(null);
+
+    try {
+      const txns = await buildSellTokensTxns(
+        activeAccount.address,
+        liveSelectedAgent.assetId,
+        parsedSellAmount,
+      );
+      const signedTxns = await transactionSigner(
+        txns.map((txn) => txn),
+        txns.map((_, i) => i),
+      );
+      const txid = await submitSignedTransactions(signedTxns.filter(Boolean) as Uint8Array[]);
+      const confirmed = await waitForConfirmation(txid);
+      if (!confirmed) {
+        throw new Error('Sell transaction was submitted but not confirmed in time');
+      }
+
+      setSellSuccess(`Sold ${sellAmount} ${liveSelectedAgent.symbol}. Tx: ${txid.substring(0, 12)}...`);
+      setTimeout(() => {
+        refresh();
+        setSelectedAgent(null);
+        setSellSuccess(null);
+      }, 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Sell transaction failed';
+      setSellError(msg.includes('rejected') ? 'Transaction rejected by wallet' : msg);
+    } finally {
+      setSelling(false);
     }
   }
 
@@ -499,6 +614,11 @@ export default function Marketplace() {
                   <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
                     Up to 6 decimals. Asset opt-in is handled automatically if needed.
                   </p>
+                  {activeAccount && (
+                    <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
+                      Wallet balance: {loadingWalletBalance ? 'Loading...' : `${formatFixedUnits(walletBalance ?? 0n)} ${liveSelectedAgent.symbol}`}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -549,6 +669,68 @@ export default function Marketplace() {
                     Asset Detail
                   </a>
                 </div>
+              </div>
+
+              <div className="bg-[#050505] border border-white/5 rounded-2xl p-5 space-y-5">
+                <div className="flex items-center gap-3">
+                  <Coins className="w-5 h-5 text-red-400" />
+                  <h3 className="text-lg font-black uppercase tracking-tighter italic">Sell Tokens</h3>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Amount</label>
+                  <input
+                    type="text"
+                    value={sellAmount}
+                    onChange={(e) => setSellAmount(e.target.value)}
+                    placeholder="1.0"
+                    aria-label="Sell amount"
+                    className="w-full bg-[#121217] border border-white/5 rounded-xl p-4 text-white outline-none focus:ring-2 focus:ring-red-400/40 transition-all font-medium"
+                  />
+                  <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
+                    Sell back into the live testnet bonding curve. Wallet balance is checked before submission.
+                  </p>
+                  {activeAccount && (
+                    <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
+                      Wallet balance: {loadingWalletBalance ? 'Loading...' : `${formatFixedUnits(walletBalance ?? 0n)} ${liveSelectedAgent.symbol}`}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <StatCard label="Gross Return" value={sellQuote ? formatAlgoAmount(sellQuote.grossReturn) : '--'} />
+                  <StatCard label="Protocol Fee" value={sellQuote ? formatAlgoAmount(sellQuote.fee) : '--'} />
+                  <StatCard label="Net Return" value={sellQuote ? formatAlgoAmount(sellQuote.netReturn) : '--'} />
+                </div>
+
+                {!activeAccount && (
+                  <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest text-center py-2">
+                    Connect your wallet to sell on testnet
+                  </p>
+                )}
+
+                {sellError && (
+                  <p className="text-red-400 text-xs font-bold text-center py-1">{sellError}</p>
+                )}
+
+                {sellSuccess && (
+                  <p className="text-emerald-400 text-xs font-bold text-center py-1">{sellSuccess}</p>
+                )}
+
+                <button
+                  onClick={handleSell}
+                  disabled={selling || !activeAccount || !sellQuote || loadingWalletBalance || walletBalance === null || (parsedSellAmount !== null && parsedSellAmount > walletBalance)}
+                  className="w-full bg-red-500 text-black py-4 rounded-2xl font-black uppercase tracking-tighter text-sm hover:bg-red-400 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                >
+                  {selling ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Selling...
+                    </>
+                  ) : (
+                    'Sell on Testnet'
+                  )}
+                </button>
               </div>
             </motion.div>
           </div>

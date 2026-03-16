@@ -8,6 +8,7 @@ import {
   FACTORY_APP_ID,
   GOVERNANCE_APP_ID,
   GRADUATION_THRESHOLD,
+  SELL_FEE_BPS,
   SLOPE as SLOPE_MICROALGO,
   STAKING_APP_ID,
   TREASURY_APP_ID,
@@ -19,6 +20,7 @@ export {
   FACTORY_APP_ID,
   GOVERNANCE_APP_ID,
   BUY_FEE_BPS,
+  SELL_FEE_BPS,
   STAKING_APP_ID,
   TREASURY_APP_ID,
 };
@@ -76,6 +78,31 @@ export function calculateCurveProgress(currentSupply: bigint): number {
   const threshold = BigInt(GRADUATION_THRESHOLD);
   const pct = Number((totalValue * 100n) / threshold);
   return Math.min(pct, 100);
+}
+
+/**
+ * Calculate the gross ALGO returned before sell fees.
+ */
+export function calculateSellPrice(currentSupply: bigint, amount: bigint): bigint {
+  if (amount <= 0n || currentSupply < amount) {
+    return 0n;
+  }
+
+  const newSupply = currentSupply - amount;
+  const baseReturn = amount * BASE_PRICE;
+  const currentSq = currentSupply * currentSupply;
+  const newSq = newSupply * newSupply;
+  const slopeReturn = (SLOPE * (currentSq - newSq)) / 2n;
+  return baseReturn + slopeReturn;
+}
+
+/**
+ * Calculate the net ALGO returned after the protocol sell fee.
+ */
+export function calculateNetSellReturn(currentSupply: bigint, amount: bigint): bigint {
+  const gross = calculateSellPrice(currentSupply, amount);
+  const fee = (gross * BigInt(SELL_FEE_BPS)) / 10_000n;
+  return gross - fee;
 }
 
 // ------------------------------------------------------------------ //

@@ -1,5 +1,8 @@
 # PURECORTEX
 
+[![Admin E2E Mocked](https://github.com/chaosoracleforall-agent/purecortexai/actions/workflows/admin-e2e-mocked.yml/badge.svg)](https://github.com/chaosoracleforall-agent/purecortexai/actions/workflows/admin-e2e-mocked.yml)
+[![Admin E2E Live](https://github.com/chaosoracleforall-agent/purecortexai/actions/workflows/admin-e2e-live.yml/badge.svg)](https://github.com/chaosoracleforall-agent/purecortexai/actions/workflows/admin-e2e-live.yml)
+
 PURECORTEX is a sovereign AI agent launchpad and operating surface on Algorand Testnet. The current stack combines Algorand smart contracts, a FastAPI backend, a Next.js frontend, Redis-backed auth/session services, and a tri-brain orchestration layer for agent chat, governance, and marketplace flows.
 
 ## Current Status
@@ -36,6 +39,18 @@ Useful local commands:
 - Frontend app: `cd frontend && npm run dev`
 - Backend tests: `cd backend && PYTHONPATH=. .venv/bin/python -m pytest`
 - Frontend E2E: `cd frontend && npm run test:e2e`
+- Admin E2E smoke: `cd frontend && npm run test:e2e:admin:smoke`
+
+Live admin smoke options:
+- Mocked-only admin coverage runs by default through `npm run test:e2e:admin:smoke`.
+- Add `PURECORTEX_RUN_LIVE_ADMIN_E2E=1` to include the real browser flow against a live backend.
+- Override `PURECORTEX_E2E_BACKEND_URL`, `PURECORTEX_ADMIN_E2E_AUTH_MODE`, and `PURECORTEX_ADMIN_E2E_EMAIL` when pointing the live test at a different local or staging environment.
+- `PURECORTEX_ADMIN_E2E_AUTH_MODE` accepts `dev-session` or `header`; the GitHub Actions workflow dispatch now exposes the same choice for stricter live runs.
+
+## CI
+- `Admin E2E Mocked` runs automatically on pull requests and pushes that touch the admin/browser smoke coverage paths.
+- `Admin E2E Live` is manual-only and should be launched from GitHub Actions when you want a real browser pass against the CI-started local stack.
+- Use `dev-session` for the default live run, or choose `header` when you want stricter trusted-header coverage for the admin surface.
 
 ## Deployment
 PURECORTEX currently deploys to the `purecortex-master` GCP VM using the root `docker-compose.yml` stack and `nginx.conf`.

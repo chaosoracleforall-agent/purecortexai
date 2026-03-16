@@ -24,6 +24,7 @@ class Settings:
     database_url: str | None
     cloud_sql_connection_name: str | None
     internal_admin_token: str | None
+    internal_admin_allowed_cidrs: tuple[str, ...]
     key_hmac_secret: str | None
     admin_allowed_emails: tuple[str, ...]
     trust_proxy_headers: bool
@@ -39,11 +40,17 @@ def get_settings() -> Settings:
         database_url=os.getenv("PURECORTEX_DATABASE_URL"),
         cloud_sql_connection_name=os.getenv("PURECORTEX_CLOUD_SQL_CONNECTION_NAME"),
         internal_admin_token=os.getenv("PURECORTEX_INTERNAL_ADMIN_TOKEN"),
+        internal_admin_allowed_cidrs=_split_csv(
+            os.getenv(
+                "PURECORTEX_INTERNAL_ADMIN_ALLOWED_CIDRS",
+                "127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7",
+            )
+        ),
         key_hmac_secret=os.getenv("PURECORTEX_KEY_HMAC_SECRET"),
         admin_allowed_emails=_split_csv(
             os.getenv("PURECORTEX_ADMIN_ALLOWED_EMAILS", "chaosoracleforall@gmail.com")
         ),
-        trust_proxy_headers=_as_bool(os.getenv("PURECORTEX_TRUST_PROXY_HEADERS"), default=True),
+        trust_proxy_headers=_as_bool(os.getenv("PURECORTEX_TRUST_PROXY_HEADERS"), default=False),
         trusted_proxy_cidrs=_split_csv(
             os.getenv(
                 "PURECORTEX_TRUSTED_PROXY_CIDRS",

@@ -33,6 +33,22 @@ On the workstation:
 - `gcloud` installed and authenticated for the `purecortexai` project.
 - IAM access to SSH into `purecortex-master` through IAP.
 
+## Security-Critical Environment Flags
+Production should treat the reverse proxy as an explicit trust boundary. The current secure defaults fail closed unless these flags are intentionally enabled for the VM stack behind `nginx` plus `oauth2-proxy`.
+
+- `PURECORTEX_TRUST_PROXY_HEADERS=1`
+  Required only when the backend is reachable exclusively behind the trusted reverse proxy. This allows the backend to honor sanitized `X-Forwarded-For` / `X-Real-IP` values for rate limiting and IP allowlist enforcement.
+- `PURECORTEX_TRUSTED_PROXY_CIDRS=...`
+  Must contain only the CIDRs of the trusted reverse-proxy hop(s) that can reach the backend container. Do not include broad public ranges.
+- `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=1`
+  Required only when the frontend is reachable exclusively through `nginx` routes protected by `oauth2-proxy`, which strips any inbound spoofed header and injects the authenticated owner email on `/admin` and `/admin-api/*`.
+- `PURECORTEX_INTERNAL_ADMIN_TOKEN=...`
+  Required for the server-only frontend-to-backend admin bridge. Never expose this to browsers, client bundles, or public docs.
+- `PURECORTEX_GOOGLE_OAUTH_CLIENT_ID`, `PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET`, `PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET`
+  Required before treating `/admin` as a production owner surface.
+
+Local development should leave proxy-header trust disabled unless you are explicitly reproducing the full reverse-proxy topology. Browser admin testing should use the dev-session path at `/admin/login` instead of trusting an identity header directly.
+
 ## Deploy From Your Workstation
 Use the remote wrapper when you want to deploy the latest checked-out branch on the VM:
 
@@ -101,8 +117,14 @@ Externally, confirm:
 - `https://purecortex.ai/admin` redirects through Google SSO or fails closed if `oauth2-proxy` is not yet configured.
 - WebSocket chat can bootstrap through `POST /api/chat/session` and connect to `/ws/chat`.
 
+Auth-boundary checks:
+- Public requests to `/admin-api/control-plane` without authenticated `/admin` access return `403`.
+- Direct requests to backend protected routes do not rely on `X-Forwarded-For` unless `PURECORTEX_TRUST_PROXY_HEADERS=1` is explicitly set.
+- Admin and internal-admin JSON responses include `Cache-Control: no-store`.
+
 ## Notes
 - Do not document or depend on raw VM IP addresses in tracked docs.
 - Do not use the default Next.js Vercel flow for this frontend; production traffic is served from the VM stack.
 - If you need to redeploy a previous commit, check out that commit on a clean VM worktree and rerun `scripts/deploy_vm.sh`.
 - Do not mount signer secrets into the backend container. Keep signer-only material inside `.signer-secrets/`, which is mounted only into the isolated signer service.
+- Do not enable `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=1` on any frontend that is directly reachable without the `nginx` `auth_request` boundary.

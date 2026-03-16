@@ -25,6 +25,10 @@ Protected REST endpoints require an `X-API-Key`. WebSocket chat requires a short
 
 These first-party clients map directly to the live endpoint surface and are the preferred way to integrate unless you specifically need raw HTTP.
 
+<Info>
+  The public docs should be treated as the current testnet surface, not a promise of future mainnet features. Where behavior differs during rollout, prefer the first-party clients or the live OpenAPI schema generated from the backend.
+</Info>
+
 ## Endpoint Families
 
 | Family | Endpoints |
@@ -41,10 +45,10 @@ These first-party clients map directly to the live endpoint surface and are the 
 | Channel        | Limit           |
 |----------------|-----------------|
 | REST API       | 60 req/min      |
-| WebSocket      | 10 msg/min      |
+| WebSocket      | Runtime-enforced burst control |
 | Transparency   | 120 req/min     |
 
-Rate-limited responses return HTTP `429` with a `Retry-After` header indicating seconds until the next permitted request.
+Rate-limited HTTP responses return `429`. WebSocket chat enforces its own runtime message pacing.
 
 ## Response Format
 
@@ -55,15 +59,14 @@ Successful responses return the data directly:
 ```json
 {
   "status": "ok",
-  "version": "0.7.0"
+  "version": "0.7.7"
 }
 ```
 
-Error responses include `error` and `detail` fields:
+Error responses typically include a `detail` field:
 
 ```json
 {
-  "error": "not_found",
   "detail": "Proposal with the given ID does not exist."
 }
 ```
@@ -75,6 +78,15 @@ Error responses include `error` and `detail` fields:
 2. POST /api/chat/session with X-API-Key
 3. Connect to wss://purecortex.ai/ws/chat?session=<token>
 4. Exchange plain text messages
+```
+
+Signed governance voting follows a separate path:
+
+```text
+1. Load governance proposals from /api/governance/proposals
+2. Check voting power with GET /api/governance/proposals/{proposal_id}/power/{address}
+3. Sign the canonical vote message in-wallet
+4. POST /api/governance/proposals/{proposal_id}/vote-signed
 ```
 
 ## Error Codes

@@ -2,7 +2,9 @@
 Governance API for PURECORTEX.
 
 Serves the PURECORTEX Constitution (Preamble + Articles) and provides
-Redis-backed proposal creation, curator review, voting, and listing endpoints.
+the canonical backend-governed proposal, review, and voting flow for testnet.
+Proposal storage lives in Redis while vote weight is derived from the live
+staking/delegation contract state.
 """
 
 import base64
@@ -15,11 +17,17 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from src.services.cache import get_cache_service, cache_with_ttl, TTL_GOVERNANCE
-from src.services.algorand import GOVERNANCE_APP_ID
+from src.services.algorand import GOVERNANCE_APP_ID, get_algorand_service
+from src.services.governance_voting import (
+    calculate_live_tally,
+    calculate_voter_power,
+    normalize_proposal,
+    verify_signed_vote,
+)
 
 logger = logging.getLogger("purecortex.governance")
 
@@ -129,6 +137,14 @@ class VoteRequest(BaseModel):
     weight: int = Field(default=1, ge=1, le=1000)
 
 
+class SignedVoteRequest(BaseModel):
+    voter: str = Field(..., min_length=32, max_length=64)
+    vote: str = Field(..., pattern="^(for|against)$")
+    issued_at: str = Field(..., min_length=10, max_length=64)
+    nonce: str = Field(..., min_length=8, max_length=128)
+    signature: str = Field(..., min_length=16, max_length=2048)
+
+
 class VoteResponse(BaseModel):
     proposal_id: int
     voter: str
@@ -136,6 +152,17 @@ class VoteResponse(BaseModel):
     weight: int
     votes_for: int
     votes_against: int
+    direct_weight: int = 0
+    delegated_weight: int = 0
+    auth_method: str = "api_key"
+
+
+class VotePowerResponse(BaseModel):
+    proposal_id: int
+    voter: str
+    direct_weight: int
+    delegated_weight: int
+    effective_weight: int
 
 
 class GovernanceOverview(BaseModel):
@@ -267,6 +294,142 @@ async def _get_all_proposals() -> List[Dict[str, Any]]:
     return proposals
 
 
+async def _invalidate_governance_cache() -> None:
+    cache = get_cache_service()
+    await cache.delete("governance:overview")
+    await cache.delete("governance:proposals")
+
+
+async def _hydrate_live_tally(proposal: Dict[str, Any]) -> Dict[str, Any]:
+    algo = get_algorand_service()
+    stake_snapshots = await algo.list_stake_snapshots()
+    return calculate_live_tally(proposal, stake_snapshots=stake_snapshots)
+
+
+async def _hydrate_live_tallies(proposals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    if not proposals:
+        return []
+    algo = get_algorand_service()
+    stake_snapshots = await algo.list_stake_snapshots()
+    return [calculate_live_tally(proposal, stake_snapshots=stake_snapshots) for proposal in proposals]
+
+
+async def _record_vote(
+    proposal_id: int,
+    *,
+    voter: str,
+    vote: str,
+    source: str,
+    weight_override: int | None = None,
+) -> tuple[Dict[str, Any], Dict[str, int]]:
+    cache = get_cache_service()
+    if not cache._redis:
+        raise HTTPException(status_code=503, detail="Redis unavailable — governance storage offline.")
+
+    redis_key = f"{PROPOSAL_PREFIX}:{proposal_id}"
+    max_retries = 3
+
+    for attempt in range(max_retries):
+        try:
+            async with cache._redis.pipeline(transaction=True) as pipe:
+                await pipe.watch(redis_key)
+                raw = await pipe.get(redis_key)
+                if raw is None:
+                    raise HTTPException(status_code=404, detail=f"Proposal {proposal_id} not found.")
+
+                try:
+                    proposal = normalize_proposal(json.loads(raw))
+                except json.JSONDecodeError as exc:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Corrupted proposal data for {proposal_id}.",
+                    ) from exc
+
+                if proposal["status"] != ProposalStatus.VOTING.value:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Proposal {proposal_id} is in '{proposal['status']}' status. "
+                        f"Only proposals in 'voting' status accept votes.",
+                    )
+
+                if voter in proposal.get("vote_records", {}) or voter in proposal.get("legacy_voters", []):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Voter '{voter}' has already voted on proposal {proposal_id}.",
+                    )
+
+                algo = get_algorand_service()
+                stake_snapshots = await algo.list_stake_snapshots()
+
+                if source == "signed_wallet":
+                    power_summary = calculate_voter_power(
+                        voter,
+                        proposal=proposal,
+                        stake_snapshots=stake_snapshots,
+                    )
+                    if power_summary["effective_weight"] <= 0:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Connected wallet has no active veCORTEX or delegated voting power.",
+                        )
+                else:
+                    power_summary = {
+                        "direct_weight": int(weight_override or 0),
+                        "delegated_weight": 0,
+                        "effective_weight": int(weight_override or 0),
+                    }
+
+                proposal.setdefault("vote_records", {})[voter] = {
+                    "vote": vote,
+                    "source": source,
+                    "recorded_at": datetime.now(timezone.utc).isoformat(),
+                    "weight_override": weight_override,
+                }
+                proposal = calculate_live_tally(proposal, stake_snapshots=stake_snapshots)
+
+                pipe.multi()
+                pipe.setex(redis_key, PROPOSAL_TTL, json.dumps(proposal, default=str))
+                await pipe.execute()
+
+                await _invalidate_governance_cache()
+                return proposal, power_summary
+        except HTTPException:
+            raise
+        except Exception as exc:
+            if "WATCH" in str(type(exc).__name__).upper() or "watch" in str(exc).lower():
+                logger.warning(
+                    "Vote race condition on proposal %d, retry %d/%d",
+                    proposal_id,
+                    attempt + 1,
+                    max_retries,
+                )
+                continue
+            raise
+
+    raise HTTPException(status_code=409, detail="Vote conflict — please retry.")
+
+
+def _require_governance_write_access(request: Request) -> None:
+    api_key_data = getattr(request.state, "api_key_data", None)
+    if not api_key_data:
+        raise HTTPException(status_code=401, detail="API key required")
+
+    raw_scopes = api_key_data.get("scopes") or []
+    if isinstance(raw_scopes, str):
+        scopes = {scope.strip() for scope in raw_scopes.split(",") if scope.strip()}
+    else:
+        scopes = {str(scope).strip() for scope in raw_scopes if str(scope).strip()}
+
+    if "governance.write" in scopes:
+        return
+
+    runtime_tier = api_key_data.get("runtime_tier") or api_key_data.get("tier")
+    if not scopes and runtime_tier == "admin":
+        return
+
+    raise HTTPException(status_code=403, detail="API key lacks governance.write scope")
+
+
 def _proposal_to_summary(p: Dict[str, Any]) -> ProposalSummary:
     """Convert a raw proposal dict to a ProposalSummary."""
     return ProposalSummary(
@@ -278,7 +441,7 @@ def _proposal_to_summary(p: Dict[str, Any]) -> ProposalSummary:
         created_at=p["created_at"],
         votes_for=p.get("votes_for", 0),
         votes_against=p.get("votes_against", 0),
-        voter_count=len(p.get("voters", [])),
+        voter_count=p.get("voter_count", len(p.get("voters", []))),
         curator_reviewed=p.get("curator_review") is not None,
     )
 
@@ -331,8 +494,8 @@ async def get_constitution():
 
 @router.get("/overview", response_model=GovernanceOverview)
 async def get_governance_overview():
-    """High-level governance stats computed from Redis-backed proposals."""
-    proposals = await _get_all_proposals()
+    """High-level governance stats computed from canonical proposal storage."""
+    proposals = await _hydrate_live_tallies(await _get_all_proposals())
 
     total = len(proposals)
     active = sum(1 for p in proposals if p["status"] in ("active", "review"))
@@ -354,7 +517,7 @@ async def get_governance_overview():
 @router.get("/proposals", response_model=ProposalsListResponse)
 async def list_proposals():
     """List all governance proposals with status and vote counts."""
-    proposals = await _get_all_proposals()
+    proposals = await _hydrate_live_tallies(await _get_all_proposals())
     summaries = [_proposal_to_summary(p) for p in proposals]
     # Sort by ID descending (newest first)
     summaries.sort(key=lambda s: s.id, reverse=True)
@@ -375,12 +538,39 @@ async def get_proposal(proposal_id: int):
             detail=f"Proposal {proposal_id} not found.",
         )
 
-    return _proposal_to_detail(proposal)
+    return _proposal_to_detail(await _hydrate_live_tally(proposal))
+
+
+@router.get("/proposals/{proposal_id}/power/{address}", response_model=VotePowerResponse)
+async def get_proposal_vote_power(proposal_id: int, address: str):
+    proposal = await _get_proposal(proposal_id)
+    if not proposal:
+        raise HTTPException(status_code=404, detail=f"Proposal {proposal_id} not found.")
+
+    try:
+        algo = get_algorand_service()
+        stake_snapshots = await algo.list_stake_snapshots()
+        power_summary = calculate_voter_power(
+            address,
+            proposal=normalize_proposal(proposal),
+            stake_snapshots=stake_snapshots,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return VotePowerResponse(
+        proposal_id=proposal_id,
+        voter=address,
+        direct_weight=power_summary["direct_weight"],
+        delegated_weight=power_summary["delegated_weight"],
+        effective_weight=power_summary["effective_weight"],
+    )
 
 
 @router.post("/proposals", response_model=ProposalDetail, status_code=201)
-async def create_proposal(body: ProposalCreateRequest):
-    """Create a new governance proposal. Stored in Redis with auto-incrementing ID."""
+async def create_proposal(body: ProposalCreateRequest, request: Request):
+    """Create a new governance proposal in the canonical governance API."""
+    _require_governance_write_access(request)
     # Generate next ID
     proposal_id = await _redis_incr(PROPOSAL_COUNTER_KEY)
 
@@ -397,23 +587,27 @@ async def create_proposal(body: ProposalCreateRequest):
         "votes_for": 0,
         "votes_against": 0,
         "voters": [],
+        "voter_count": 0,
+        "legacy_votes_for": 0,
+        "legacy_votes_against": 0,
+        "legacy_voter_count": 0,
+        "legacy_voters": [],
+        "vote_records": {},
         "curator_review": None,
     }
 
     await _save_proposal(proposal)
     logger.info("Proposal %d created by %s: %s", proposal_id, body.proposer, body.title)
 
-    # Invalidate cached overview/listing
-    cache = get_cache_service()
-    await cache.delete("governance:overview")
-    await cache.delete("governance:proposals")
+    await _invalidate_governance_cache()
 
     return _proposal_to_detail(proposal)
 
 
 @router.post("/proposals/{proposal_id}/review", response_model=ProposalDetail)
-async def review_proposal(proposal_id: int, body: ReviewRequest):
+async def review_proposal(proposal_id: int, body: ReviewRequest, request: Request):
     """Curator reviews a proposal. Moves status to 'voting' if compliant, 'rejected' if not."""
+    _require_governance_write_access(request)
     proposal = await _get_proposal(proposal_id)
     if not proposal:
         raise HTTPException(status_code=404, detail=f"Proposal {proposal_id} not found.")
@@ -444,101 +638,90 @@ async def review_proposal(proposal_id: int, body: ReviewRequest):
 
     await _save_proposal(proposal)
 
-    # Invalidate caches
-    cache = get_cache_service()
-    await cache.delete("governance:overview")
-    await cache.delete("governance:proposals")
+    await _invalidate_governance_cache()
 
     return _proposal_to_detail(proposal)
 
 
 @router.post("/proposals/{proposal_id}/vote", response_model=VoteResponse)
-async def vote_on_proposal(proposal_id: int, body: VoteRequest):
-    """Cast a vote on a proposal. Each voter can only vote once.
+async def vote_on_proposal(proposal_id: int, body: VoteRequest, request: Request):
+    """Internal/operator vote path for smoke tests and controlled automation."""
+    _require_governance_write_access(request)
+    proposal, _ = await _record_vote(
+        proposal_id,
+        voter=body.voter,
+        vote=body.vote,
+        source="api_key",
+        weight_override=body.weight,
+    )
 
-    Uses Redis optimistic locking (WATCH/MULTI/EXEC) to prevent race conditions
-    when two voters submit concurrently.
-    """
-    cache = get_cache_service()
-    if not cache._redis:
-        raise HTTPException(status_code=503, detail="Redis unavailable — governance storage offline.")
+    logger.info(
+        "Internal vote on proposal %d: %s voted '%s' (weight=%d). Tally: %d for / %d against",
+        proposal_id,
+        body.voter,
+        body.vote,
+        body.weight,
+        proposal["votes_for"],
+        proposal["votes_against"],
+    )
 
-    redis_key = f"{PROPOSAL_PREFIX}:{proposal_id}"
-    max_retries = 3
+    return VoteResponse(
+        proposal_id=proposal_id,
+        voter=body.voter,
+        vote=body.vote,
+        weight=body.weight,
+        votes_for=proposal["votes_for"],
+        votes_against=proposal["votes_against"],
+        direct_weight=body.weight,
+        delegated_weight=0,
+        auth_method="api_key",
+    )
 
-    for attempt in range(max_retries):
-        try:
-            async with cache._redis.pipeline(transaction=True) as pipe:
-                # Watch the proposal key for changes
-                await pipe.watch(redis_key)
 
-                # Read current proposal (outside transaction, after WATCH)
-                raw = await pipe.get(redis_key)
-                if raw is None:
-                    raise HTTPException(status_code=404, detail=f"Proposal {proposal_id} not found.")
+@router.post("/proposals/{proposal_id}/vote-signed", response_model=VoteResponse)
+async def vote_on_proposal_signed(proposal_id: int, body: SignedVoteRequest):
+    """Public wallet-signed vote path for live token-holder governance."""
+    try:
+        verify_signed_vote(
+            proposal_id=proposal_id,
+            voter=body.voter,
+            vote=body.vote,
+            issued_at=body.issued_at,
+            nonce=body.nonce,
+            signature_b64=body.signature,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-                try:
-                    proposal = json.loads(raw)
-                except json.JSONDecodeError:
-                    raise HTTPException(status_code=500, detail=f"Corrupted proposal data for {proposal_id}.")
+    proposal, power_summary = await _record_vote(
+        proposal_id,
+        voter=body.voter,
+        vote=body.vote,
+        source="signed_wallet",
+    )
 
-                if proposal["status"] != ProposalStatus.VOTING.value:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Proposal {proposal_id} is in '{proposal['status']}' status. "
-                               f"Only proposals in 'voting' status accept votes.",
-                    )
+    logger.info(
+        "Signed vote on proposal %d: %s voted '%s' (direct=%d delegated=%d). Tally: %d for / %d against",
+        proposal_id,
+        body.voter,
+        body.vote,
+        power_summary["direct_weight"],
+        power_summary["delegated_weight"],
+        proposal["votes_for"],
+        proposal["votes_against"],
+    )
 
-                # Check if voter already voted
-                if body.voter in proposal.get("voters", []):
-                    raise HTTPException(
-                        status_code=409,
-                        detail=f"Voter '{body.voter}' has already voted on proposal {proposal_id}.",
-                    )
-
-                # Apply vote
-                if body.vote == "for":
-                    proposal["votes_for"] = proposal.get("votes_for", 0) + body.weight
-                else:
-                    proposal["votes_against"] = proposal.get("votes_against", 0) + body.weight
-
-                proposal.setdefault("voters", []).append(body.voter)
-
-                # Execute atomic write
-                pipe.multi()
-                pipe.setex(redis_key, PROPOSAL_TTL, json.dumps(proposal, default=str))
-                await pipe.execute()
-
-                # Success — break out of retry loop
-                logger.info(
-                    "Vote on proposal %d: %s voted '%s' (weight=%d). Tally: %d for / %d against",
-                    proposal_id, body.voter, body.vote, body.weight,
-                    proposal["votes_for"], proposal["votes_against"],
-                )
-
-                # Invalidate caches
-                await cache.delete("governance:overview")
-                await cache.delete("governance:proposals")
-
-                return VoteResponse(
-                    proposal_id=proposal_id,
-                    voter=body.voter,
-                    vote=body.vote,
-                    weight=body.weight,
-                    votes_for=proposal["votes_for"],
-                    votes_against=proposal["votes_against"],
-                )
-
-        except HTTPException:
-            raise
-        except Exception as exc:
-            # WatchError means another client modified the key — retry
-            if "WATCH" in str(type(exc).__name__).upper() or "watch" in str(exc).lower():
-                logger.warning("Vote race condition on proposal %d, retry %d/%d", proposal_id, attempt + 1, max_retries)
-                continue
-            raise
-
-    raise HTTPException(status_code=409, detail="Vote conflict — please retry.")
+    return VoteResponse(
+        proposal_id=proposal_id,
+        voter=body.voter,
+        vote=body.vote,
+        weight=power_summary["effective_weight"],
+        votes_for=proposal["votes_for"],
+        votes_against=proposal["votes_against"],
+        direct_weight=power_summary["direct_weight"],
+        delegated_weight=power_summary["delegated_weight"],
+        auth_method="wallet_signature",
+    )
 
 
 # ──────────────────────────────────────────────

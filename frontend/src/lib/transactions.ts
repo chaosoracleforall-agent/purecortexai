@@ -6,6 +6,7 @@ import {
   CORTEX_ASSET_ID,
   CREATION_FEE,
   ALGOD_URL,
+  STAKING_APP_ID,
   calculateBuyPrice,
 } from './algorand';
 
@@ -40,6 +41,19 @@ export async function accountHasAssetOptIn(address: string, assetId: number): Pr
 
   const data = await resp.json();
   return (data.assets || []).some((asset: { 'asset-id': number }) => asset['asset-id'] === assetId);
+}
+
+export async function getAccountAssetBalance(address: string, assetId: number): Promise<bigint> {
+  const resp = await fetch(`${ALGOD_URL}/v2/accounts/${address}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!resp.ok) {
+    throw new Error(`Unable to load account state (${resp.status})`);
+  }
+
+  const data = await resp.json();
+  const match = (data.assets || []).find((asset: { 'asset-id': number; amount: number }) => asset['asset-id'] === assetId);
+  return match ? BigInt(match.amount) : 0n;
 }
 
 export async function buildAssetOptInTxn(
@@ -119,6 +133,51 @@ const ABI_BUY_TOKENS = new algosdk.ABIMethod({
   ],
   returns: { type: 'void' },
 });
+
+const ABI_SELL_TOKENS = new algosdk.ABIMethod({
+  name: 'sell_tokens',
+  args: [
+    { type: 'axfer', name: 'token_transfer' },
+    { type: 'uint64', name: 'asset' },
+    { type: 'uint64', name: 'amount' },
+  ],
+  returns: { type: 'void' },
+});
+
+const ABI_STAKE = new algosdk.ABIMethod({
+  name: 'stake',
+  args: [
+    { type: 'axfer', name: 'cortex_transfer' },
+    { type: 'uint64', name: 'lock_days' },
+  ],
+  returns: { type: 'void' },
+});
+
+const ABI_UNSTAKE = new algosdk.ABIMethod({
+  name: 'unstake',
+  args: [],
+  returns: { type: 'void' },
+});
+
+const ABI_DELEGATE = new algosdk.ABIMethod({
+  name: 'delegate',
+  args: [{ type: 'address', name: 'lawmaker' }],
+  returns: { type: 'void' },
+});
+
+const ABI_REVOKE_DELEGATION = new algosdk.ABIMethod({
+  name: 'revoke_delegation',
+  args: [],
+  returns: { type: 'void' },
+});
+
+function stakingBoxKey(prefix: 's' | 'd', address: string): Uint8Array {
+  const publicKey = algosdk.decodeAddress(address).publicKey;
+  const key = new Uint8Array(1 + publicKey.length);
+  key[0] = prefix.charCodeAt(0);
+  key.set(publicKey, 1);
+  return key;
+}
 
 /**
  * Build an atomic transaction group for creating a new agent.
@@ -210,4 +269,145 @@ export async function buildBuyTokensTxns(
 
   const group = composer.buildGroup();
   return group.map((g) => g.txn);
+}
+
+export async function buildSellTokensTxns(
+  sender: string,
+  assetId: number,
+  amount: bigint,
+): Promise<algosdk.Transaction[]> {
+  const params = await fetchSuggestedParams();
+
+  if (amount > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error('Transaction amount exceeds safe precision limit');
+  }
+
+  const composer = new algosdk.AtomicTransactionComposer();
+
+  const tokenTransfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender,
+    receiver: FACTORY_ADDRESS,
+    assetIndex: assetId,
+    amount: Number(amount),
+    suggestedParams: params,
+  });
+
+  composer.addMethodCall({
+    appID: FACTORY_APP_ID,
+    method: ABI_SELL_TOKENS,
+    methodArgs: [
+      { txn: tokenTransfer, signer: algosdk.makeEmptyTransactionSigner() },
+      assetId,
+      Number(amount),
+    ],
+    sender,
+    suggestedParams: params,
+    signer: algosdk.makeEmptyTransactionSigner(),
+    boxes: [
+      { appIndex: FACTORY_APP_ID, name: algosdk.bigIntToBytes(assetId, 8) },
+    ],
+  });
+
+  return composer.buildGroup().map((grouped) => grouped.txn);
+}
+
+export async function buildStakeTokensTxns(
+  sender: string,
+  amount: bigint,
+  lockDays: number,
+): Promise<algosdk.Transaction[]> {
+  const params = await fetchSuggestedParams();
+  const stakingAddress = algosdk.getApplicationAddress(STAKING_APP_ID);
+
+  if (amount > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error('Stake amount exceeds safe precision limit');
+  }
+
+  const composer = new algosdk.AtomicTransactionComposer();
+  const transfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender,
+    receiver: stakingAddress,
+    assetIndex: CORTEX_ASSET_ID,
+    amount: Number(amount),
+    suggestedParams: params,
+  });
+
+  composer.addMethodCall({
+    appID: STAKING_APP_ID,
+    method: ABI_STAKE,
+    methodArgs: [
+      { txn: transfer, signer: algosdk.makeEmptyTransactionSigner() },
+      lockDays,
+    ],
+    sender,
+    suggestedParams: params,
+    signer: algosdk.makeEmptyTransactionSigner(),
+    boxes: [
+      { appIndex: STAKING_APP_ID, name: stakingBoxKey('s', sender) },
+    ],
+  });
+
+  return composer.buildGroup().map((grouped) => grouped.txn);
+}
+
+export async function buildUnstakeTxns(sender: string): Promise<algosdk.Transaction[]> {
+  const params = await fetchSuggestedParams();
+  const composer = new algosdk.AtomicTransactionComposer();
+
+  composer.addMethodCall({
+    appID: STAKING_APP_ID,
+    method: ABI_UNSTAKE,
+    methodArgs: [],
+    sender,
+    suggestedParams: params,
+    signer: algosdk.makeEmptyTransactionSigner(),
+    boxes: [
+      { appIndex: STAKING_APP_ID, name: stakingBoxKey('s', sender) },
+      { appIndex: STAKING_APP_ID, name: stakingBoxKey('d', sender) },
+    ],
+  });
+
+  return composer.buildGroup().map((grouped) => grouped.txn);
+}
+
+export async function buildDelegateVotingTxns(
+  sender: string,
+  delegateAddress: string,
+): Promise<algosdk.Transaction[]> {
+  const params = await fetchSuggestedParams();
+  const composer = new algosdk.AtomicTransactionComposer();
+
+  composer.addMethodCall({
+    appID: STAKING_APP_ID,
+    method: ABI_DELEGATE,
+    methodArgs: [delegateAddress],
+    sender,
+    suggestedParams: params,
+    signer: algosdk.makeEmptyTransactionSigner(),
+    boxes: [
+      { appIndex: STAKING_APP_ID, name: stakingBoxKey('s', sender) },
+      { appIndex: STAKING_APP_ID, name: stakingBoxKey('d', sender) },
+    ],
+  });
+
+  return composer.buildGroup().map((grouped) => grouped.txn);
+}
+
+export async function buildRevokeDelegationTxns(sender: string): Promise<algosdk.Transaction[]> {
+  const params = await fetchSuggestedParams();
+  const composer = new algosdk.AtomicTransactionComposer();
+
+  composer.addMethodCall({
+    appID: STAKING_APP_ID,
+    method: ABI_REVOKE_DELEGATION,
+    methodArgs: [],
+    sender,
+    suggestedParams: params,
+    signer: algosdk.makeEmptyTransactionSigner(),
+    boxes: [
+      { appIndex: STAKING_APP_ID, name: stakingBoxKey('d', sender) },
+    ],
+  });
+
+  return composer.buildGroup().map((grouped) => grouped.txn);
 }
