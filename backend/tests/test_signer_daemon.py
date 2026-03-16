@@ -109,3 +109,28 @@ def test_remote_signer_rejects_invalid_token(monkeypatch, tmp_path):
             socket_dir.rmdir()
 
     asyncio.run(_run())
+
+
+def test_signer_daemon_requires_shared_token():
+    async def _run() -> None:
+        socket_dir = Path(tempfile.mkdtemp(prefix="pcxsock_", dir="/tmp"))
+        socket_path = socket_dir / f"{uuid.uuid4().hex[:12]}.sock"
+
+        daemon = SignerDaemon(
+            socket_path=str(socket_path),
+            socket_mode=0o666,
+            shared_token="",
+            allowed_identities={"social"},
+            request_timeout_seconds=5,
+            max_request_bytes=8192,
+            max_group_size=4,
+        )
+        try:
+            with pytest.raises(RuntimeError, match="Signer shared token not configured"):
+                await daemon.start()
+        finally:
+            if socket_path.exists():
+                socket_path.unlink()
+            socket_dir.rmdir()
+
+    asyncio.run(_run())

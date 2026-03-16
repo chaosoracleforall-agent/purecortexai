@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hmac
 import json
 import logging
 import os
@@ -49,6 +50,13 @@ class SignerDaemon:
         self._vaults: dict[str, object] = {}
         self._server: Optional[asyncio.AbstractServer] = None
 
+    def _require_valid_token(self, provided_token: object) -> None:
+        if not self.shared_token:
+            raise RuntimeError("Signer shared token not configured")
+        token = str(provided_token or "")
+        if not hmac.compare_digest(token, self.shared_token):
+            raise PermissionError("Unauthorized signer request")
+
     @classmethod
     def from_env(cls) -> "SignerDaemon":
         allowed_raw = os.getenv(
@@ -75,6 +83,9 @@ class SignerDaemon:
         )
 
     async def start(self) -> None:
+        if not self.shared_token:
+            raise RuntimeError("Signer shared token not configured")
+
         socket_dir = os.path.dirname(self.socket_path)
         if socket_dir:
             os.makedirs(socket_dir, exist_ok=True)
@@ -136,8 +147,7 @@ class SignerDaemon:
             request = json.loads(raw_request.decode("utf-8"))
             action = str(request.get("action", "")).strip()
 
-            if self.shared_token and request.get("token") != self.shared_token:
-                raise PermissionError("Unauthorized signer request")
+            self._require_valid_token(request.get("token"))
 
             if action == "ping":
                 response = {"ok": True}

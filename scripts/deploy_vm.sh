@@ -227,6 +227,8 @@ fi
 "${COMPOSE[@]}" up -d --remove-orphans "${SERVICES[@]}"
 
 if [[ -n "${CLOUD_SQL_CONNECTION_NAME}" ]]; then
+  log "Recreating backend and Cloud SQL proxy together for shared networking..."
+  "${COMPOSE[@]}" up -d --no-deps --force-recreate backend cloudsql-proxy
   "${COMPOSE[@]}" stop postgres >/dev/null 2>&1 || true
 else
   "${COMPOSE[@]}" stop cloudsql-proxy >/dev/null 2>&1 || true

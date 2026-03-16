@@ -11,6 +11,16 @@ def test_resolve_client_ip_uses_forwarded_header_from_trusted_proxy():
     assert client_ip == "203.0.113.10"
 
 
+def test_resolve_client_ip_ignores_spoofed_leftmost_forwarded_ip():
+    client_ip = resolve_client_ip(
+        {"x-forwarded-for": "198.51.100.99, 203.0.113.10", "x-real-ip": "203.0.113.10"},
+        "172.18.0.5",
+        trust_proxy_headers=True,
+        trusted_proxy_cidrs=("172.16.0.0/12",),
+    )
+    assert client_ip == "203.0.113.10"
+
+
 def test_resolve_client_ip_ignores_proxy_headers_from_untrusted_peer():
     client_ip = resolve_client_ip(
         {"x-forwarded-for": "203.0.113.10", "x-real-ip": "203.0.113.10"},
