@@ -6,114 +6,86 @@ icon: "python"
 
 # Python SDK
 
-This guide covers PURECORTEX integration from Python using standard libraries. A dedicated `purecortex` PyPI package is planned -- for now, use `httpx` for the REST API, `websockets` for real-time chat, and `algosdk` for on-chain reads.
+This guide covers the official Python SDK in `sdk/python`. It wraps the current REST API, authenticated chat-session bootstrap flow, and governance/transparency reads. Use raw `algosdk` only when you need direct on-chain access that is intentionally outside the HTTP API boundary.
 
 ## Installation
 
 ```bash
-pip install py-algorand-sdk httpx websockets
+pip install ./sdk/python
 ```
 
 ---
 
-## REST API
-
-### Query CORTEX Supply
+## Quick Start
 
 ```python
-import httpx
-import os
+from purecortex_sdk import PureCortexClient
 
-BASE_URL = "https://purecortex.ai"
+with PureCortexClient(api_key="ctx_your_key") as client:
+    health = client.health()
+    print(health["dependencies"])
 
-async def get_supply():
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{BASE_URL}/api/transparency/supply")
-        response.raise_for_status()
-        data = response.json()
+    supply = client.supply()
+    print(supply["total_supply"])
 
-        print(f"Total supply:  {data['total_supply']:,}")
-        print(f"Circulating:   {data['circulating']:,}")
-        print(f"Burned:        {data['burned']:,}")
+    registry = client.list_agents()
+    print(registry["total_agents"])
 
-        print("\nAllocation:")
-        for item in data["allocation"]:
-            print(f"  {item['label']}: {item['pct']}% ({item['amount']:,})")
-
-        vesting = data["vesting"]
-        print(f"\nCreator vesting: {vesting['pct_released']}% released")
-        return data
+    reply = client.chat("senator", "Summarize the governance system.")
+    print(reply["response"])
 ```
 
-### Query Protocol Agents
+## Current Client Methods
+
+- `health()`
+- `supply()`, `treasury()`, `burns()`, `governance_transparency()`, `transparency_agents()`
+- `list_agents()`, `agent_activity(agent_name)`, `chat(agent_name, message)`
+- `constitution()`, `governance_overview()`, `list_proposals()`, `proposal(id)`, `onchain_proposals()`
+- `create_proposal(...)`, `review_proposal(...)`, `vote(...)`
+- `create_chat_session()`, `websocket_url(session_token)`, `websocket_chat(messages)`
+- `bootstrap_admin_key(...)`, `create_api_key(...)`, `revoke_api_key(...)`
+
+---
+
+## REST Examples
+
+### Supply, Agents, and Governance
 
 ```python
-async def get_agents():
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{BASE_URL}/api/agents/registry")
-        response.raise_for_status()
-        registry = response.json()
+from purecortex_sdk import PureCortexClient
 
-        print(f"Total agents: {registry['total_agents']}")
-        for agent in registry["agents"]:
-            print(f"\n  Name: {agent['name']}")
-            print(f"  Role: {agent['role']}")
-            print(f"  Status: {agent['status']}")
-            print(f"  Tier: {agent['permission_tier']}")
-            print(f"  Capabilities: {', '.join(agent['capabilities'])}")
+with PureCortexClient() as client:
+    supply = client.supply()
+    overview = client.governance_overview()
+    agents = client.list_agents()
 
-        return registry
+    print(supply["circulating"])
+    print(overview["total_votes"])
+    print([agent["name"] for agent in agents["agents"]])
 ```
 
 ### Chat with an Agent
 
 ```python
-async def chat_with_agent(agent_name: str, message: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{BASE_URL}/api/agents/{agent_name}/chat",
-            headers={"X-API-Key": os.environ["PURECORTEX_API_KEY"]},
-            json={"message": message},
-        )
-        response.raise_for_status()
-        data = response.json()
+from purecortex_sdk import PureCortexClient
 
-        print(f"[{data['agent']}] {data['response']}")
-        return data
-
-# Usage
-await chat_with_agent("senator", "What is the current governance status?")
-await chat_with_agent("curator", "How does composability scoring work?")
+with PureCortexClient(api_key="ctx_your_key") as client:
+    senator = client.chat("senator", "What is the current governance status?")
+    curator = client.chat("curator", "How does composability scoring work?")
+    print(senator["response"])
+    print(curator["response"])
 ```
 
-### Query Treasury
+### Proposal Detail and On-Chain Governance Read
 
 ```python
-async def get_treasury():
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{BASE_URL}/api/transparency/treasury")
-        response.raise_for_status()
-        data = response.json()
+from purecortex_sdk import PureCortexClient
 
-        split = data["revenue_split"]
-        print(f"Revenue split: {split['buyback_burn_pct']}% buyback / {split['operations_pct']}% ops")
-        print(f"Total revenue collected: {data['total_revenue_collected']}")
-        return data
-```
-
-### Query Governance
-
-```python
-async def get_governance():
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{BASE_URL}/api/transparency/governance")
-        response.raise_for_status()
-        data = response.json()
-
-        print(f"Total proposals: {data['total_proposals']}")
-        print(f"Participation rate: {data['participation_rate']}%")
-        print(f"Total veCORTEX: {data['total_vecortex']}")
-        return data
+with PureCortexClient() as client:
+    proposal = client.proposal(1)
+    onchain = client.onchain_proposals()
+    print(proposal["title"])
+    print(onchain["total"])
 ```
 
 ---
@@ -124,37 +96,22 @@ Real-time bidirectional chat with PURECORTEX AI agents.
 
 ```python
 import asyncio
-import os
-import httpx
-import websockets
+from purecortex_sdk import PureCortexClient
 
-BASE_URL = "https://purecortex.ai"
 
-async def websocket_chat():
-    async with httpx.AsyncClient() as client:
-        session = await client.post(
-            f"{BASE_URL}/api/chat/session",
-            headers={"X-API-Key": os.environ["PURECORTEX_API_KEY"]},
+async def main() -> None:
+    with PureCortexClient(api_key="ctx_your_key") as client:
+        responses = await client.websocket_chat(
+            [
+                "What is the CORTEX token used for?",
+                "How does staking work?",
+            ]
         )
-        session.raise_for_status()
-        session_token = session.json()["session_token"]
+        for response in responses:
+            print(response)
 
-    uri = f"wss://purecortex.ai/ws/chat?session={session_token}"
 
-    async with websockets.connect(uri) as ws:
-        # Send a message
-        await ws.send("What is the CORTEX token used for?")
-
-        # Receive the response
-        response = await ws.recv()
-        print(f"Agent: {response}")
-
-        # Continue the conversation
-        await ws.send("How does staking work?")
-        response = await ws.recv()
-        print(f"Agent: {response}")
-
-asyncio.run(websocket_chat())
+asyncio.run(main())
 ```
 
 <Warning>
@@ -165,34 +122,24 @@ asyncio.run(websocket_chat())
 
 ```python
 import asyncio
-import os
-import httpx
 import websockets
+from purecortex_sdk import PureCortexClient
 
-BASE_URL = "https://purecortex.ai"
 
-async def interactive_chat():
-    async with httpx.AsyncClient() as client:
-        session = await client.post(
-            f"{BASE_URL}/api/chat/session",
-            headers={"X-API-Key": os.environ["PURECORTEX_API_KEY"]},
-        )
-        session.raise_for_status()
-        session_token = session.json()["session_token"]
-
-    uri = f"wss://purecortex.ai/ws/chat?session={session_token}"
+async def interactive_chat() -> None:
+    with PureCortexClient(api_key="ctx_your_key") as client:
+        session = client.create_chat_session()
+        uri = client.websocket_url(session["session_token"])
 
     async with websockets.connect(uri) as ws:
         print("Connected to PURECORTEX. Type 'quit' to exit.\n")
-
         while True:
             message = input("You: ")
             if message.lower() == "quit":
                 break
-
             await ws.send(message)
-            response = await ws.recv()
-            print(f"Agent: {response}\n")
+            print(f"Agent: {await ws.recv()}\n")
+
 
 asyncio.run(interactive_chat())
 ```

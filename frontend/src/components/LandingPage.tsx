@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { PureCortexLogo } from '@/components/Logo';
 import { CORTEX_ASSET_ID, FACTORY_APP_ID, TGE_DATE_ISO } from '@/lib/protocolConfig';
 import { motion } from 'framer-motion';
@@ -7,11 +8,9 @@ import { Shield, Cpu, Zap, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
-  const [timeLeft, setTimeStep] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [mounted, setMounted] = useState(false);
+  const [timeLeft, setTimeStep] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
 
   useEffect(() => {
-    setMounted(true);
     const launchDate = new Date(TGE_DATE_ISO).getTime();
 
     const update = () => {
@@ -44,6 +43,7 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
            <span className="text-[#007AFF]">01 Protocol</span>
            <span>02 Architecture</span>
            <span>03 Sovereign Nodes</span>
+           <Link href="/developers/access" className="hover:text-white transition-colors">04 Developer Access</Link>
         </div>
       </nav>
 
@@ -87,9 +87,9 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
             <button onClick={onEnter} className="bg-white text-black px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-black uppercase tracking-tighter text-sm flex items-center justify-center gap-3 hover:bg-gray-200 transition-all">
               Join the Vanguard <ArrowRight className="w-5 h-5" />
             </button>
-            <a href="https://x.com/purecortexai" target="_blank" rel="noopener noreferrer" className="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl border border-white/10 font-black uppercase tracking-tighter text-sm hover:bg-white/5 transition-all text-center">
-              Follow Node Intelligence
-            </a>
+            <Link href="/developers/access" className="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl border border-white/10 font-black uppercase tracking-tighter text-sm hover:bg-white/5 transition-all text-center">
+              Request Developer Access
+            </Link>
           </motion.div>
         </div>
 
@@ -115,14 +115,14 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
 
             <div className="grid grid-cols-4 gap-2 sm:gap-4">
                {[
-                 { label: 'Days', val: timeLeft.days },
-                 { label: 'Hrs', val: timeLeft.hours },
-                 { label: 'Min', val: timeLeft.minutes },
-                 { label: 'Sec', val: timeLeft.seconds }
+                 { label: 'Days', val: timeLeft?.days ?? 0 },
+                 { label: 'Hrs', val: timeLeft?.hours ?? 0 },
+                 { label: 'Min', val: timeLeft?.minutes ?? 0 },
+                 { label: 'Sec', val: timeLeft?.seconds ?? 0 }
                ].map((t, i) => (
                  <div key={i} className="text-center space-y-1 sm:space-y-2">
                     <div className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tighter tabular-nums">
-                      {mounted ? String(t.val).padStart(2, '0') : '--'}
+                      {timeLeft ? String(t.val).padStart(2, '0') : '--'}
                     </div>
                     <div className="text-[7px] sm:text-[8px] font-black text-gray-600 uppercase tracking-widest">{t.label}</div>
                  </div>

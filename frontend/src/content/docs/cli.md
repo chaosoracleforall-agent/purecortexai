@@ -1,11 +1,11 @@
 ---
 title: CLI Documentation
-description: PURECORTEX command-line interface for querying the live testnet protocol.
+description: PURECORTEX command-line interface for health, transparency, governance, agent activity, and authenticated chat workflows.
 ---
 
 # PURECORTEX CLI
 
-The PURECORTEX CLI (`pcx`) provides a lightweight command-line interface for querying protocol health, transparency, governance, and authenticated agent chat.
+The PURECORTEX CLI (`pcx`) is the operator-friendly wrapper around the same live API used by the SDKs. It is useful for smoke checks, governance inspection, agent debugging, and chat-session bootstrap without writing custom scripts.
 
 ## Installation
 
@@ -16,7 +16,7 @@ The PURECORTEX CLI (`pcx`) provides a lightweight command-line interface for que
 ```bash
 brew install pipx
 pipx ensurepath
-pipx install git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli
+pipx install "git+https://github.com/chaosoracleforall-agent/purecortexai.git#subdirectory=cli"
 ```
 
 ### Option B: From source
@@ -47,6 +47,10 @@ Optional environment variables:
 export PURECORTEX_API_URL=https://purecortex.ai
 export PURECORTEX_API_KEY=ctx_your_key
 ```
+
+`PURECORTEX_API_KEY` is required only for authenticated commands like `pcx chat` and `pcx session`.
+
+## Health & Protocol
 
 ### `status`
 
@@ -115,6 +119,20 @@ pcx agents
 
 ---
 
+### `activity`
+
+Show recent activity for one protocol agent.
+
+```bash
+pcx activity senator
+pcx activity curator
+pcx activity social
+```
+
+---
+
+## Authenticated Chat
+
 ### `chat`
 
 Chat with a protocol agent over the authenticated REST API.
@@ -122,6 +140,31 @@ Chat with a protocol agent over the authenticated REST API.
 ```bash
 export PURECORTEX_API_KEY=ctx_your_key
 pcx chat senator
+```
+
+---
+
+### `session`
+
+Create a short-lived WebSocket session token from the current API key.
+
+```bash
+export PURECORTEX_API_KEY=ctx_your_key
+pcx session
+```
+
+This is useful when you want to debug the raw WebSocket flow manually or hand a short-lived token to a separate client.
+
+---
+
+## Governance
+
+### `overview`
+
+Show high-level governance counters.
+
+```bash
+pcx overview
 ```
 
 ---
@@ -136,6 +179,16 @@ pcx proposals
 
 ---
 
+### `proposal`
+
+Show the full details for a single proposal.
+
+```bash
+pcx proposal 3
+```
+
+---
+
 ### `constitution`
 
 Display the current constitution preamble.
@@ -146,8 +199,27 @@ pcx constitution
 
 ---
 
+## Current Commands
+
+- `pcx status`
+- `pcx info`
+- `pcx supply`
+- `pcx treasury`
+- `pcx burns`
+- `pcx agents`
+- `pcx activity <agent>`
+- `pcx chat <agent>`
+- `pcx session`
+- `pcx overview`
+- `pcx proposals`
+- `pcx proposal <id>`
+- `pcx constitution`
+
+---
+
 ## Notes
 
 - Read-only commands use public endpoints.
-- `pcx chat` requires `PURECORTEX_API_KEY` because `POST /api/agents/{agent_name}/chat` is authenticated.
+- `pcx chat` and `pcx session` require `PURECORTEX_API_KEY`.
 - The CLI reads canonical testnet identifiers from `deployment.testnet.json` when available.
+- The CLI package now includes its own `README.md`, which makes editable installs and future packaging much more reliable.

@@ -40,12 +40,19 @@ This roadmap reflects the stack that is actually in the repository today, not th
 2. Keep tracked docs aligned with the active testnet deployment.
 3. Continue cleaning up old planning-era references and speculative architecture docs.
 
-### Phase B: Product Depth
+### Phase B: Developer Access Control Plane
+1. Introduce managed PostgreSQL as the source of truth for developer access requests, issued keys, allowlists, and audit logs.
+2. Add Google SSO-protected owner admin access for `chaosoracleforall@gmail.com` using an edge auth boundary compatible with the current VM stack.
+3. Replace the current coarse Redis-only API key model with enterprise-grade key lifecycle management, one-time reveal, scopes, and IP allowlist enforcement.
+4. Keep public reads public while unifying API, CLI, and SDK access under one key model.
+5. Treat hosted MCP auth as a later transport phase rather than overloading the current local stdio MCP server.
+
+### Phase C: Product Depth
 1. Expand marketplace detail flows and test coverage around live assets.
 2. Mature governance from API-backed workflows toward fully on-chain behavior when the contracts and UX are ready.
 3. Clarify MCP transport strategy and publish a stable integration story if remote access becomes supported.
 
-### Phase C: Infrastructure Evolution
+### Phase D: Infrastructure Evolution
 1. Decide whether to stay on the VM deployment model long term or intentionally redesign for another hosting target.
 2. Introduce stronger operational monitoring and rollback procedures around the canonical testnet stack.
 3. Evaluate KMS-backed signing where it materially improves the current deployment without overcomplicating testnet operations.

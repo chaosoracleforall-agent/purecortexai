@@ -112,12 +112,14 @@ export default function Chat() {
   const [statusMessage, setStatusMessage] = useState(() => readStoredApiKey() ? 'Restoring saved chat session...' : 'Paste an API key to start a chat session.');
   const [authError, setAuthError] = useState<string | null>(null);
   const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
+  const [reconnectAttemptCount, setReconnectAttemptCount] = useState(0);
   const ws = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttempts = useRef(0);
   const autoConnectAttempted = useRef(false);
   const userDisconnected = useRef(false);
+  const connectWebSocketRef = useRef<((key: string, mode?: ConnectMode) => Promise<void>) | null>(null);
 
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => {
@@ -172,6 +174,7 @@ export default function Chat() {
 
       socket.onopen = () => {
         reconnectAttempts.current = 0;
+        setReconnectAttemptCount(0);
         setIsConnected(true);
         setConnectionState('connected');
         setStatusMessage('Secure chat session active.');
@@ -187,6 +190,7 @@ export default function Chat() {
         }
 
         if (event.code === 4001) {
+          setReconnectAttemptCount(0);
           setConnectionState('error');
           setStatusMessage('Chat authentication failed.');
           setAuthError(event.reason || 'Invalid or expired chat session.');
@@ -194,6 +198,7 @@ export default function Chat() {
         }
 
         if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+          setReconnectAttemptCount(reconnectAttempts.current);
           setConnectionState('error');
           setStatusMessage('Reconnect limit reached.');
           setAuthError(event.reason || 'Unable to reconnect to PURECORTEX chat.');
@@ -202,11 +207,12 @@ export default function Chat() {
 
         const nextAttempt = reconnectAttempts.current + 1;
         reconnectAttempts.current = nextAttempt;
+        setReconnectAttemptCount(nextAttempt);
         const delay = Math.min(1000 * Math.pow(2, nextAttempt - 1), 15000);
         setConnectionState('reconnecting');
         setStatusMessage(`Connection lost. Reconnecting in ${Math.ceil(delay / 1000)}s...`);
         reconnectTimeout.current = setTimeout(() => {
-          void connectWebSocket(key, 'reconnect');
+          void connectWebSocketRef.current?.(key, 'reconnect');
         }, delay);
       };
 
@@ -228,6 +234,7 @@ export default function Chat() {
       setStatusMessage(authFailure ? 'API key required to open chat.' : 'Unable to start chat session.');
       setAuthError(message);
       setSessionExpiresAt(null);
+      setReconnectAttemptCount(0);
 
       if (authFailure) {
         clearStoredApiKey();
@@ -237,9 +244,18 @@ export default function Chat() {
   }, [addMessage]);
 
   useEffect(() => {
+    connectWebSocketRef.current = connectWebSocket;
+    return () => {
+      connectWebSocketRef.current = null;
+    };
+  }, [connectWebSocket]);
+
+  useEffect(() => {
     if (apiKey && !autoConnectAttempted.current) {
       autoConnectAttempted.current = true;
-      void connectWebSocket(apiKey, 'restore');
+      queueMicrotask(() => {
+        void connectWebSocket(apiKey, 'restore');
+      });
     }
   }, [apiKey, connectWebSocket]);
 
@@ -274,6 +290,7 @@ export default function Chat() {
   const handleDisconnect = useCallback(() => {
     userDisconnected.current = true;
     reconnectAttempts.current = 0;
+    setReconnectAttemptCount(0);
 
     if (reconnectTimeout.current) {
       clearTimeout(reconnectTimeout.current);
@@ -519,7 +536,7 @@ export default function Chat() {
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
           <span>{formatExpiry(sessionExpiresAt)}</span>
-          {reconnectAttempts.current > 0 && <span>Retry {reconnectAttempts.current}/{MAX_RECONNECT_ATTEMPTS}</span>}
+          {reconnectAttemptCount > 0 && <span>Retry {reconnectAttemptCount}/{MAX_RECONNECT_ATTEMPTS}</span>}
         </div>
       </div>
     </div>

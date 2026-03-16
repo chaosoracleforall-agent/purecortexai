@@ -6,7 +6,7 @@ icon: "wrench"
 
 # Available Tools
 
-The current PURECORTEX MCP server exposes one tool. All tool calls are validated by the `PermissionProxy` before execution -- any action that exceeds the server's permission tier is blocked and returns a security error.
+The current PURECORTEX MCP server exposes one consensus tool plus several practical read-only tools backed by the public API. All tool calls are validated by the `PermissionProxy` before execution. Any action that exceeds the server's permission tier is blocked and returns a security error.
 
 <Warning>
   The MCP server runs at the `READ_ONLY` permission tier by default. Tool responses that would require elevated permissions (e.g., triggering an on-chain swap) are rejected by the sandbox.
@@ -24,20 +24,20 @@ Submit a prompt for parallel inference across Claude Opus 4.6, Gemini 2.5 Pro, a
 
 ### Response
 
+<ResponseField name="ok" type="boolean">
+  `true` when the request completed successfully.
+</ResponseField>
+
 <ResponseField name="action" type="string">
-  The consensus action type (e.g., `REPLY`, `RESPOND`, `NONE`).
+  The validated consensus action type, usually `RESPOND` or `REPLY`.
 </ResponseField>
 
 <ResponseField name="message" type="string">
-  The consensus response content. Only returned when 2-of-3 majority agreement is reached (strict consensus) or when at least one model produces a valid low-risk response (soft consensus).
+  The consensus response content.
 </ResponseField>
 
-<ResponseField name="consensus" type="boolean">
-  Whether tri-brain consensus was reached. `true` if 2-of-3 majority agreement was reached or soft consensus was accepted. `false` if blocked by the security proxy.
-</ResponseField>
-
-<ResponseField name="models" type="array">
-  Array of model identifiers that participated in the consensus evaluation: `["claude-opus-4-6", "gemini-2.5-pro", "gpt-5"]`.
+<ResponseField name="decision" type="object">
+  The raw validated decision object returned by the orchestrator.
 </ResponseField>
 
 ### Example
@@ -75,6 +75,70 @@ const result = await client.callTool({
 ```
 
 </CodeGroup>
+
+---
+
+## Public Read-Only Tools
+
+These tools are backed by the live public API and are intended for dashboards, IDE assistants, autonomous agents, and protocol observers that need structured reads without writing their own HTTP client layer.
+
+### `get_protocol_health`
+
+Return the current health payload from `GET /health`.
+
+### `get_agent_registry`
+
+Return the public registry of protocol agents from `GET /api/agents/registry`.
+
+### `get_agent_activity`
+
+Fetch recent activity for a single agent.
+
+<ParamField body="agent_name" type="string" required>
+  One of `senator`, `curator`, or `social`.
+</ParamField>
+
+### `get_governance_overview`
+
+Fetch the governance counters from `GET /api/governance/overview`.
+
+### `list_governance_proposals`
+
+Fetch the proposal list and optionally trim it to the newest `N` entries.
+
+<ParamField body="limit" type="integer">
+  Maximum number of proposals to return. Defaults to `10`.
+</ParamField>
+
+### `get_governance_proposal`
+
+Fetch a single proposal by numeric identifier.
+
+<ParamField body="proposal_id" type="integer" required>
+  Governance proposal ID.
+</ParamField>
+
+### `get_transparency_snapshot`
+
+Return a bundled snapshot of supply, treasury, burns, and governance transparency data.
+
+### Example
+
+```python Python
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+params = StdioServerParameters(command="python", args=["mcp_server.py"])
+
+async with stdio_client(params) as (read, write):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+
+        health = await session.call_tool("get_protocol_health", {})
+        proposals = await session.call_tool("list_governance_proposals", {"limit": 5})
+        print(health.content[0].text)
+        print(proposals.content[0].text)
+```
 
 ---
 

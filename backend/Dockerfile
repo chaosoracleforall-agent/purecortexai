@@ -20,8 +20,8 @@ RUN apt-get purge -y --auto-remove build-essential && rm -rf /var/lib/apt/lists/
 # Copy backend code
 COPY . .
 
-# Create non-root user
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
+# Create non-root user with stable UID/GID so shared Unix sockets work across containers
+RUN addgroup --system --gid 10001 appgroup && adduser --system --uid 10001 --ingroup appgroup appuser \
     && chown -R appuser:appgroup /app
 USER appuser
 

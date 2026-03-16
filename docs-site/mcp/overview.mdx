@@ -8,7 +8,7 @@ icon: "plug"
 
 The **Model Context Protocol** is an open standard for connecting AI models to external tools, data sources, and services. It defines a structured JSON-RPC interface that lets any MCP-compatible client discover and invoke tools exposed by an MCP server -- without custom API integration.
 
-PURECORTEX implements an MCP server that currently exposes a local decision-node tool for tri-brain consensus. External AI agents and IDE extensions can invoke it through a standardized MCP interface.
+PURECORTEX implements an MCP server that exposes a local decision-node tool for tri-brain consensus plus a set of public read-only tools for protocol health, governance, transparency, and agent discovery. External AI agents and IDE extensions can invoke them through a standardized MCP interface.
 
 <Note>
   PURECORTEX implements **MCP 1.0** using the [FastMCP](https://github.com/jlowin/fastmcp) Python framework.
@@ -30,6 +30,16 @@ External Agent ──► MCP Client ──► PURECORTEX MCP Server
 ```
 
 Every tool invocation passes through the `PermissionProxy` before a response is returned. The MCP server runs at the `READ_ONLY` permission tier by default, meaning it can respond to queries but cannot trigger on-chain actions.
+
+## Current Tool Categories
+
+| Category | Tools |
+|----------|-------|
+| Consensus | `get_tri_brain_consensus` |
+| Health | `get_protocol_health` |
+| Agents | `get_agent_registry`, `get_agent_activity` |
+| Governance | `get_governance_overview`, `list_governance_proposals`, `get_governance_proposal` |
+| Transparency | `get_transparency_snapshot` |
 
 ## Transport
 

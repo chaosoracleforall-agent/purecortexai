@@ -1,0 +1,26 @@
+{
+  "name": "@purecortex/sdk",
+  "version": "0.1.0",
+  "description": "Official JavaScript/TypeScript SDK for the PURECORTEX API and chat workflow.",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "homepage": "https://purecortex.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chaosoracleforall-agent/purecortexai.git"
+  }
+}

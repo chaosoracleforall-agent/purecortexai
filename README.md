@@ -46,6 +46,7 @@ PURECORTEX currently deploys to the `purecortex-master` GCP VM using the root `d
 
 ## Key Docs
 - [DEPLOYMENT.md](./DEPLOYMENT.md)
+- [docs/ENTERPRISE_DEVELOPER_ACCESS_SPEC.md](./docs/ENTERPRISE_DEVELOPER_ACCESS_SPEC.md)
 - [docs/API.md](./docs/API.md)
 - [docs/CLI.md](./docs/CLI.md)
 - [docs/MCP.md](./docs/MCP.md)

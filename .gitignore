@@ -12,6 +12,8 @@ venv/
 *.pem
 *.key
 *.p12
+.signer-secrets/
+.runtime/
 
 # IDE
 .vscode/

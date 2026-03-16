@@ -11,9 +11,23 @@ services:
       - /tmp:size=64M
     environment:
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - PURECORTEX_DATABASE_URL=${PURECORTEX_DATABASE_URL}
+      - PURECORTEX_SIGNER_SOCKET_PATH=/run/purecortex/socket/signer.sock
+      - PURECORTEX_SIGNER_SHARED_TOKEN=${PURECORTEX_SIGNER_SHARED_TOKEN}
+      - PURECORTEX_SIGNER_REQUEST_TIMEOUT_SECONDS=30
+      - PURECORTEX_INTERNAL_ADMIN_TOKEN=${PURECORTEX_INTERNAL_ADMIN_TOKEN}
+      - PURECORTEX_KEY_HMAC_SECRET=${PURECORTEX_KEY_HMAC_SECRET}
+      - PURECORTEX_ADMIN_ALLOWED_EMAILS=${PURECORTEX_ADMIN_ALLOWED_EMAILS}
+      - PURECORTEX_TRUST_PROXY_HEADERS=${PURECORTEX_TRUST_PROXY_HEADERS}
+      - PURECORTEX_TRUSTED_PROXY_CIDRS=${PURECORTEX_TRUSTED_PROXY_CIDRS}
+      - PURECORTEX_GOOGLE_OAUTH_CLIENT_ID=${PURECORTEX_GOOGLE_OAUTH_CLIENT_ID}
+      - PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET=${PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET}
+      - PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET=${PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET}
       - CLAUDE_API_KEY=${CLAUDE_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - OPENAI_FALLBACK_MODEL=${OPENAI_FALLBACK_MODEL}
       - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN}
       - TWITTER_API_KEY=${TWITTER_API_KEY}
       - TWITTER_API_SECRET=${TWITTER_API_SECRET}
@@ -25,7 +39,10 @@ services:
       - SANDBOX_ESCALATION_TOKEN=${SANDBOX_ESCALATION_TOKEN}
     volumes:
       - ./docs:/app/docs:ro
+      - signer_socket:/run/purecortex/socket
     depends_on:
+      signer:
+        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -52,6 +69,49 @@ services:
       - internal
       - proxy
 
+  signer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.signer
+    network_mode: "none"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64M
+    environment:
+      - PURECORTEX_SECRET_DIR=/run/purecortex/secrets
+      - PURECORTEX_SIGNER_SOCKET_PATH=/run/purecortex/socket/signer.sock
+      - PURECORTEX_SIGNER_SOCKET_MODE=666
+      - PURECORTEX_SIGNER_SHARED_TOKEN=${PURECORTEX_SIGNER_SHARED_TOKEN}
+      - PURECORTEX_SIGNER_ALLOWED_IDENTITIES=agent,senator,curator,social,vm
+      - PURECORTEX_SIGNER_REQUEST_TIMEOUT_SECONDS=30
+    volumes:
+      - signer_socket:/run/purecortex/socket
+      - ./.signer-secrets:/run/purecortex/secrets:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,sys; sys.exit(0 if os.path.exists('/run/purecortex/socket/signer.sock') else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   frontend:
     build: ./frontend
     expose:
@@ -59,6 +119,9 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=https://purecortex.ai
       - NEXT_PUBLIC_WS_URL=wss://purecortex.ai/ws/chat
+      - PURECORTEX_INTERNAL_ADMIN_TOKEN=${PURECORTEX_INTERNAL_ADMIN_TOKEN}
+      - PURECORTEX_INTERNAL_BACKEND_URL=${PURECORTEX_INTERNAL_BACKEND_URL}
+      - PURECORTEX_ADMIN_ALLOWED_EMAILS=${PURECORTEX_ADMIN_ALLOWED_EMAILS}
     depends_on:
       - backend
     restart: unless-stopped
@@ -120,6 +183,94 @@ services:
     networks:
       - internal
 
+  cloudsql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.21.1
+    depends_on:
+      - backend
+    command:
+      - --address=127.0.0.1
+      - --port=5432
+      - --structured-logs
+      - ${PURECORTEX_CLOUD_SQL_CONNECTION_NAME}
+    network_mode: "service:backend"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:16-alpine
+    expose:
+      - "5432"
+    environment:
+      - POSTGRES_DB=purecortex
+      - POSTGRES_USER=purecortex
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U purecortex -d purecortex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.14.3
+    expose:
+      - "4180"
+    environment:
+      - OAUTH2_PROXY_PROVIDER=google
+      - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
+      - OAUTH2_PROXY_REDIRECT_URL=https://purecortex.ai/oauth2/callback
+      - OAUTH2_PROXY_UPSTREAMS=static://202
+      - OAUTH2_PROXY_REVERSE_PROXY=true
+      - OAUTH2_PROXY_SET_XAUTHREQUEST=true
+      - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
+      - OAUTH2_PROXY_EMAIL_DOMAINS=*
+      - OAUTH2_PROXY_SCOPE=openid email profile
+      - OAUTH2_PROXY_COOKIE_SECURE=true
+      - OAUTH2_PROXY_COOKIE_HTTPONLY=true
+      - OAUTH2_PROXY_COOKIE_SAMESITE=lax
+      - OAUTH2_PROXY_COOKIE_EXPIRE=8h
+      - OAUTH2_PROXY_COOKIE_REFRESH=1h
+      - OAUTH2_PROXY_AUTHENTICATED_EMAILS_FILE=/etc/oauth2-proxy/authenticated-emails.txt
+      - OAUTH2_PROXY_CLIENT_ID=${PURECORTEX_GOOGLE_OAUTH_CLIENT_ID}
+      - OAUTH2_PROXY_CLIENT_SECRET=${PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET}
+      - OAUTH2_PROXY_COOKIE_SECRET=${PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET}
+    volumes:
+      - ./.runtime/oauth2-proxy-authenticated-emails.txt:/etc/oauth2-proxy/authenticated-emails.txt:ro
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - proxy
+
   nginx:
     image: nginx:1.27-alpine
     ports:
@@ -131,6 +282,7 @@ services:
     depends_on:
       - frontend
       - backend
+      - oauth2-proxy
     restart: unless-stopped
     deploy:
       resources:
@@ -157,4 +309,8 @@ networks:
 
 volumes:
   redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+  signer_socket:
     driver: local

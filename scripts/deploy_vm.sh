@@ -10,7 +10,7 @@ Supported PURECORTEX deployment flow for the GCP VM.
 Options:
   --pull        Update the checked out branch with git pull --ff-only before deploy.
   --skip-build  Reuse existing images and skip docker compose build.
-  --tail-logs   Follow backend and frontend logs after deployment succeeds.
+  --tail-logs   Follow signer, backend, and frontend logs after deployment succeeds.
   -h, --help    Show this help message.
 EOF
 }
@@ -28,6 +28,25 @@ require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     fail "Missing required command: $1"
   fi
+}
+
+read_env_key() {
+  python3 - "$ENV_FILE" "$1" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+target = sys.argv[2]
+
+for line in path.read_text().splitlines():
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or "=" not in line:
+        continue
+    key, value = line.split("=", 1)
+    if key == target:
+        print(value)
+        break
+PY
 }
 
 resolve_compose() {
@@ -69,6 +88,66 @@ PY
   done
 
   return 1
+}
+
+wait_for_signer_health() {
+  local attempt
+  for attempt in $(seq 1 20); do
+    if "${COMPOSE[@]}" exec -T signer python - <<'PY' >/dev/null 2>&1
+import os
+import sys
+
+socket_path = os.environ.get("PURECORTEX_SIGNER_SOCKET_PATH", "/run/purecortex/socket/signer.sock")
+sys.exit(0 if os.path.exists(socket_path) else 1)
+PY
+    then
+      log "Signer socket check passed."
+      return 0
+    fi
+
+    sleep 2
+  done
+
+  return 1
+}
+
+wait_for_database_health() {
+  if [[ -n "${CLOUD_SQL_CONNECTION_NAME}" ]]; then
+    local attempt
+    for attempt in $(seq 1 20); do
+      if "${COMPOSE[@]}" exec -T backend python - <<'PY' >/dev/null 2>&1
+import socket
+
+with socket.create_connection(("127.0.0.1", 5432), timeout=5):
+    pass
+PY
+      then
+        log "Cloud SQL proxy connectivity check passed."
+        return 0
+      fi
+
+      sleep 3
+    done
+
+    return 1
+  fi
+
+  local attempt
+  for attempt in $(seq 1 20); do
+    if "${COMPOSE[@]}" exec -T postgres pg_isready -U purecortex -d purecortex >/dev/null 2>&1; then
+      log "Postgres health check passed."
+      return 0
+    fi
+
+    sleep 2
+  done
+
+  return 1
+}
+
+run_database_migrations() {
+  log "Applying Alembic migrations..."
+  "${COMPOSE[@]}" exec -T backend alembic upgrade head
 }
 
 PULL_CHANGES=false
@@ -116,6 +195,11 @@ fi
 
 cd "${ROOT_DIR}"
 
+require_cmd python3
+python3 scripts/sync_runtime_env.py
+
+CLOUD_SQL_CONNECTION_NAME="$(read_env_key PURECORTEX_CLOUD_SQL_CONNECTION_NAME)"
+
 if [[ "${PULL_CHANGES}" == true ]]; then
   if ! git_tree_clean; then
     fail "Git working tree is not clean. Commit or stash changes before running --pull."
@@ -134,10 +218,51 @@ if [[ "${SKIP_BUILD}" == false ]]; then
 fi
 
 log "Starting services..."
-"${COMPOSE[@]}" up -d --remove-orphans
+SERVICES=(redis signer backend frontend oauth2-proxy nginx)
+if [[ -n "${CLOUD_SQL_CONNECTION_NAME}" ]]; then
+  SERVICES=(cloudsql-proxy "${SERVICES[@]}")
+else
+  SERVICES=(postgres "${SERVICES[@]}")
+fi
+"${COMPOSE[@]}" up -d --remove-orphans "${SERVICES[@]}"
+
+if [[ -n "${CLOUD_SQL_CONNECTION_NAME}" ]]; then
+  "${COMPOSE[@]}" stop postgres >/dev/null 2>&1 || true
+else
+  "${COMPOSE[@]}" stop cloudsql-proxy >/dev/null 2>&1 || true
+fi
 
 log "Current service status:"
 "${COMPOSE[@]}" ps
+
+if [[ -n "${CLOUD_SQL_CONNECTION_NAME}" ]]; then
+  log "Waiting for Cloud SQL proxy connectivity..."
+else
+  log "Waiting for Postgres health check..."
+fi
+if ! wait_for_database_health; then
+  if [[ -n "${CLOUD_SQL_CONNECTION_NAME}" ]]; then
+    log "Recent cloudsql-proxy logs:"
+    "${COMPOSE[@]}" logs --tail=80 cloudsql-proxy || true
+    fail "Cloud SQL proxy did not become ready after deployment."
+  fi
+  log "Recent postgres logs:"
+  "${COMPOSE[@]}" logs --tail=80 postgres || true
+  fail "Postgres did not become ready after deployment."
+fi
+
+log "Waiting for isolated signer socket..."
+if ! wait_for_signer_health; then
+  log "Recent signer logs:"
+  "${COMPOSE[@]}" logs --tail=80 signer || true
+  fail "Signer socket did not become ready after deployment."
+fi
+
+if ! run_database_migrations; then
+  log "Recent backend logs:"
+  "${COMPOSE[@]}" logs --tail=80 backend || true
+  fail "Database migrations failed after deployment."
+fi
 
 log "Waiting for backend health check..."
 if ! wait_for_backend_health; then
@@ -147,6 +272,6 @@ if ! wait_for_backend_health; then
 fi
 
 if [[ "${TAIL_LOGS}" == true ]]; then
-  log "Tailing backend/frontend logs. Press Ctrl+C to stop."
-  "${COMPOSE[@]}" logs -f backend frontend
+  log "Tailing signer/backend/frontend logs. Press Ctrl+C to stop."
+  "${COMPOSE[@]}" logs -f signer backend frontend
 fi

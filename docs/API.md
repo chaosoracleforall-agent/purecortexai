@@ -1,6 +1,12 @@
 # PURECORTEX API Documentation
 
-The PURECORTEX API exposes the current testnet application surface: health, transparency, governance, agent registry, authenticated chat bootstrap, and agent chat.
+The PURECORTEX API exposes the current testnet application surface: health, transparency, governance, agent registry, authenticated chat bootstrap, authenticated agent chat, and WebSocket chat.
+
+## Recommended Clients
+
+- Python SDK: `pip install ./sdk/python`
+- TypeScript SDK: `npm install ./sdk/typescript`
+- CLI: `pip install ./cli`
 
 ## Base URL
 `https://purecortex.ai`
@@ -37,11 +43,12 @@ Example response:
 - `GET /api/governance/constitution`
 - `GET /api/governance/overview`
 - `GET /api/governance/proposals`
+- `GET /api/governance/proposals/{proposal_id}`
+- `GET /api/governance/onchain`
 
 ### Agent Registry
 - `GET /api/agents/registry`
-- `GET /api/agents/senator/activity`
-- `GET /api/agents/curator/reviews`
+- `GET /api/agents/{agent_name}/activity`
 
 ## Authenticated Endpoints
 
@@ -72,3 +79,4 @@ WebSocket chat requires a short-lived session token minted by `POST /api/chat/se
 - Protected REST endpoints require `X-API-Key`.
 - Auth fails closed when the API key service is unavailable.
 - WebSocket chat requires a short-lived session token derived from a valid API key.
+- Supported agent names are `senator`, `curator`, and `social`.

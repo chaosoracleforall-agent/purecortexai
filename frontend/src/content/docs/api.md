@@ -1,11 +1,18 @@
 ---
 title: API Documentation
-description: PURECORTEX REST and WebSocket API reference for interacting with sovereign AI agents on Algorand.
+description: PURECORTEX REST and WebSocket API reference, including auth flows, endpoint families, and official SDK usage.
 ---
 
 # PURECORTEX API Documentation
 
-The PURECORTEX API provides high-performance, asynchronous endpoints for interacting with sovereign AI agents and the Algorand blockchain.
+The PURECORTEX API exposes four main surfaces:
+
+- protocol health
+- public transparency and governance reads
+- authenticated agent chat
+- short-lived WebSocket chat sessions
+
+The official Python and TypeScript SDKs in this repository wrap these endpoints directly, but every route can also be called over raw HTTPS.
 
 ## Base URL
 
@@ -13,21 +20,34 @@ The PURECORTEX API provides high-performance, asynchronous endpoints for interac
 
 ## Authentication
 
-Read-only transparency and governance endpoints are publicly accessible. Protected REST endpoints require `X-API-Key`, and WebSocket chat requires a short-lived session token created through `POST /api/chat/session`.
+| Surface | Auth |
+|--------|------|
+| `GET /health` | Public |
+| Transparency reads | Public |
+| Governance reads | Public |
+| Agent registry and activity | Public |
+| Agent chat | `X-API-Key` required |
+| WebSocket chat | `POST /api/chat/session` first, then `?session=...` |
+| Admin key management | bootstrap token or admin credentials |
 
 ---
 
-## Endpoints
+## Recommended Clients
 
-### Health Check
+- Python: `pip install ./sdk/python`
+- TypeScript: `npm install ./sdk/typescript`
+- CLI: `pip install ./cli`
 
-```
-GET /health
-```
+If you prefer raw HTTP, the examples below map directly to the live endpoints.
 
-Returns the operational status of the API and Tri-Brain orchestrator.
+## Endpoint Families
 
-**Response:**
+### Health
+
+- `GET /health`
+
+Returns:
+
 ```json
 {
   "status": "ok",
@@ -40,142 +60,146 @@ Returns the operational status of the API and Tri-Brain orchestrator.
 }
 ```
 
----
+### Transparency
 
-### Neural Link (WebSocket)
+- `GET /api/transparency/supply`
+- `GET /api/transparency/treasury`
+- `GET /api/transparency/burns`
+- `GET /api/transparency/governance`
+- `GET /api/transparency/agents`
 
-```
-WS /ws/chat
-```
+Typical use cases:
 
-Establish a real-time bi-directional link with the PURECORTEX Tri-Brain consensus engine.
+- supply dashboards
+- treasury reporting
+- burn-history displays
+- governance stats
+- live agent ASA discovery from the Algorand indexer
 
-- **Protocol:** Message-based string exchange
-- **Security:** Guarded by XML structural guardrails and an authenticated chat session
-- **Consensus:** High-risk actions use 2-of-3 majority across Claude Opus 4.6, Gemini 2.5 Pro, and GPT-5
+### Agents
 
-**Usage:**
-```javascript
-const session = await fetch('https://purecortex.ai/api/chat/session', {
-  method: 'POST',
-  headers: { 'X-API-Key': process.env.PURECORTEX_API_KEY! },
-}).then((r) => r.json());
+- `GET /api/agents/registry`
+- `GET /api/agents/{agent_name}/activity`
+- `POST /api/agents/{agent_name}/chat`
 
-const ws = new WebSocket(`wss://purecortex.ai/ws/chat?session=${session.session_token}`);
-```
+Supported `agent_name` values:
 
----
+- `senator`
+- `curator`
+- `social`
 
-### Transparency — Supply Data
+### Governance
 
-```
-GET /api/transparency/supply
-```
+- `GET /api/governance/constitution`
+- `GET /api/governance/overview`
+- `GET /api/governance/proposals`
+- `GET /api/governance/proposals/{proposal_id}`
+- `GET /api/governance/onchain`
+- `POST /api/governance/proposals`
+- `POST /api/governance/proposals/{proposal_id}/review`
+- `POST /api/governance/proposals/{proposal_id}/vote`
 
-Returns the current token supply breakdown, including circulating supply, burned tokens, and vesting progress.
+### Chat Session Bootstrap
 
-**Response:**
+- `POST /api/chat/session`
+
+Response:
+
 ```json
 {
-  "total_supply": 10000000000000000,
-  "circulating_supply": 3100000000000000,
-  "burned": 0,
-  "vesting": {
-    "creator_total": 1000000000000000,
-    "creator_released": 100000000000000,
-    "creator_remaining": 900000000000000,
-    "tge_date": "2026-03-31",
-    "vesting_end_date": "2026-09-27"
-  }
+  "session_token": "cxs_...",
+  "expires_at": "2026-03-15T20:30:00+00:00",
+  "ttl_seconds": 900,
+  "owner": "example-user",
+  "tier": "free"
 }
 ```
 
----
+### WebSocket Chat
 
-### Transparency — Treasury
+- `WS /ws/chat?session=<token>`
 
-```
-GET /api/transparency/treasury
-```
+The socket accepts plain text messages and returns plain text responses. Messages longer than `4096` characters are rejected, and the connection is rate limited server-side.
 
-Returns Assistance Fund and Operations Account balances with recent transactions.
+## Typical Chat Flow
 
----
-
-### Transparency — Burn History
-
-```
-GET /api/transparency/burns
+```text
+1. Create or load an API key
+2. POST /api/chat/session with X-API-Key
+3. Connect to wss://purecortex.ai/ws/chat?session=...
+4. Send text messages
+5. Read text responses
 ```
 
-Returns a paginated list of buyback-burn transactions.
+## Examples
 
-**Query Parameters:**
-- `limit` (default: 50) — Number of results
-- `offset` (default: 0) — Pagination offset
+### Python SDK
 
----
+```python
+from purecortex_sdk import PureCortexClient
 
-### Transparency — Agents
+with PureCortexClient(api_key="ctx_your_key") as client:
+    session = client.create_chat_session()
+    print(session["session_token"])
 
-```
-GET /api/transparency/agents
-```
-
-Returns the registry of all agents deployed through the AgentFactory, including on-chain metrics.
-
----
-
-### Agent Registry
-
-```
-GET /api/agents/registry
+    reply = client.chat("senator", "Summarize the governance system.")
+    print(reply["response"])
 ```
 
-Returns the registered protocol agents and their capabilities.
+### TypeScript SDK
 
-### Agent Chat
+```typescript
+import { PureCortexClient } from "@purecortex/sdk";
 
+const client = new PureCortexClient({ apiKey: "ctx_your_key" });
+const supply = await client.supply();
+console.log(supply.total_supply);
+
+const session = await client.createChatSession();
+const socket = await client.connectChat({ sessionToken: session.session_token });
 ```
-POST /api/agents/{agent_name}/chat
+
+### Raw HTTP
+
+```bash
+curl https://purecortex.ai/health
+
+curl https://purecortex.ai/api/agents/registry
+
+curl -X POST https://purecortex.ai/api/chat/session \
+  -H "X-API-Key: ctx_your_key"
 ```
-
-Send a message to a specific protocol agent. Requires `X-API-Key`.
-
----
 
 ## Rate Limits
 
-| Endpoint | Limit |
-|----------|-------|
-| REST endpoints | 60 requests/minute |
-| WebSocket messages | 10 messages/minute |
-| Transparency endpoints | 120 requests/minute |
+| Channel | Limit |
+|--------|-------|
+| REST endpoints | `60` requests/minute |
+| WebSocket messages | `10` messages/minute |
+| Transparency endpoints | `120` requests/minute |
 
 ---
 
 ## Error Codes
 
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 400 | Bad request — invalid parameters |
-| 401 | Unauthorized — missing or invalid API key or chat session |
-| 404 | Resource not found |
-| 429 | Rate limit exceeded |
-| 500 | Internal server error |
-| 503 | Orchestrator unavailable |
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `400` | Invalid payload or unsupported state transition |
+| `401` | Missing or invalid API key or chat session |
+| `403` | Invalid bootstrap token or admin credentials |
+| `404` | Resource not found |
+| `409` | Duplicate vote or conflicting bootstrap action |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+| `503` | Dependent service unavailable |
 
 ---
 
-## SDKs
+## On-Chain Boundary
 
-Official SDKs are under development. In the meantime, use `algosdk` (JavaScript/Python) for direct contract interaction and standard HTTP/WebSocket clients for API access.
+The HTTP API is not the same thing as direct Algorand contract integration. Use `algosdk` when you need on-chain state, ARC artifacts, or indexer-native workflows:
 
-```bash
-npm install algosdk
-```
-
-```python
-pip install py-algorand-sdk
-```
+- AgentFactory App ID: `757172168`
+- CORTEX Asset ID: `757172171`
+- Indexer URL: `https://testnet-idx.algonode.cloud`

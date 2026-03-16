@@ -24,11 +24,15 @@ from src.api.governance import router as governance_router
 from src.api.agents_api import router as agents_router
 from src.api.chat import router as chat_router
 from src.api.admin import router as admin_router, set_api_key_manager
+from src.api.developer_access import router as developer_access_router
+from src.api.internal_admin import router as internal_admin_router
 
 # Auth
 from src.api.auth import APIKeyMiddleware
+from src.core.settings import get_settings
 from src.services.api_keys import APIKeyManager
 from src.services.chat_sessions import ChatSessionManager
+from src.services.request_ip import resolve_client_ip
 
 # Services
 from src.services.cache import get_cache_service
@@ -157,7 +161,14 @@ RATE_LIMIT_MAX = 60       # requests per window
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.headers.get("x-real-ip", request.client.host if request.client else "unknown")
+    settings = get_settings()
+    client_ip = resolve_client_ip(
+        request.headers,
+        request.client.host if request.client else None,
+        trust_proxy_headers=settings.trust_proxy_headers,
+        trusted_proxy_cidrs=settings.trusted_proxy_cidrs,
+    )
+    request.state.client_ip = client_ip
     redis_rl = getattr(request.app.state, "redis_rate_limit", None)
     if redis_rl:
         try:
@@ -188,6 +199,8 @@ app.include_router(governance_router)
 app.include_router(agents_router)
 app.include_router(chat_router)
 app.include_router(admin_router)
+app.include_router(developer_access_router)
+app.include_router(internal_admin_router)
 
 # ── Security Proxy ──
 proxy = PermissionProxy(PermissionTier.READ_ONLY)

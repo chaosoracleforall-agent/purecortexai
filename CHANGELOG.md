@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.7.5 - 2026-03-16
+
+### Updated
+- Added production Cloud SQL rollout support with Alembic migrations, Cloud SQL Auth Proxy wiring, VM runtime env syncing from Secret Manager, and the first public developer access request flow backed by PostgreSQL instead of the prior placeholder foundation only.
+- Added the initial owner admin surface at `/admin`, protected `/admin-api/*` routes, and Nginx plus `oauth2-proxy` edge-auth scaffolding so owner workflows can move behind Google SSO while preserving app-level allowlist checks.
+- Hardened the frontend shared UX by fixing chat reconnect state handling and route-driven mobile menu state updates uncovered during validation of the new developer access surfaces.
+
+### Root Cause
+- The first foundation pass defined the enterprise control plane shape, but production still lacked a managed database target, VM deploy-time secret hydration, and a real edge-auth path for the owner admin console.
+
+### User Action
+- Store Google OAuth, Cloud SQL, and oauth2-proxy cookie secrets in GCP Secret Manager before using the owner admin surface in production.
+- Set `PURECORTEX_CLOUD_SQL_CONNECTION_NAME` on the VM once the managed Postgres instance is provisioned so deployments cut over from the local fallback database to Cloud SQL.
+
+## 0.7.4 - 2026-03-15
+
+### Updated
+- Added an enterprise developer-access implementation spec covering the public API key request UX, owner-only Google SSO admin console, managed PostgreSQL source of truth, internal admin APIs, audit logging, and per-key IP allowlist enforcement for API, CLI, SDK, and future hosted MCP access.
+- Linked the new control-plane design into the main repository specification, roadmap, and README so the rollout path is grounded in the tracked architecture docs.
+- Added non-breaking phase 1 foundation code for centralized enterprise-access settings, trusted reverse-proxy client IP resolution, an internal admin API boundary, and environment placeholders for Cloud SQL, Google OAuth, and server-only admin secrets.
+
+### Root Cause
+- The existing Redis-only API key model and lightweight admin bootstrap flow were sufficient for current testnet auth, but not for a proper developer access program with owner review, auditability, and enterprise-grade security controls.
+
+### User Action
+- No end-user action yet. This change defines the approved implementation path for the upcoming developer access control plane.
+
+## 0.7.3 - 2026-03-15
+
+### Updated
+- Added first-party in-repo SDK packages for Python (`sdk/python`) and TypeScript/JavaScript (`sdk/typescript`) covering health, transparency, governance, agent chat, chat-session bootstrap, and admin key workflows.
+- Expanded the MCP server from a single consensus tool into a practical local read-only tool surface for protocol health, agent registry/activity, governance overview/proposals, and transparency snapshots.
+- Extended the CLI with `activity`, `session`, `overview`, and `proposal` commands, added package metadata documentation, and refreshed in-app, docs-site, and repo markdown docs around the new SDK/API/CLI/MCP surfaces.
+
+### Root Cause
+- The repository still documented dedicated SDK packages as future work, the MCP surface underrepresented the live public data already available, and the CLI/documentation surface lagged behind the backend's current capabilities.
+
+### User Action
+- Install the Python SDK from `./sdk/python` and the TypeScript SDK from `./sdk/typescript` until registry publication is enabled.
+- Use `pcx activity`, `pcx session`, `pcx overview`, and `pcx proposal <id>` for the new operator workflows.
+- For local MCP integrations, prefer the new read-only tools for protocol inspection and reserve `get_tri_brain_consensus` for reasoning-oriented prompts.
+
 ## 0.7.2 - 2026-03-15
 
 ### Updated
