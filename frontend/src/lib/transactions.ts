@@ -31,6 +31,18 @@ async function fetchSuggestedParams(): Promise<algosdk.SuggestedParams> {
   };
 }
 
+function withInnerTxnFeeBudget(
+  params: algosdk.SuggestedParams,
+  innerTxnCount = 1,
+): algosdk.SuggestedParams {
+  const minFee = params.minFee ?? 1000n;
+  return {
+    ...params,
+    flatFee: true,
+    fee: minFee * BigInt(1 + innerTxnCount),
+  };
+}
+
 export async function accountHasAssetOptIn(address: string, assetId: number): Promise<boolean> {
   const resp = await fetch(`${ALGOD_URL}/v2/accounts/${address}`, {
     headers: { Accept: 'application/json' },
@@ -191,6 +203,7 @@ export async function buildCreateAgentTxns(
   const params = await fetchSuggestedParams();
 
   const composer = new algosdk.AtomicTransactionComposer();
+  const appCallParams = withInnerTxnFeeBudget(params, 1);
 
   // 1. CORTEX asset transfer (fee payment)
   const cortexTransfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
@@ -211,7 +224,7 @@ export async function buildCreateAgentTxns(
       symbol,
     ],
     sender,
-    suggestedParams: params,
+    suggestedParams: appCallParams,
     signer: algosdk.makeEmptyTransactionSigner(),
   });
 
@@ -241,6 +254,7 @@ export async function buildBuyTokensTxns(
   }
 
   const composer = new algosdk.AtomicTransactionComposer();
+  const appCallParams = withInnerTxnFeeBudget(params, 1);
 
   // 1. ALGO payment to factory
   const payment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -260,7 +274,7 @@ export async function buildBuyTokensTxns(
       Number(amount),
     ],
     sender,
-    suggestedParams: params,
+    suggestedParams: appCallParams,
     signer: algosdk.makeEmptyTransactionSigner(),
     boxes: [
       { appIndex: FACTORY_APP_ID, name: algosdk.bigIntToBytes(assetId, 8) },
@@ -283,6 +297,7 @@ export async function buildSellTokensTxns(
   }
 
   const composer = new algosdk.AtomicTransactionComposer();
+  const appCallParams = withInnerTxnFeeBudget(params, 1);
 
   const tokenTransfer = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
     sender,
@@ -301,7 +316,7 @@ export async function buildSellTokensTxns(
       Number(amount),
     ],
     sender,
-    suggestedParams: params,
+    suggestedParams: appCallParams,
     signer: algosdk.makeEmptyTransactionSigner(),
     boxes: [
       { appIndex: FACTORY_APP_ID, name: algosdk.bigIntToBytes(assetId, 8) },
@@ -353,13 +368,14 @@ export async function buildStakeTokensTxns(
 export async function buildUnstakeTxns(sender: string): Promise<algosdk.Transaction[]> {
   const params = await fetchSuggestedParams();
   const composer = new algosdk.AtomicTransactionComposer();
+  const appCallParams = withInnerTxnFeeBudget(params, 1);
 
   composer.addMethodCall({
     appID: STAKING_APP_ID,
     method: ABI_UNSTAKE,
     methodArgs: [],
     sender,
-    suggestedParams: params,
+    suggestedParams: appCallParams,
     signer: algosdk.makeEmptyTransactionSigner(),
     boxes: [
       { appIndex: STAKING_APP_ID, name: stakingBoxKey('s', sender) },
