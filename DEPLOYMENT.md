@@ -46,8 +46,8 @@ Production should treat the reverse proxy as an explicit trust boundary. The cur
   Required for the server-only frontend-to-backend admin bridge. Never expose this to browsers, client bundles, or public docs.
 - `PURECORTEX_GOOGLE_OAUTH_CLIENT_ID`, `PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET`, `PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET`
   Required before treating `/admin` as a production owner surface.
-- `PURECORTEX_TURNSTILE_SITE_KEY`, `PURECORTEX_TURNSTILE_SECRET_KEY`
-  Optional but recommended before exposing `/developers/access` broadly or making the repository public. When both are set, the public developer-access form requires Cloudflare Turnstile and the backend verifies the token before persisting a request.
+- `PURECORTEX_RECAPTCHA_SITE_KEY`
+  Optional but recommended before exposing `/developers/access` broadly or making the repository public. When set, the public developer-access form requests a Google Cloud reCAPTCHA Enterprise token and the backend verifies it through the configured GCP project before persisting a request.
 
 Local development should leave proxy-header trust disabled unless you are explicitly reproducing the full reverse-proxy topology. Browser admin testing should use the dev-session path at `/admin/login` instead of trusting an identity header directly.
 
@@ -123,7 +123,7 @@ Auth-boundary checks:
 - Public requests to `/admin-api/control-plane` without authenticated `/admin` access return `403`.
 - Direct requests to backend protected routes do not rely on `X-Forwarded-For` unless `PURECORTEX_TRUST_PROXY_HEADERS=1` is explicitly set.
 - Admin and internal-admin JSON responses include `Cache-Control: no-store`.
-- Public developer-access submissions enforce Turnstile only when both Turnstile keys are configured, while still keeping IP rate limiting and a per-email/per-IP cooldown path in place.
+- Public developer-access submissions enforce Google Cloud reCAPTCHA Enterprise only when the site key is configured, while still keeping IP rate limiting and a per-email/per-IP cooldown path in place.
 
 ## Notes
 - Do not document or depend on raw VM IP addresses in tracked docs.

@@ -6,6 +6,9 @@ import hashlib
 from typing import Literal
 
 import httpx
+import google.auth
+import google.auth.exceptions
+from google.auth.transport.requests import Request as GoogleAuthRequest
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -15,7 +18,7 @@ from src.services.developer_access import developer_access_service
 
 
 router = APIRouter(prefix="/api/developer-access", tags=["developer-access"])
-TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+RECAPTCHA_ACTION = "developer_access_request"
 
 AllowedSurface = Literal["api", "cli", "python_sdk", "typescript_sdk", "mcp"]
 AccessLevel = Literal["read", "write", "custom"]
@@ -30,46 +33,72 @@ class DeveloperAccessRequestCreate(BaseModel):
     requested_access_level: AccessLevel = "read"
     requested_ips: list[str] = Field(default_factory=list, max_length=20)
     expected_rpm: int | None = Field(default=None, ge=1, le=100000)
-    turnstile_token: str | None = Field(default=None, max_length=4096)
+    recaptcha_token: str | None = Field(default=None, max_length=4096)
     website: str | None = Field(default=None, max_length=255)
 
 
 class DeveloperAccessConfigResponse(BaseModel):
-    turnstile_site_key: str | None = None
-    turnstile_required: bool = False
+    recaptcha_site_key: str | None = None
+    recaptcha_required: bool = False
 
 
-def _turnstile_enabled() -> bool:
+def _recaptcha_enabled() -> bool:
     settings = get_settings()
-    return bool(settings.turnstile_site_key and settings.turnstile_secret_key)
+    return bool(settings.recaptcha_site_key and settings.recaptcha_project_id)
 
 
 def _developer_access_email_key(email: str) -> str:
     return hashlib.sha256(email.encode("utf-8")).hexdigest()
 
 
-async def _verify_turnstile_token(token: str, request_ip: str | None) -> None:
+def _recaptcha_assessment_url(project_id: str) -> str:
+    return f"https://recaptchaenterprise.googleapis.com/v1/projects/{project_id}/assessments"
+
+
+async def _verify_recaptcha_token(token: str, request_ip: str | None) -> None:
     settings = get_settings()
-    if not settings.turnstile_secret_key:
+    if not settings.recaptcha_site_key:
         return
 
     try:
+        credentials, _ = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        credentials.refresh(GoogleAuthRequest())
+        assessment_body = {
+            "event": {
+                "token": token,
+                "siteKey": settings.recaptcha_site_key,
+                "expectedAction": RECAPTCHA_ACTION,
+            }
+        }
+        if request_ip:
+            assessment_body["event"]["userIpAddress"] = request_ip
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                TURNSTILE_VERIFY_URL,
-                data={
-                    "secret": settings.turnstile_secret_key,
-                    "response": token,
-                    "remoteip": request_ip or "",
+                _recaptcha_assessment_url(settings.recaptcha_project_id),
+                headers={
+                    "Authorization": f"Bearer {credentials.token}",
+                    "Content-Type": "application/json",
                 },
+                json=assessment_body,
             )
         response.raise_for_status()
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, google.auth.exceptions.GoogleAuthError) as exc:
         raise HTTPException(status_code=503, detail="Bot verification unavailable") from exc
 
     payload = response.json()
-    if not payload.get("success"):
+    token_properties = payload.get("tokenProperties") or {}
+    if not token_properties.get("valid"):
         raise HTTPException(status_code=400, detail="Bot verification failed")
+    if token_properties.get("action") and token_properties["action"] != RECAPTCHA_ACTION:
+        raise HTTPException(status_code=400, detail="Bot verification action mismatch")
+
+    risk_analysis = payload.get("riskAnalysis") or {}
+    score = risk_analysis.get("score")
+    if isinstance(score, (int, float)) and score < settings.recaptcha_min_score:
+        raise HTTPException(status_code=400, detail="Bot verification score too low")
 
 
 async def _developer_access_cooldown_active(
@@ -125,10 +154,10 @@ async def _set_developer_access_cooldown(
 @router.get("/config", response_model=DeveloperAccessConfigResponse)
 async def get_developer_access_config():
     settings = get_settings()
-    enabled = _turnstile_enabled()
+    enabled = _recaptcha_enabled()
     return DeveloperAccessConfigResponse(
-        turnstile_site_key=settings.turnstile_site_key if enabled else None,
-        turnstile_required=enabled,
+        recaptcha_site_key=settings.recaptcha_site_key if enabled else None,
+        recaptcha_required=enabled,
     )
 
 
@@ -156,10 +185,10 @@ async def create_developer_access_request(
     if body.website and body.website.strip():
         raise HTTPException(status_code=400, detail="Request rejected")
 
-    if _turnstile_enabled():
-        if not body.turnstile_token or not body.turnstile_token.strip():
+    if _recaptcha_enabled():
+        if not body.recaptcha_token or not body.recaptcha_token.strip():
             raise HTTPException(status_code=400, detail="Bot verification required")
-        await _verify_turnstile_token(body.turnstile_token.strip(), request_ip)
+        await _verify_recaptcha_token(body.recaptcha_token.strip(), request_ip)
 
     if await _developer_access_cooldown_active(
         request,

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Script from 'next/script';
 import type { ComponentType, FormEvent } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CheckCircle2, KeyRound, LockKeyhole, Shield, TerminalSquare } from 'lucide-react';
 
 import { fetchJson } from '@/lib/api';
@@ -27,24 +27,17 @@ interface DeveloperAccessResponse {
 }
 
 interface DeveloperAccessConfigResponse {
-  turnstile_site_key: string | null;
-  turnstile_required: boolean;
+  recaptcha_site_key: string | null;
+  recaptcha_required: boolean;
 }
 
 declare global {
   interface Window {
-    turnstile?: {
-      render: (
-        container: HTMLElement,
-        options: {
-          sitekey: string;
-          theme?: 'auto' | 'light' | 'dark';
-          callback?: (token: string) => void;
-          'expired-callback'?: () => void;
-          'error-callback'?: () => void;
-        }
-      ) => string;
-      reset: (widgetId?: string) => void;
+    grecaptcha?: {
+      enterprise?: {
+        ready: (callback: () => void) => void;
+        execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      };
     };
   }
 }
@@ -100,14 +93,11 @@ export default function DeveloperAccessPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeveloperAccessResponse | null>(null);
-  const [turnstileConfig, setTurnstileConfig] = useState<DeveloperAccessConfigResponse>({
-    turnstile_site_key: null,
-    turnstile_required: false,
+  const [recaptchaConfig, setRecaptchaConfig] = useState<DeveloperAccessConfigResponse>({
+    recaptcha_site_key: null,
+    recaptcha_required: false,
   });
-  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
-  const turnstileWidgetIdRef = useRef<string | null>(null);
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
 
   const parsedIps = useMemo(
     () =>
@@ -132,14 +122,14 @@ export default function DeveloperAccessPage() {
     void fetchJson<DeveloperAccessConfigResponse>('/api/developer-access/config')
       .then((config) => {
         if (active) {
-          setTurnstileConfig(config);
+          setRecaptchaConfig(config);
         }
       })
       .catch(() => {
         if (active) {
-          setTurnstileConfig({
-            turnstile_site_key: null,
-            turnstile_required: false,
+          setRecaptchaConfig({
+            recaptcha_site_key: null,
+            recaptcha_required: false,
           });
         }
       });
@@ -149,31 +139,21 @@ export default function DeveloperAccessPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (
-      !turnstileLoaded ||
-      !turnstileConfig.turnstile_site_key ||
-      !turnstileContainerRef.current ||
-      !window.turnstile ||
-      turnstileWidgetIdRef.current
-    ) {
-      return;
+  const getRecaptchaToken = async (): Promise<string | null> => {
+    const siteKey = recaptchaConfig.recaptcha_site_key;
+    const grecaptcha = window.grecaptcha?.enterprise;
+    if (!siteKey || !grecaptcha || !recaptchaLoaded) {
+      return null;
     }
 
-    turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
-      sitekey: turnstileConfig.turnstile_site_key,
-      theme: 'dark',
-      callback: (token) => setTurnstileToken(token),
-      'expired-callback': () => setTurnstileToken(''),
-      'error-callback': () => setTurnstileToken(''),
+    return new Promise<string | null>((resolve) => {
+      grecaptcha.ready(() => {
+        grecaptcha
+          .execute(siteKey, { action: 'developer_access_request' })
+          .then((token) => resolve(token || null))
+          .catch(() => resolve(null));
+      });
     });
-  }, [turnstileConfig.turnstile_site_key, turnstileLoaded]);
-
-  const resetTurnstile = () => {
-    if (window.turnstile && turnstileWidgetIdRef.current) {
-      window.turnstile.reset(turnstileWidgetIdRef.current);
-    }
-    setTurnstileToken('');
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -185,13 +165,16 @@ export default function DeveloperAccessPage() {
       return;
     }
 
-    if (turnstileConfig.turnstile_required && !turnstileToken) {
-      setError('Complete the bot verification before submitting your request.');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
+      let recaptchaToken: string | null = null;
+      if (recaptchaConfig.recaptcha_required) {
+        recaptchaToken = await getRecaptchaToken();
+        if (!recaptchaToken) {
+          throw new Error('Bot verification could not be completed. Please retry.');
+        }
+      }
+
       const response = await fetchJson<DeveloperAccessResponse>('/api/developer-access/requests', {
         method: 'POST',
         headers: {
@@ -207,14 +190,12 @@ export default function DeveloperAccessPage() {
           requested_access_level: accessLevel,
           requested_ips: parsedIps,
           expected_rpm: expectedRpm ? Number(expectedRpm) : null,
-          turnstile_token: turnstileToken || null,
+          recaptcha_token: recaptchaToken,
         }),
       });
       setResult(response);
-      resetTurnstile();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Failed to submit request.');
-      resetTurnstile();
     } finally {
       setIsSubmitting(false);
     }
@@ -222,11 +203,11 @@ export default function DeveloperAccessPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans">
-      {turnstileConfig.turnstile_site_key && (
+      {recaptchaConfig.recaptcha_site_key && (
         <Script
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          src={`https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(recaptchaConfig.recaptcha_site_key)}`}
           strategy="afterInteractive"
-          onLoad={() => setTurnstileLoaded(true)}
+          onLoad={() => setRecaptchaLoaded(true)}
         />
       )}
       <div className="absolute top-0 left-1/4 w-[420px] h-[420px] bg-[#007AFF]/5 blur-[140px] rounded-full -z-10" />
@@ -432,17 +413,13 @@ export default function DeveloperAccessPage() {
                 </div>
               )}
 
-              {turnstileConfig.turnstile_required && (
+              {recaptchaConfig.recaptcha_required && (
                 <div className="space-y-2">
                   <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-gray-500">
                     Bot verification
                   </div>
-                  <div
-                    ref={turnstileContainerRef}
-                    className="min-h-[66px] rounded-2xl border border-white/10 bg-black/30 px-3 py-3"
-                  />
                   <p className="text-sm text-gray-500 leading-relaxed">
-                    This form uses Cloudflare Turnstile to reduce bot abuse and spam submissions.
+                    This form uses Google Cloud reCAPTCHA Enterprise to reduce bot abuse and spam submissions.
                   </p>
                 </div>
               )}

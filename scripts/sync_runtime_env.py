@@ -134,15 +134,9 @@ def main() -> int:
     )
     ensure_secret_backed_value(
         values,
-        key="PURECORTEX_TURNSTILE_SITE_KEY",
+        key="PURECORTEX_RECAPTCHA_SITE_KEY",
         project=project,
-        secret_name="PURECORTEX_TURNSTILE_SITE_KEY",
-    )
-    ensure_secret_backed_value(
-        values,
-        key="PURECORTEX_TURNSTILE_SECRET_KEY",
-        project=project,
-        secret_name="PURECORTEX_TURNSTILE_SECRET_KEY",
+        secret_name="PURECORTEX_RECAPTCHA_SITE_KEY",
     )
     ensure_secret_backed_value(
         values,
@@ -174,6 +168,10 @@ def main() -> int:
 
     if not values.get("PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS"):
         values["PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS"] = "300"
+    if not values.get("PURECORTEX_RECAPTCHA_PROJECT_ID"):
+        values["PURECORTEX_RECAPTCHA_PROJECT_ID"] = project
+    if not values.get("PURECORTEX_RECAPTCHA_MIN_SCORE"):
+        values["PURECORTEX_RECAPTCHA_MIN_SCORE"] = "0.5"
 
     write_env(ENV_PATH, original_lines, values)
     RUNTIME_DIR.mkdir(exist_ok=True)

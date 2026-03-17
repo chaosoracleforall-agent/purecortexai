@@ -20,7 +20,7 @@
 - Added a dedicated README `CI` section so contributors can quickly see which admin workflow runs automatically on PRs and when to manually launch the live admin workflow.
 - Documented the new fail-closed admin and proxy trust defaults in `DEPLOYMENT.md` and `.env.example`, including the production-only conditions for enabling `PURECORTEX_TRUST_PROXY_HEADERS=1` and `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=1`.
 - Added a top-level `LICENSE` and enabled GitHub vulnerability alerts plus automated security fixes so the repository is ready for a controlled move toward public visibility.
-- Added optional Cloudflare Turnstile, a hidden honeypot field, and Redis-backed per-email/per-IP submission cooldowns to the public developer-access request flow so the owner review queue is less exposed to bot spam and repeated form abuse.
+- Added optional Google Cloud reCAPTCHA Enterprise, a hidden honeypot field, and Redis-backed per-email/per-IP submission cooldowns to the public developer-access request flow so the owner review queue is less exposed to bot spam and repeated form abuse.
 
 ### Root Cause
 - The async SQLAlchemy/Postgres path depends on `greenlet`, but the backend dependency manifest only included SQLAlchemy, drivers, and Alembic, so fresh local environments could migrate successfully yet still fail once the app opened an async session.
@@ -41,7 +41,7 @@
 - Set `OPENAI_ORG_ID` in the VM environment or Secret Manager if the OpenAI key is attached to a multi-organization OpenAI account and explicit org binding is required.
 - For production, enable `PURECORTEX_TRUST_PROXY_HEADERS=1` and `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=1` only behind the documented `nginx` plus `oauth2-proxy` boundary; leave both disabled for local or direct-service access paths.
 - Before flipping the repository public, keep the full-history secret scan report, confirm `LICENSE` is present on `main`, and enable branch protection on `main` immediately after visibility changes if your GitHub plan does not support it while private.
-- To activate the developer-access anti-bot controls, set both `PURECORTEX_TURNSTILE_SITE_KEY` and `PURECORTEX_TURNSTILE_SECRET_KEY`, then redeploy the VM stack so the backend exposes the Turnstile config to the public form.
+- To activate the developer-access anti-bot controls, set `PURECORTEX_RECAPTCHA_SITE_KEY` and confirm the runtime has GCP credentials that can call reCAPTCHA Enterprise assessments, then redeploy the VM stack so the backend exposes the site key to the public form.
 
 ## 0.7.6 - 2026-03-16
 
