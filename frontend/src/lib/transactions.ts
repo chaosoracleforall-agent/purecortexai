@@ -35,7 +35,9 @@ function withInnerTxnFeeBudget(
   params: algosdk.SuggestedParams,
   innerTxnCount = 1,
 ): algosdk.SuggestedParams {
-  const minFee = params.minFee ?? 1000n;
+  const minFee = typeof params.minFee === 'bigint'
+    ? params.minFee
+    : BigInt(params.minFee ?? 1000);
   return {
     ...params,
     flatFee: true,
