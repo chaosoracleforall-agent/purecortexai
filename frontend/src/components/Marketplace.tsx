@@ -464,6 +464,17 @@ export default function Marketplace() {
               <p className="text-gray-500 text-xs mb-6 sm:mb-8 font-bold italic uppercase tracking-widest">Protocol Fee: 100 $CORTEX</p>
 
               <div className="space-y-5 sm:space-y-6">
+                {!activeAccount && (
+                  <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-4 text-center space-y-4">
+                    <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest">
+                      Connect your wallet to deploy
+                    </p>
+                    <div className="flex justify-center">
+                      <WalletButton />
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Agent Name</label>
                   <input
@@ -488,17 +499,6 @@ export default function Marketplace() {
                     className="w-full bg-[#050505] border border-white/5 rounded-xl p-3 sm:p-4 text-white outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all font-medium uppercase"
                   />
                 </div>
-
-                {!activeAccount && (
-                  <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-4 text-center space-y-4">
-                    <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest">
-                      Connect your wallet to deploy
-                    </p>
-                    <div className="flex justify-center">
-                      <WalletButton />
-                    </div>
-                  </div>
-                )}
 
                 {deployError && (
                   <p className="text-red-400 text-xs font-bold text-center py-1">{deployError}</p>
