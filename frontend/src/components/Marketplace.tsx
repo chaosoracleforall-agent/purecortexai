@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Zap, Search, ArrowUpRight, BarChart3, Plus, X, Loader2, AlertCircle, RefreshCw, ShoppingCart, Coins, ExternalLink } from 'lucide-react';
 import { useWallet } from '@txnlab/use-wallet-react';
 import { useMarketplace } from '@/hooks/useMarketplace';
+import WalletButton from '@/components/WalletButton';
 import {
   accountHasAssetOptIn,
   buildAssetOptInTxn,
@@ -349,6 +350,11 @@ export default function Marketplace() {
           <p className="text-gray-500 font-medium text-sm sm:text-base">Neural-linked assets on the bonding curve.</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          {!activeAccount && (
+            <div className="hidden sm:block">
+              <WalletButton />
+            </div>
+          )}
           <button
             onClick={() => refresh()}
             className="p-3 sm:p-4 rounded-2xl border border-white/5 text-gray-500 hover:text-white hover:border-white/10 transition-all active:scale-95"
@@ -484,9 +490,14 @@ export default function Marketplace() {
                 </div>
 
                 {!activeAccount && (
-                  <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest text-center py-2">
-                    Connect your wallet to deploy
-                  </p>
+                  <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-4 text-center space-y-4">
+                    <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest">
+                      Connect your wallet to deploy
+                    </p>
+                    <div className="flex justify-center">
+                      <WalletButton />
+                    </div>
+                  </div>
                 )}
 
                 {deployError && (
