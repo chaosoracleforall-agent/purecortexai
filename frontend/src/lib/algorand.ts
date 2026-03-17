@@ -28,6 +28,7 @@ export {
 // Bonding curve parameters (from on-chain global state)
 export const BASE_PRICE = BigInt(BASE_PRICE_MICROALGO); // micro-ALGO per token unit
 export const SLOPE = BigInt(SLOPE_MICROALGO);
+export const TOKEN_SCALE = 10n ** BigInt(6);
 export const GOVERNANCE_ADDRESS = 'I36JTAQYRFSIRH7G3OTCQ7ZOUA7ARZ7YYZR4SV57QF5UU5P75VT55D2MO4';
 export const CREATION_FEE = CREATION_FEE_MICRO_CORTEX; // 100 CORTEX (6 decimals)
 
@@ -47,21 +48,41 @@ export function getIndexerClient(): algosdk.Indexer {
  * Calculate bonding curve buy price (matching the contract formula).
  * Price = amount * BASE_PRICE + SLOPE * (2 * currentSupply * amount + amount^2) / 2
  */
-export function calculateBuyPrice(currentSupply: bigint, amount: bigint): bigint {
-  const baseCost = amount * BASE_PRICE;
+export interface CurveParams {
+  basePrice: bigint;
+  slope: bigint;
+  buyFeeBps: bigint;
+  sellFeeBps: bigint;
+  graduationThreshold: bigint;
+}
+
+export const DEFAULT_CURVE_PARAMS: CurveParams = {
+  basePrice: BASE_PRICE,
+  slope: SLOPE,
+  buyFeeBps: BigInt(BUY_FEE_BPS),
+  sellFeeBps: BigInt(SELL_FEE_BPS),
+  graduationThreshold: BigInt(GRADUATION_THRESHOLD),
+};
+
+export function calculateBuyPrice(
+  currentSupply: bigint,
+  amount: bigint,
+  params: CurveParams = DEFAULT_CURVE_PARAMS,
+): bigint {
+  const baseCost = (amount * params.basePrice) / TOKEN_SCALE;
   const twoSupplyAmount = 2n * currentSupply * amount;
   const amountSq = amount * amount;
   const areaDoubled = twoSupplyAmount + amountSq;
-  const slopeCost = (SLOPE * areaDoubled) / 2n;
+  const slopeCost = (params.slope * areaDoubled) / (2n * TOKEN_SCALE * TOKEN_SCALE);
   return baseCost + slopeCost;
 }
 
 /**
  * Calculate the current price per token (for 1 full token = 1_000_000 micro-units)
  */
-export function calculateCurrentPrice(currentSupply: bigint): number {
+export function calculateCurrentPrice(currentSupply: bigint, params: CurveParams = DEFAULT_CURVE_PARAMS): number {
   const oneToken = 1_000_000n;
-  const priceInMicroAlgo = calculateBuyPrice(currentSupply, oneToken);
+  const priceInMicroAlgo = calculateBuyPrice(currentSupply, oneToken, params);
   return Number(priceInMicroAlgo) / 1_000_000; // Convert to ALGO
 }
 
@@ -69,39 +90,46 @@ export function calculateCurrentPrice(currentSupply: bigint): number {
  * Calculate curve progress as percentage toward graduation threshold.
  * Graduation = 50,000 CORTEX worth of ALGO locked.
  */
-export function calculateCurveProgress(currentSupply: bigint): number {
+export function calculateCurveProgress(currentSupply: bigint, params: CurveParams = DEFAULT_CURVE_PARAMS): number {
   if (currentSupply === 0n) return 0;
-  const baseCost = currentSupply * BASE_PRICE;
+  const baseCost = (currentSupply * params.basePrice) / TOKEN_SCALE;
   const currentSq = currentSupply * currentSupply;
-  const slopeCost = (SLOPE * currentSq) / 2n;
+  const slopeCost = (params.slope * currentSq) / (2n * TOKEN_SCALE * TOKEN_SCALE);
   const totalValue = baseCost + slopeCost;
-  const threshold = BigInt(GRADUATION_THRESHOLD);
-  const pct = Number((totalValue * 100n) / threshold);
+  const pct = Number((totalValue * 100n) / params.graduationThreshold);
   return Math.min(pct, 100);
 }
 
 /**
  * Calculate the gross ALGO returned before sell fees.
  */
-export function calculateSellPrice(currentSupply: bigint, amount: bigint): bigint {
+export function calculateSellPrice(
+  currentSupply: bigint,
+  amount: bigint,
+  params: CurveParams = DEFAULT_CURVE_PARAMS,
+): bigint {
   if (amount <= 0n || currentSupply < amount) {
     return 0n;
   }
 
   const newSupply = currentSupply - amount;
-  const baseReturn = amount * BASE_PRICE;
+  const baseReturn = (amount * params.basePrice) / TOKEN_SCALE;
   const currentSq = currentSupply * currentSupply;
   const newSq = newSupply * newSupply;
-  const slopeReturn = (SLOPE * (currentSq - newSq)) / 2n;
+  const slopeReturn = (params.slope * (currentSq - newSq)) / (2n * TOKEN_SCALE * TOKEN_SCALE);
   return baseReturn + slopeReturn;
 }
 
 /**
  * Calculate the net ALGO returned after the protocol sell fee.
  */
-export function calculateNetSellReturn(currentSupply: bigint, amount: bigint): bigint {
-  const gross = calculateSellPrice(currentSupply, amount);
-  const fee = (gross * BigInt(SELL_FEE_BPS)) / 10_000n;
+export function calculateNetSellReturn(
+  currentSupply: bigint,
+  amount: bigint,
+  params: CurveParams = DEFAULT_CURVE_PARAMS,
+): bigint {
+  const gross = calculateSellPrice(currentSupply, amount, params);
+  const fee = (gross * params.sellFeeBps) / 10_000n;
   return gross - fee;
 }
 

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.7.9 - 2026-03-17
+
+### Fixed
+- Patched `backend/src/api/agents_api.py` so the Senator and Curator governance proxy endpoints forward FastAPI `Request` context into `create_proposal(...)` and `review_proposal(...)`, resolving the runtime `TypeError` that returned `500 Internal server error` on `/api/agents/senator/propose`.
+- Updated `contracts/tests/live_testnet_verify.py` governance smoke to handle both valid curator review outcomes: it now submits a vote only when proposal status transitions to `voting`, and records a deterministic skip when review rejects the proposal.
+
+### Root Cause
+- Governance service methods were hardened to require request context for auth/IP policy evaluation, but the agent-facing wrapper endpoints still called them with the previous argument shape; the live smoke harness also assumed every review would approve and move to voting.
+
+### User Action
+- Redeploy backend services so the updated governance proxy wiring is active in production.
+- Use the updated smoke harness when validating governance against live tri-brain review paths, since rejection is now treated as an expected branch instead of a false-negative failure.
+
+## 0.7.8 - 2026-03-17
+
+### Updated
+- Redeployed the active testnet Agent Factory to app `757288371` using the currently available deployer key and bootstrapped a fresh CORTEX asset `757288754`.
+- Updated `deployment.testnet.json` and regenerated backend/frontend protocol config outputs so runtime clients resolve the new active factory and token IDs.
+- Marked the prior canonical factory deployment (`757172168`) as deprecated legacy metadata in the manifest.
+
+### Root Cause
+- The previously configured deployer seed no longer matched the historical factory creator account, which blocked creator-only smoke flows and required rotating to a fresh deployment owned by the available operational key.
+
+### User Action
+- Keep marketplace trading disabled until the factory create flow is patched for runtime box references, then redeploy and re-run `contracts/tests/live_testnet_verify.py smoke` against the updated manifest.
+
 ## 0.7.7 - 2026-03-16
 
 ### Fixed

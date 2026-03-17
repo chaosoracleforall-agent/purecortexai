@@ -3,69 +3,163 @@
 
 // algopy.arc4.ARC4Contract.approval_program() -> uint64:
 main:
-    intcblock 0 1 8 2 1000 10000 1000000000
-    bytecblock "agent_supplies" "cortex_token" 0x151f7c75 "BASE_PRICE" "SLOPE" "buy_fee_bps" "sell_fee_bps" "creation_fee" "GRADUATION_THRESHOLD" "latest_asset_id"
+    intcblock 0 8 1 2 1000 10000 1000000000 1000000
+    bytecblock "pending_asset_id" "pending_supply" 0x151f7c75 "cortex_token" 0x73 "pending_base_price" "pending_slope" "pending_buy_fee_bps" "pending_sell_fee_bps" "pending_graduation_threshold" "TOKEN_SCALE" "MAX_TX_AMOUNT" 0x63 "creation_fee" "GRADUATION_THRESHOLD" "MIN_FEE_BPS" "MAX_FEE_BPS" "MIN_GRADUATION_THRESHOLD" "MAX_GRADUATION_THRESHOLD" "MAX_AGENT_SUPPLY" "latest_asset_id" "buy_fee_bps" "sell_fee_bps" "MIN_BASE_PRICE" "MAX_BASE_PRICE" "MIN_SLOPE" "MAX_SLOPE"
     txn ApplicationID
     bnz main_after_if_else@2
-    // smart_contracts/agent_factory/contract.py:21
-    // self.latest_asset_id = UInt64(0)
-    bytec 9 // "latest_asset_id"
-    intc_0 // 0
-    app_global_put
-    // smart_contracts/agent_factory/contract.py:22
-    // self.cortex_token = UInt64(0)
-    bytec_1 // "cortex_token"
-    intc_0 // 0
-    app_global_put
-    // smart_contracts/agent_factory/contract.py:23
-    // self.BASE_PRICE = UInt64(10_000)
-    bytec_3 // "BASE_PRICE"
-    intc 5 // 10000
-    app_global_put
     // smart_contracts/agent_factory/contract.py:24
-    // self.SLOPE = UInt64(1_000)
-    bytec 4 // "SLOPE"
-    intc 4 // 1000
+    // self.latest_asset_id = UInt64(0)
+    bytec 20 // "latest_asset_id"
+    intc_0 // 0
     app_global_put
-    // smart_contracts/agent_factory/contract.py:26-27
-    // # Dynamic fee parameters
-    // self.buy_fee_bps = UInt64(100)  # 1% buy fee
-    bytec 5 // "buy_fee_bps"
-    pushint 100
+    // smart_contracts/agent_factory/contract.py:25
+    // self.pending_asset_id = UInt64(0)
+    bytec_0 // "pending_asset_id"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:26
+    // self.pending_base_price = UInt64(0)
+    bytec 5 // "pending_base_price"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:27
+    // self.pending_slope = UInt64(0)
+    bytec 6 // "pending_slope"
+    intc_0 // 0
     app_global_put
     // smart_contracts/agent_factory/contract.py:28
-    // self.sell_fee_bps = UInt64(200)  # 2% sell fee
-    bytec 6 // "sell_fee_bps"
-    pushint 200
+    // self.pending_buy_fee_bps = UInt64(0)
+    bytec 7 // "pending_buy_fee_bps"
+    intc_0 // 0
     app_global_put
     // smart_contracts/agent_factory/contract.py:29
+    // self.pending_sell_fee_bps = UInt64(0)
+    bytec 8 // "pending_sell_fee_bps"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:30
+    // self.pending_graduation_threshold = UInt64(0)
+    bytec 9 // "pending_graduation_threshold"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:31
+    // self.pending_supply = UInt64(0)
+    bytec_1 // "pending_supply"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:32
+    // self.cortex_token = UInt64(0)
+    bytec_3 // "cortex_token"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:34-35
+    // # Default launch parameters used when a creator does not override them.
+    // self.BASE_PRICE = UInt64(10_000)
+    pushbytes "BASE_PRICE"
+    intc 5 // 10000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:36
+    // self.SLOPE = UInt64(1_000)
+    pushbytes "SLOPE"
+    intc 4 // 1000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:37
+    // self.TOKEN_SCALE = UInt64(1_000_000)  # 6-decimal agent token precision
+    bytec 10 // "TOKEN_SCALE"
+    intc 7 // 1000000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:39-40
+    // # Default fee parameters applied to new launches unless overridden.
+    // self.buy_fee_bps = UInt64(100)  # 1% buy fee
+    bytec 21 // "buy_fee_bps"
+    pushint 100
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:41
+    // self.sell_fee_bps = UInt64(200)  # 2% sell fee
+    bytec 22 // "sell_fee_bps"
+    pushint 200
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:42
     // self.creation_fee = UInt64(100_000_000)  # 100 CORTEX (6 decimals)
-    bytec 7 // "creation_fee"
+    bytec 13 // "creation_fee"
     pushint 100000000
     app_global_put
-    // smart_contracts/agent_factory/contract.py:31-32
-    // # Graduation threshold: 50,000 CORTEX worth of ALGO locked in curve
+    // smart_contracts/agent_factory/contract.py:44-45
+    // # Default graduation threshold: 50,000 CORTEX worth of ALGO locked in curve
     // self.GRADUATION_THRESHOLD = UInt64(50_000_000_000)
-    bytec 8 // "GRADUATION_THRESHOLD"
+    bytec 14 // "GRADUATION_THRESHOLD"
     pushint 50000000000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:47-49
+    // # Maximum per-transaction amount to prevent uint64 overflow in bonding curve math
+    // # 100K tokens with 6 decimals = 100_000_000_000
+    // self.MAX_TX_AMOUNT = UInt64(100_000_000_000)
+    bytec 11 // "MAX_TX_AMOUNT"
+    pushint 100000000000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:51-52
+    // # Protocol-wide launch guardrails.
+    // self.MIN_BASE_PRICE = UInt64(1_000)
+    bytec 23 // "MIN_BASE_PRICE"
+    intc 4 // 1000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:53
+    // self.MAX_BASE_PRICE = UInt64(100_000)
+    bytec 24 // "MAX_BASE_PRICE"
+    pushint 100000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:54
+    // self.MIN_SLOPE = UInt64(1)
+    bytec 25 // "MIN_SLOPE"
+    intc_2 // 1
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:55
+    // self.MAX_SLOPE = UInt64(10_000)
+    bytec 26 // "MAX_SLOPE"
+    intc 5 // 10000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:56
+    // self.MIN_FEE_BPS = UInt64(0)
+    bytec 15 // "MIN_FEE_BPS"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:57
+    // self.MAX_FEE_BPS = UInt64(1_000)
+    bytec 16 // "MAX_FEE_BPS"
+    intc 4 // 1000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:58
+    // self.MIN_GRADUATION_THRESHOLD = UInt64(1_000_000_000)
+    bytec 17 // "MIN_GRADUATION_THRESHOLD"
+    intc 6 // 1000000000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:59
+    // self.MAX_GRADUATION_THRESHOLD = UInt64(500_000_000_000)
+    bytec 18 // "MAX_GRADUATION_THRESHOLD"
+    pushint 500000000000
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:60
+    // self.MAX_AGENT_SUPPLY = UInt64(1_000_000_000)
+    bytec 19 // "MAX_AGENT_SUPPLY"
+    intc 6 // 1000000000
     app_global_put
 
 main_after_if_else@2:
     // smart_contracts/agent_factory/contract.py:18
     // class AgentFactory(ARC4Contract):
     txn NumAppArgs
-    bz main___algopy_default_create@20
+    bz main___algopy_default_create@23
     txn OnCompletion
     !
     assert
     txn ApplicationID
     assert
-    pushbytess 0x3a1a5067 0xdf6eb47a 0x850a18f3 0x707b5551 0x500b4df0 0xc3f78108 0x772bbd72 0xe944a949 0x298078bf 0x32236ac7 0x176bbfa3 // method "bootstrap_protocol()uint64", method "create_agent(axfer,string,string)uint64", method "calculate_buy_price(uint64,uint64)uint64", method "buy_tokens(pay,uint64,uint64)void", method "calculate_sell_price(uint64,uint64)uint64", method "sell_tokens(axfer,uint64,uint64)void", method "check_graduation(uint64)bool", method "distribute_cortex(address,uint64)void", method "update_fee_parameters(uint64,uint64)void", method "update_creation_fee(uint64)void", method "update_graduation_threshold(uint64)void"
+    pushbytess 0x3a1a5067 0x2bf5ca9d 0xdda8e9e9 0xd94f5491 0x5704e2a4 0x850a18f3 0x707b5551 0x500b4df0 0xc3f78108 0x772bbd72 0xe944a949 0x298078bf 0x32236ac7 0x176bbfa3 // method "bootstrap_protocol()uint64", method "create_agent(axfer,string,string,uint64,uint64,uint64,uint64,uint64)uint64", method "finalize_agent_config(uint64)void", method "get_agent_config(uint64)byte[]", method "get_agent_supply(uint64)uint64", method "calculate_buy_price(uint64,uint64)uint64", method "buy_tokens(pay,uint64,uint64)void", method "calculate_sell_price(uint64,uint64)uint64", method "sell_tokens(axfer,uint64,uint64)void", method "check_graduation(uint64)bool", method "distribute_cortex(address,uint64)void", method "update_fee_parameters(uint64,uint64)void", method "update_creation_fee(uint64)void", method "update_graduation_threshold(uint64)void"
     txna ApplicationArgs 0
-    match bootstrap_protocol create_agent calculate_buy_price buy_tokens calculate_sell_price sell_tokens check_graduation distribute_cortex update_fee_parameters update_creation_fee update_graduation_threshold
+    match bootstrap_protocol create_agent finalize_agent_config get_agent_config get_agent_supply calculate_buy_price buy_tokens calculate_sell_price sell_tokens check_graduation distribute_cortex update_fee_parameters update_creation_fee update_graduation_threshold
     err
 
-main___algopy_default_create@20:
+main___algopy_default_create@23:
     txn OnCompletion
     !
     txn ApplicationID
@@ -76,21 +170,21 @@ main___algopy_default_create@20:
 
 // smart_contracts.agent_factory.contract.AgentFactory.bootstrap_protocol[routing]() -> void:
 bootstrap_protocol:
-    // smart_contracts/agent_factory/contract.py:44
+    // smart_contracts/agent_factory/contract.py:177
     // assert Txn.sender == Global.creator_address, "Only creator can bootstrap"
     txn Sender
     global CreatorAddress
     ==
     assert // Only creator can bootstrap
-    // smart_contracts/agent_factory/contract.py:45
+    // smart_contracts/agent_factory/contract.py:178
     // assert self.cortex_token == UInt64(0), "Already bootstrapped"
     intc_0 // 0
-    bytec_1 // "cortex_token"
+    bytec_3 // "cortex_token"
     app_global_get_ex
     assert // check self.cortex_token exists
     !
     assert // Already bootstrapped
-    // smart_contracts/agent_factory/contract.py:47-55
+    // smart_contracts/agent_factory/contract.py:180-188
     // created_asset_tx = itxn.AssetConfig(
     //     asset_name="PURECORTEX",
     //     unit_name="CORTEX",
@@ -101,39 +195,39 @@ bootstrap_protocol:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/agent_factory/contract.py:52
+    // smart_contracts/agent_factory/contract.py:185
     // manager=Global.current_application_address,
     global CurrentApplicationAddress
-    // smart_contracts/agent_factory/contract.py:53
+    // smart_contracts/agent_factory/contract.py:186
     // url="https://purecortex.ai",
     pushbytes "https://purecortex.ai"
     itxn_field ConfigAssetURL
     itxn_field ConfigAssetManager
-    // smart_contracts/agent_factory/contract.py:51
+    // smart_contracts/agent_factory/contract.py:184
     // decimals=UInt64(6),
     pushint 6
     itxn_field ConfigAssetDecimals
-    // smart_contracts/agent_factory/contract.py:50
+    // smart_contracts/agent_factory/contract.py:183
     // total=UInt64(10_000_000_000_000_000),
     pushint 10000000000000000
     itxn_field ConfigAssetTotal
-    // smart_contracts/agent_factory/contract.py:49
+    // smart_contracts/agent_factory/contract.py:182
     // unit_name="CORTEX",
     pushbytes "CORTEX"
     itxn_field ConfigAssetUnitName
-    // smart_contracts/agent_factory/contract.py:48
+    // smart_contracts/agent_factory/contract.py:181
     // asset_name="PURECORTEX",
     pushbytes "PURECORTEX"
     itxn_field ConfigAssetName
-    // smart_contracts/agent_factory/contract.py:47
+    // smart_contracts/agent_factory/contract.py:180
     // created_asset_tx = itxn.AssetConfig(
     pushint 3 // acfg
     itxn_field TypeEnum
-    // smart_contracts/agent_factory/contract.py:54
+    // smart_contracts/agent_factory/contract.py:187
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/agent_factory/contract.py:47-55
+    // smart_contracts/agent_factory/contract.py:180-188
     // created_asset_tx = itxn.AssetConfig(
     //     asset_name="PURECORTEX",
     //     unit_name="CORTEX",
@@ -145,28 +239,28 @@ bootstrap_protocol:
     // ).submit()
     itxn_submit
     itxn CreatedAssetID
-    // smart_contracts/agent_factory/contract.py:57
+    // smart_contracts/agent_factory/contract.py:190
     // self.cortex_token = created_asset_tx.created_asset.id
-    bytec_1 // "cortex_token"
+    bytec_3 // "cortex_token"
     dig 1
     app_global_put
-    // smart_contracts/agent_factory/contract.py:38
+    // smart_contracts/agent_factory/contract.py:171
     // @abimethod()
     itob
     bytec_2 // 0x151f7c75
     swap
     concat
     log
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.create_agent[routing]() -> void:
 create_agent:
-    // smart_contracts/agent_factory/contract.py:64
+    // smart_contracts/agent_factory/contract.py:197
     // @abimethod()
     txn GroupIndex
-    intc_1 // 1
+    intc_2 // 1
     -
     dup
     gtxns TypeEnum
@@ -184,6 +278,7 @@ create_agent:
     ==
     assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
     extract 2 0
+    dup
     txna ApplicationArgs 2
     dup
     intc_0 // 0
@@ -195,71 +290,259 @@ create_agent:
     ==
     assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
     extract 2 0
-    // smart_contracts/agent_factory/contract.py:74
+    dup
+    cover 2
+    txna ApplicationArgs 3
+    dup
+    len
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    cover 2
+    txna ApplicationArgs 4
+    dup
+    len
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    cover 2
+    txna ApplicationArgs 5
+    dup
+    len
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    cover 2
+    txna ApplicationArgs 6
+    dup
+    len
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    cover 2
+    txna ApplicationArgs 7
+    dup
+    len
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    dup
+    cover 3
+    // smart_contracts/agent_factory/contract.py:213
     // assert self.cortex_token != UInt64(0), "Protocol not bootstrapped"
     intc_0 // 0
-    bytec_1 // "cortex_token"
+    bytec_3 // "cortex_token"
     app_global_get_ex
     assert // check self.cortex_token exists
-    dup
     assert // Protocol not bootstrapped
-    // smart_contracts/agent_factory/contract.py:75
+    // smart_contracts/agent_factory/contract.py:215
+    // self.pending_asset_id == UInt64(0)
+    intc_0 // 0
+    bytec_0 // "pending_asset_id"
+    app_global_get_ex
+    assert // check self.pending_asset_id exists
+    !
+    // smart_contracts/agent_factory/contract.py:214-216
+    // assert (
+    //     self.pending_asset_id == UInt64(0)
+    // ), "Finalize pending agent configuration before creating another agent"
+    assert // Finalize pending agent configuration before creating another agent
+    // smart_contracts/agent_factory/contract.py:217
     // assert name.bytes.length > UInt64(0), "Name cannot be empty"
-    dig 2
+    uncover 2
     len
     dup
     assert // Name cannot be empty
-    // smart_contracts/agent_factory/contract.py:76
+    // smart_contracts/agent_factory/contract.py:218
     // assert name.bytes.length <= UInt64(32), "Name too long (max 32 bytes)"
     pushint 32
     <=
     assert // Name too long (max 32 bytes)
-    // smart_contracts/agent_factory/contract.py:77
+    // smart_contracts/agent_factory/contract.py:219
     // assert unit_name.bytes.length > UInt64(0), "Unit name cannot be empty"
-    dig 1
+    swap
     len
     dup
     assert // Unit name cannot be empty
-    // smart_contracts/agent_factory/contract.py:78
+    // smart_contracts/agent_factory/contract.py:220
     // assert unit_name.bytes.length <= UInt64(8), "Unit name too long (max 8 bytes)"
-    intc_2 // 8
+    intc_1 // 8
     <=
     assert // Unit name too long (max 8 bytes)
-    // smart_contracts/agent_factory/contract.py:79
+    // smart_contracts/agent_factory/contract.py:148
+    // if graduation_threshold_override == UInt64(0):
+    bnz create_agent_after_if_else@3
+    // smart_contracts/agent_factory/contract.py:149
+    // return self.GRADUATION_THRESHOLD
+    intc_0 // 0
+    bytec 14 // "GRADUATION_THRESHOLD"
+    app_global_get_ex
+    assert // check self.GRADUATION_THRESHOLD exists
+
+create_agent_after_inlined_smart_contracts.agent_factory.contract.AgentFactory._resolve_graduation_threshold@4:
+    // smart_contracts/agent_factory/contract.py:125
+    // base_price >= self.MIN_BASE_PRICE
+    intc_0 // 0
+    bytec 23 // "MIN_BASE_PRICE"
+    app_global_get_ex
+    assert // check self.MIN_BASE_PRICE exists
+    dig 6
+    dup
+    uncover 2
+    >=
+    // smart_contracts/agent_factory/contract.py:124-126
+    // assert (
+    //     base_price >= self.MIN_BASE_PRICE
+    // ), "Base price below protocol minimum"
+    assert // Base price below protocol minimum
+    // smart_contracts/agent_factory/contract.py:128
+    // base_price <= self.MAX_BASE_PRICE
+    intc_0 // 0
+    bytec 24 // "MAX_BASE_PRICE"
+    app_global_get_ex
+    assert // check self.MAX_BASE_PRICE exists
+    dig 1
+    >=
+    // smart_contracts/agent_factory/contract.py:127-129
+    // assert (
+    //     base_price <= self.MAX_BASE_PRICE
+    // ), "Base price above protocol maximum"
+    assert // Base price above protocol maximum
+    // smart_contracts/agent_factory/contract.py:130
+    // assert slope >= self.MIN_SLOPE, "Slope below protocol minimum"
+    intc_0 // 0
+    bytec 25 // "MIN_SLOPE"
+    app_global_get_ex
+    assert // check self.MIN_SLOPE exists
+    dig 6
+    dup
+    uncover 2
+    >=
+    assert // Slope below protocol minimum
+    // smart_contracts/agent_factory/contract.py:131
+    // assert slope <= self.MAX_SLOPE, "Slope above protocol maximum"
+    intc_0 // 0
+    bytec 26 // "MAX_SLOPE"
+    app_global_get_ex
+    assert // check self.MAX_SLOPE exists
+    dig 1
+    >=
+    assert // Slope above protocol maximum
+    // smart_contracts/agent_factory/contract.py:132
+    // assert buy_fee_bps >= self.MIN_FEE_BPS, "Buy fee below protocol minimum"
+    intc_0 // 0
+    bytec 15 // "MIN_FEE_BPS"
+    app_global_get_ex
+    assert // check self.MIN_FEE_BPS exists
+    dig 6
+    dup
+    cover 2
+    dig 1
+    >=
+    assert // Buy fee below protocol minimum
+    // smart_contracts/agent_factory/contract.py:133
+    // assert buy_fee_bps <= self.MAX_FEE_BPS, "Buy fee above protocol maximum"
+    intc_0 // 0
+    bytec 16 // "MAX_FEE_BPS"
+    app_global_get_ex
+    assert // check self.MAX_FEE_BPS exists
+    dig 2
+    dig 1
+    <=
+    assert // Buy fee above protocol maximum
+    // smart_contracts/agent_factory/contract.py:135
+    // sell_fee_bps >= self.MIN_FEE_BPS
+    dig 7
+    dup
+    uncover 3
+    >=
+    // smart_contracts/agent_factory/contract.py:134-136
+    // assert (
+    //     sell_fee_bps >= self.MIN_FEE_BPS
+    // ), "Sell fee below protocol minimum"
+    assert // Sell fee below protocol minimum
+    // smart_contracts/agent_factory/contract.py:138
+    // sell_fee_bps <= self.MAX_FEE_BPS
+    dup
+    uncover 2
+    <=
+    // smart_contracts/agent_factory/contract.py:137-139
+    // assert (
+    //     sell_fee_bps <= self.MAX_FEE_BPS
+    // ), "Sell fee above protocol maximum"
+    assert // Sell fee above protocol maximum
+    // smart_contracts/agent_factory/contract.py:141
+    // graduation_threshold >= self.MIN_GRADUATION_THRESHOLD
+    intc_0 // 0
+    bytec 17 // "MIN_GRADUATION_THRESHOLD"
+    app_global_get_ex
+    assert // check self.MIN_GRADUATION_THRESHOLD exists
+    uncover 5
+    dup
+    uncover 2
+    >=
+    // smart_contracts/agent_factory/contract.py:140-142
+    // assert (
+    //     graduation_threshold >= self.MIN_GRADUATION_THRESHOLD
+    // ), "Graduation threshold below protocol minimum"
+    assert // Graduation threshold below protocol minimum
+    // smart_contracts/agent_factory/contract.py:144
+    // graduation_threshold <= self.MAX_GRADUATION_THRESHOLD
+    intc_0 // 0
+    bytec 18 // "MAX_GRADUATION_THRESHOLD"
+    app_global_get_ex
+    assert // check self.MAX_GRADUATION_THRESHOLD exists
+    dig 1
+    >=
+    // smart_contracts/agent_factory/contract.py:143-145
+    // assert (
+    //     graduation_threshold <= self.MAX_GRADUATION_THRESHOLD
+    // ), "Graduation threshold above protocol maximum"
+    assert // Graduation threshold above protocol maximum
+    // smart_contracts/agent_factory/contract.py:233
     // assert cortex_payment.sender == Txn.sender, "Fee sender must match caller"
-    dig 3
+    dig 12
+    dup
     gtxns Sender
     txn Sender
     ==
     assert // Fee sender must match caller
-    // smart_contracts/agent_factory/contract.py:80
+    // smart_contracts/agent_factory/contract.py:234
     // assert cortex_payment.xfer_asset.id == self.cortex_token, "Invalid fee asset"
-    dig 3
+    dup
     gtxns XferAsset
+    intc_0 // 0
+    bytec_3 // "cortex_token"
+    app_global_get_ex
+    assert // check self.cortex_token exists
     ==
     assert // Invalid fee asset
-    // smart_contracts/agent_factory/contract.py:81
+    // smart_contracts/agent_factory/contract.py:235
     // assert cortex_payment.asset_amount >= self.creation_fee, "Insufficient creation fee"
-    dig 2
+    dup
     gtxns AssetAmount
     intc_0 // 0
-    bytec 7 // "creation_fee"
+    bytec 13 // "creation_fee"
     app_global_get_ex
     assert // check self.creation_fee exists
     >=
     assert // Insufficient creation fee
-    // smart_contracts/agent_factory/contract.py:83
+    // smart_contracts/agent_factory/contract.py:237
     // cortex_payment.asset_receiver == Global.current_application_address
-    uncover 2
     gtxns AssetReceiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/agent_factory/contract.py:82-84
+    // smart_contracts/agent_factory/contract.py:236-238
     // assert (
     //     cortex_payment.asset_receiver == Global.current_application_address
     // ), "Fee must go to factory"
     assert // Fee must go to factory
-    // smart_contracts/agent_factory/contract.py:86-97
+    // smart_contracts/agent_factory/contract.py:240-251
     // # Create the asset via Inner Transaction
     // created_asset_tx = itxn.AssetConfig(
     //     asset_name=name,
@@ -273,10 +556,10 @@ create_agent:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/agent_factory/contract.py:92
+    // smart_contracts/agent_factory/contract.py:246
     // manager=Global.current_application_address,
     global CurrentApplicationAddress
-    // smart_contracts/agent_factory/contract.py:93-95
+    // smart_contracts/agent_factory/contract.py:247-249
     // reserve=Global.current_application_address,
     // freeze=Global.current_application_address,
     // clawback=Global.current_application_address,
@@ -285,26 +568,28 @@ create_agent:
     itxn_field ConfigAssetFreeze
     itxn_field ConfigAssetReserve
     itxn_field ConfigAssetManager
-    // smart_contracts/agent_factory/contract.py:91
+    // smart_contracts/agent_factory/contract.py:245
     // decimals=UInt64(6),
     pushint 6
     itxn_field ConfigAssetDecimals
-    // smart_contracts/agent_factory/contract.py:90
+    // smart_contracts/agent_factory/contract.py:244
     // total=UInt64(1_000_000_000),  # 1 Billion Max Supply
     intc 6 // 1000000000
     itxn_field ConfigAssetTotal
+    dig 10
     itxn_field ConfigAssetUnitName
+    dig 11
     itxn_field ConfigAssetName
-    // smart_contracts/agent_factory/contract.py:86-87
+    // smart_contracts/agent_factory/contract.py:240-241
     // # Create the asset via Inner Transaction
     // created_asset_tx = itxn.AssetConfig(
     pushint 3 // acfg
     itxn_field TypeEnum
-    // smart_contracts/agent_factory/contract.py:96
+    // smart_contracts/agent_factory/contract.py:250
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/agent_factory/contract.py:86-97
+    // smart_contracts/agent_factory/contract.py:240-251
     // # Create the asset via Inner Transaction
     // created_asset_tx = itxn.AssetConfig(
     //     asset_name=name,
@@ -319,37 +604,299 @@ create_agent:
     // ).submit()
     itxn_submit
     itxn CreatedAssetID
-    // smart_contracts/agent_factory/contract.py:100
+    // smart_contracts/agent_factory/contract.py:254
     // self.latest_asset_id = asset_id
-    bytec 9 // "latest_asset_id"
+    bytec 20 // "latest_asset_id"
     dig 1
     app_global_put
-    // smart_contracts/agent_factory/contract.py:64
+    // smart_contracts/agent_factory/contract.py:255-256
+    // # Defer per-agent box materialization until the asset id is known to clients.
+    // self.pending_asset_id = asset_id
+    bytec_0 // "pending_asset_id"
+    dig 1
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:257
+    // self.pending_base_price = base_price
+    bytec 5 // "pending_base_price"
+    uncover 6
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:258
+    // self.pending_slope = slope
+    bytec 6 // "pending_slope"
+    uncover 5
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:259
+    // self.pending_buy_fee_bps = buy_fee_bps
+    bytec 7 // "pending_buy_fee_bps"
+    uncover 4
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:260
+    // self.pending_sell_fee_bps = sell_fee_bps
+    bytec 8 // "pending_sell_fee_bps"
+    uncover 3
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:261
+    // self.pending_graduation_threshold = graduation_threshold
+    bytec 9 // "pending_graduation_threshold"
+    uncover 2
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:262
+    // self.pending_supply = UInt64(0)
+    bytec_1 // "pending_supply"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:197
     // @abimethod()
     itob
     bytec_2 // 0x151f7c75
     swap
     concat
     log
-    intc_1 // 1
+    intc_2 // 1
+    return
+
+create_agent_after_if_else@3:
+    dup
+    // smart_contracts/agent_factory/contract.py:222-224
+    // graduation_threshold = self._resolve_graduation_threshold(
+    //     graduation_threshold_override
+    // )
+    b create_agent_after_inlined_smart_contracts.agent_factory.contract.AgentFactory._resolve_graduation_threshold@4
+
+
+// smart_contracts.agent_factory.contract.AgentFactory.finalize_agent_config[routing]() -> void:
+finalize_agent_config:
+    // smart_contracts/agent_factory/contract.py:266
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/agent_factory/contract.py:272
+    // assert self.pending_asset_id == asset.id, "No pending config for this asset"
+    intc_0 // 0
+    bytec_0 // "pending_asset_id"
+    app_global_get_ex
+    assert // check self.pending_asset_id exists
+    dig 1
+    ==
+    assert // No pending config for this asset
+    // smart_contracts/agent_factory/contract.py:67
+    // return op.Box.get(b"c" + op.itob(asset_id))[1]
+    itob
+    bytec 12 // 0x63
+    dig 1
+    concat
+    dup
+    box_len
+    bury 1
+    // smart_contracts/agent_factory/contract.py:273
+    // assert not self._agent_config_exists(asset.id), "Agent config already finalized"
+    !
+    assert // Agent config already finalized
+    // smart_contracts/agent_factory/contract.py:275
+    // self.pending_base_price,
+    intc_0 // 0
+    bytec 5 // "pending_base_price"
+    app_global_get_ex
+    assert // check self.pending_base_price exists
+    // smart_contracts/agent_factory/contract.py:276
+    // self.pending_slope,
+    intc_0 // 0
+    bytec 6 // "pending_slope"
+    app_global_get_ex
+    assert // check self.pending_slope exists
+    // smart_contracts/agent_factory/contract.py:277
+    // self.pending_buy_fee_bps,
+    intc_0 // 0
+    bytec 7 // "pending_buy_fee_bps"
+    app_global_get_ex
+    assert // check self.pending_buy_fee_bps exists
+    // smart_contracts/agent_factory/contract.py:278
+    // self.pending_sell_fee_bps,
+    intc_0 // 0
+    bytec 8 // "pending_sell_fee_bps"
+    app_global_get_ex
+    assert // check self.pending_sell_fee_bps exists
+    // smart_contracts/agent_factory/contract.py:279
+    // self.pending_graduation_threshold,
+    intc_0 // 0
+    bytec 9 // "pending_graduation_threshold"
+    app_global_get_ex
+    assert // check self.pending_graduation_threshold exists
+    // smart_contracts/agent_factory/contract.py:274-280
+    // self.agent_configs[asset.id] = self._encode_agent_config(
+    //     self.pending_base_price,
+    //     self.pending_slope,
+    //     self.pending_buy_fee_bps,
+    //     self.pending_sell_fee_bps,
+    //     self.pending_graduation_threshold,
+    // )
+    callsub _encode_agent_config
+    dig 1
+    box_del
+    pop
+    box_put
+    // smart_contracts/agent_factory/contract.py:281
+    // self.agent_supplies[asset.id] = self.pending_supply
+    intc_0 // 0
+    bytec_1 // "pending_supply"
+    app_global_get_ex
+    assert // check self.pending_supply exists
+    bytec 4 // 0x73
+    uncover 2
+    concat
+    swap
+    itob
+    box_put
+    // smart_contracts/agent_factory/contract.py:92
+    // self.pending_asset_id = UInt64(0)
+    bytec_0 // "pending_asset_id"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:93
+    // self.pending_base_price = UInt64(0)
+    bytec 5 // "pending_base_price"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:94
+    // self.pending_slope = UInt64(0)
+    bytec 6 // "pending_slope"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:95
+    // self.pending_buy_fee_bps = UInt64(0)
+    bytec 7 // "pending_buy_fee_bps"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:96
+    // self.pending_sell_fee_bps = UInt64(0)
+    bytec 8 // "pending_sell_fee_bps"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:97
+    // self.pending_graduation_threshold = UInt64(0)
+    bytec 9 // "pending_graduation_threshold"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:98
+    // self.pending_supply = UInt64(0)
+    bytec_1 // "pending_supply"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/agent_factory/contract.py:266
+    // @abimethod()
+    intc_2 // 1
     return
 
 
-// smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price[routing]() -> void:
-calculate_buy_price:
-    // smart_contracts/agent_factory/contract.py:108
+// smart_contracts.agent_factory.contract.AgentFactory.get_agent_config[routing]() -> void:
+get_agent_config:
+    // smart_contracts/agent_factory/contract.py:284
     // @abimethod(readonly=True)
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/agent_factory/contract.py:287
+    // return self._require_agent_config(asset.id)
+    callsub _require_agent_config
+    // smart_contracts/agent_factory/contract.py:284
+    // @abimethod(readonly=True)
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_2 // 1
+    return
+
+
+// smart_contracts.agent_factory.contract.AgentFactory.get_agent_supply[routing]() -> void:
+get_agent_supply:
+    // smart_contracts/agent_factory/contract.py:289
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    dup
+    // smart_contracts/agent_factory/contract.py:67
+    // return op.Box.get(b"c" + op.itob(asset_id))[1]
+    itob
+    bytec 12 // 0x63
+    swap
+    concat
+    box_len
+    bury 1
+    // smart_contracts/agent_factory/contract.py:293
+    // self._agent_config_exists(asset.id) or self.pending_asset_id == asset.id
+    bnz get_agent_supply_bool_true@3
+    intc_0 // 0
+    bytec_0 // "pending_asset_id"
+    app_global_get_ex
+    assert // check self.pending_asset_id exists
+    dig 1
+    ==
+    bz get_agent_supply_bool_false@4
+
+get_agent_supply_bool_true@3:
+    intc_2 // 1
+
+get_agent_supply_bool_merge@5:
+    // smart_contracts/agent_factory/contract.py:292-294
+    // assert (
+    //     self._agent_config_exists(asset.id) or self.pending_asset_id == asset.id
+    // ), "Agent config not found"
+    assert // Agent config not found
+    // smart_contracts/agent_factory/contract.py:295
+    // return self._get_agent_supply(asset.id)
+    dup
+    callsub _get_agent_supply
+    // smart_contracts/agent_factory/contract.py:289
+    // @abimethod(readonly=True)
+    itob
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_2 // 1
+    return
+
+get_agent_supply_bool_false@4:
+    intc_0 // 0
+    b get_agent_supply_bool_merge@5
+
+
+// smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price[routing]() -> void:
+calculate_buy_price:
+    // smart_contracts/agent_factory/contract.py:301
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
     txna ApplicationArgs 2
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
@@ -359,26 +906,26 @@ calculate_buy_price:
     swap
     concat
     log
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.buy_tokens[routing]() -> void:
 buy_tokens:
-    // smart_contracts/agent_factory/contract.py:132
+    // smart_contracts/agent_factory/contract.py:330
     // @abimethod()
     txn GroupIndex
-    intc_1 // 1
+    intc_2 // 1
     -
     dup
     gtxns TypeEnum
-    intc_1 // pay
+    intc_2 // pay
     ==
     assert // transaction type is pay
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
@@ -387,102 +934,127 @@ buy_tokens:
     txna ApplicationArgs 2
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
     dup
     cover 3
-    // smart_contracts/agent_factory/contract.py:140
+    // smart_contracts/agent_factory/contract.py:338
     // assert payment.sender == Txn.sender, "Payment sender must match caller"
     dig 1
     gtxns Sender
     txn Sender
     ==
     assert // Payment sender must match caller
-    // smart_contracts/agent_factory/contract.py:142
+    // smart_contracts/agent_factory/contract.py:340
     // payment.receiver == Global.current_application_address
     dig 1
     gtxns Receiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/agent_factory/contract.py:141-143
+    // smart_contracts/agent_factory/contract.py:339-341
     // assert (
     //     payment.receiver == Global.current_application_address
     // ), "Payment must be directed to the factory contract"
     assert // Payment must be directed to the factory contract
-    // smart_contracts/agent_factory/contract.py:145
+    // smart_contracts/agent_factory/contract.py:343
     // assert amount >= UInt64(1_000), "Minimum buy is 1000 micro-units"
     dup
     intc 4 // 1000
     >=
     assert // Minimum buy is 1000 micro-units
-    // smart_contracts/agent_factory/contract.py:147
-    // required_algo = self.calculate_buy_price(asset, amount)
-    dig 2
-    swap
-    callsub smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price
-    // smart_contracts/agent_factory/contract.py:149-150
-    // # Apply buy fee
-    // fee = (required_algo * self.buy_fee_bps) // UInt64(10_000)
+    // smart_contracts/agent_factory/contract.py:344
+    // assert amount <= self.MAX_TX_AMOUNT, "Amount exceeds max per-transaction limit"
     intc_0 // 0
-    bytec 5 // "buy_fee_bps"
+    bytec 11 // "MAX_TX_AMOUNT"
     app_global_get_ex
-    assert // check self.buy_fee_bps exists
+    assert // check self.MAX_TX_AMOUNT exists
+    dig 1
+    >=
+    assert // Amount exceeds max per-transaction limit
+    // smart_contracts/agent_factory/contract.py:346
+    // config_data = self._require_agent_config(asset.id)
+    dig 2
+    callsub _require_agent_config
+    // smart_contracts/agent_factory/contract.py:347
+    // required_algo = self.calculate_buy_price(asset, amount)
+    dig 3
+    dig 2
+    callsub smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price
+    // smart_contracts/agent_factory/contract.py:159
+    // return op.btoi(op.extract(config_data, 16, 8))
+    swap
+    pushint 16
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:349-350
+    // # Apply the per-agent buy fee.
+    // fee = (required_algo * self._get_config_buy_fee_bps(config_data)) // UInt64(10_000)
     dig 1
     *
     intc 5 // 10000
     /
-    // smart_contracts/agent_factory/contract.py:151
+    // smart_contracts/agent_factory/contract.py:351
     // total_required = required_algo + fee
     +
-    // smart_contracts/agent_factory/contract.py:153
-    // payment.amount >= total_required
-    swap
+    // smart_contracts/agent_factory/contract.py:353
+    // payment.amount == total_required
+    uncover 2
     gtxns Amount
-    <=
-    // smart_contracts/agent_factory/contract.py:152-154
+    ==
+    // smart_contracts/agent_factory/contract.py:352-354
     // assert (
-    //     payment.amount >= total_required
-    // ), "Insufficient ALGO payment including fee"
-    assert // Insufficient ALGO payment including fee
-    // smart_contracts/agent_factory/contract.py:156-157
+    //     payment.amount == total_required
+    // ), "Payment must exactly match required ALGO including fee"
+    assert // Payment must exactly match required ALGO including fee
+    // smart_contracts/agent_factory/contract.py:356-357
     // # Update state BEFORE external interaction (checks-effects-interactions)
-    // current_supply = UInt64(0)
-    intc_0 // 0
-    swap
-    // smart_contracts/agent_factory/contract.py:158
-    // if op.Box.get(op.itob(asset.id))[1]:
-    itob
-    dup
-    box_len
-    bury 1
-    bz buy_tokens_after_if_else@3
-    // smart_contracts/agent_factory/contract.py:159
-    // current_supply = self.agent_supplies[asset.id]
-    bytec_0 // "agent_supplies"
+    // current_supply = self._get_agent_supply(asset.id)
     dig 1
-    concat
-    box_get
-    assert // check self.agent_supplies entry exists
-    btoi
-    bury 2
-
-buy_tokens_after_if_else@3:
-    // smart_contracts/agent_factory/contract.py:160
-    // self.agent_supplies[asset.id] = current_supply + amount
-    dig 1
-    dig 3
+    callsub _get_agent_supply
+    // smart_contracts/agent_factory/contract.py:359
+    // current_supply + amount <= self.MAX_AGENT_SUPPLY
+    +
     dup
     cover 2
-    +
-    bytec_0 // "agent_supplies"
-    dig 3
-    concat
-    swap
+    intc_0 // 0
+    bytec 19 // "MAX_AGENT_SUPPLY"
+    app_global_get_ex
+    assert // check self.MAX_AGENT_SUPPLY exists
+    <=
+    // smart_contracts/agent_factory/contract.py:358-360
+    // assert (
+    //     current_supply + amount <= self.MAX_AGENT_SUPPLY
+    // ), "Buy exceeds remaining agent supply"
+    assert // Buy exceeds remaining agent supply
+    // smart_contracts/agent_factory/contract.py:361
+    // if self.pending_asset_id == asset.id and not self._agent_supply_exists(asset.id):
+    intc_0 // 0
+    bytec_0 // "pending_asset_id"
+    app_global_get_ex
+    assert // check self.pending_asset_id exists
+    ==
+    bz buy_tokens_else_body@4
+    // smart_contracts/agent_factory/contract.py:70
+    // return op.Box.get(b"s" + op.itob(asset_id))[1]
+    dig 2
     itob
-    box_put
-    // smart_contracts/agent_factory/contract.py:162-168
+    bytec 4 // 0x73
+    swap
+    concat
+    box_len
+    bury 1
+    // smart_contracts/agent_factory/contract.py:361
+    // if self.pending_asset_id == asset.id and not self._agent_supply_exists(asset.id):
+    bnz buy_tokens_else_body@4
+    // smart_contracts/agent_factory/contract.py:362
+    // self.pending_supply = current_supply + amount
+    bytec_1 // "pending_supply"
+    dig 1
+    app_global_put
+
+buy_tokens_after_if_else@5:
+    // smart_contracts/agent_factory/contract.py:366-372
     // # Transfer the tokens to the buyer via Inner Transaction
     // itxn.AssetTransfer(
     //     xfer_asset=asset,
@@ -491,23 +1063,24 @@ buy_tokens_after_if_else@3:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/agent_factory/contract.py:165
+    // smart_contracts/agent_factory/contract.py:369
     // asset_receiver=Txn.sender,
     txn Sender
-    itxn_field AssetReceiver
+    dig 2
     itxn_field AssetAmount
-    dig 3
+    itxn_field AssetReceiver
+    dig 2
     itxn_field XferAsset
-    // smart_contracts/agent_factory/contract.py:162-163
+    // smart_contracts/agent_factory/contract.py:366-367
     // # Transfer the tokens to the buyer via Inner Transaction
     // itxn.AssetTransfer(
     pushint 4 // axfer
     itxn_field TypeEnum
-    // smart_contracts/agent_factory/contract.py:167
+    // smart_contracts/agent_factory/contract.py:371
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/agent_factory/contract.py:162-168
+    // smart_contracts/agent_factory/contract.py:366-372
     // # Transfer the tokens to the buyer via Inner Transaction
     // itxn.AssetTransfer(
     //     xfer_asset=asset,
@@ -516,27 +1089,40 @@ buy_tokens_after_if_else@3:
     //     fee=0,
     // ).submit()
     itxn_submit
-    // smart_contracts/agent_factory/contract.py:132
+    // smart_contracts/agent_factory/contract.py:330
     // @abimethod()
-    intc_1 // 1
+    intc_2 // 1
     return
+
+buy_tokens_else_body@4:
+    // smart_contracts/agent_factory/contract.py:364
+    // self.agent_supplies[asset.id] = current_supply + amount
+    dig 2
+    itob
+    bytec 4 // 0x73
+    swap
+    concat
+    dig 1
+    itob
+    box_put
+    b buy_tokens_after_if_else@5
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.calculate_sell_price[routing]() -> void:
 calculate_sell_price:
-    // smart_contracts/agent_factory/contract.py:174
+    // smart_contracts/agent_factory/contract.py:378
     // @abimethod(readonly=True)
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
     txna ApplicationArgs 2
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
@@ -546,16 +1132,16 @@ calculate_sell_price:
     swap
     concat
     log
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.sell_tokens[routing]() -> void:
 sell_tokens:
-    // smart_contracts/agent_factory/contract.py:205
+    // smart_contracts/agent_factory/contract.py:412
     // @abimethod()
     txn GroupIndex
-    intc_1 // 1
+    intc_2 // 1
     -
     dup
     gtxns TypeEnum
@@ -565,79 +1151,112 @@ sell_tokens:
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
+    dup
+    cover 2
     txna ApplicationArgs 2
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/agent_factory/contract.py:217
+    dup
+    cover 3
+    // smart_contracts/agent_factory/contract.py:424
     // assert token_transfer.sender == Txn.sender, "Token sender must match caller"
     dig 2
     gtxns Sender
     txn Sender
     ==
     assert // Token sender must match caller
-    // smart_contracts/agent_factory/contract.py:218
+    // smart_contracts/agent_factory/contract.py:425
     // assert token_transfer.xfer_asset.id == asset.id, "Wrong asset"
     dig 2
     gtxns XferAsset
     dig 2
     ==
     assert // Wrong asset
-    // smart_contracts/agent_factory/contract.py:219
-    // assert token_transfer.asset_amount >= amount, "Insufficient tokens sent"
+    // smart_contracts/agent_factory/contract.py:426
+    // assert token_transfer.asset_amount == amount, "Token amount must exactly match sell amount"
     dig 2
     gtxns AssetAmount
     dig 1
-    >=
-    assert // Insufficient tokens sent
-    // smart_contracts/agent_factory/contract.py:220
+    ==
+    assert // Token amount must exactly match sell amount
+    // smart_contracts/agent_factory/contract.py:427
     // assert amount >= UInt64(1_000), "Minimum sell is 1000 micro-units"
     dup
     intc 4 // 1000
     >=
     assert // Minimum sell is 1000 micro-units
-    // smart_contracts/agent_factory/contract.py:222
+    // smart_contracts/agent_factory/contract.py:428
+    // assert amount <= self.MAX_TX_AMOUNT, "Amount exceeds max per-transaction limit"
+    intc_0 // 0
+    bytec 11 // "MAX_TX_AMOUNT"
+    app_global_get_ex
+    assert // check self.MAX_TX_AMOUNT exists
+    dig 1
+    >=
+    assert // Amount exceeds max per-transaction limit
+    // smart_contracts/agent_factory/contract.py:430
     // token_transfer.asset_receiver == Global.current_application_address
     uncover 2
     gtxns AssetReceiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/agent_factory/contract.py:221-223
+    // smart_contracts/agent_factory/contract.py:429-431
     // assert (
     //     token_transfer.asset_receiver == Global.current_application_address
     // ), "Tokens must go to factory"
     assert // Tokens must go to factory
-    // smart_contracts/agent_factory/contract.py:225-226
+    // smart_contracts/agent_factory/contract.py:433-434
     // # Calculate sell price (accounts for fee internally)
     // sell_price = self.calculate_sell_price(asset, amount)
-    dup2
+    dig 1
+    swap
     callsub smart_contracts.agent_factory.contract.AgentFactory.calculate_sell_price
-    // smart_contracts/agent_factory/contract.py:228-229
+    swap
+    // smart_contracts/agent_factory/contract.py:436-437
     // # Update state BEFORE external interaction (checks-effects-interactions)
-    // current_supply = self.agent_supplies[asset.id]
-    uncover 2
+    // current_supply = self._get_agent_supply(asset.id)
+    dup
+    callsub _get_agent_supply
+    swap
+    // smart_contracts/agent_factory/contract.py:438
+    // if self.pending_asset_id == asset.id and not self._agent_supply_exists(asset.id):
+    intc_0 // 0
+    bytec_0 // "pending_asset_id"
+    app_global_get_ex
+    assert // check self.pending_asset_id exists
+    ==
+    bz sell_tokens_else_body@4
+    // smart_contracts/agent_factory/contract.py:70
+    // return op.Box.get(b"s" + op.itob(asset_id))[1]
+    dig 3
     itob
-    bytec_0 // "agent_supplies"
+    bytec 4 // 0x73
     swap
     concat
+    box_len
+    bury 1
+    // smart_contracts/agent_factory/contract.py:438
+    // if self.pending_asset_id == asset.id and not self._agent_supply_exists(asset.id):
+    bnz sell_tokens_else_body@4
+    // smart_contracts/agent_factory/contract.py:439
+    // self.pending_supply = current_supply - amount
     dup
-    box_get
-    assert // check self.agent_supplies entry exists
-    btoi
-    // smart_contracts/agent_factory/contract.py:230
-    // self.agent_supplies[asset.id] = current_supply - amount
-    uncover 3
+    dig 3
     -
-    itob
-    box_put
-    // smart_contracts/agent_factory/contract.py:232-237
+    bytec_1 // "pending_supply"
+    swap
+    app_global_put
+
+sell_tokens_after_if_else@5:
+    // smart_contracts/agent_factory/contract.py:443-448
     // # Pay ALGO to seller via inner transaction
     // itxn.Payment(
     //     receiver=Txn.sender,
@@ -645,21 +1264,22 @@ sell_tokens:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/agent_factory/contract.py:234
+    // smart_contracts/agent_factory/contract.py:445
     // receiver=Txn.sender,
     txn Sender
-    itxn_field Receiver
+    dig 2
     itxn_field Amount
-    // smart_contracts/agent_factory/contract.py:232-233
+    itxn_field Receiver
+    // smart_contracts/agent_factory/contract.py:443-444
     // # Pay ALGO to seller via inner transaction
     // itxn.Payment(
-    intc_1 // pay
+    intc_2 // pay
     itxn_field TypeEnum
-    // smart_contracts/agent_factory/contract.py:236
+    // smart_contracts/agent_factory/contract.py:447
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/agent_factory/contract.py:232-237
+    // smart_contracts/agent_factory/contract.py:443-448
     // # Pay ALGO to seller via inner transaction
     // itxn.Payment(
     //     receiver=Txn.sender,
@@ -667,37 +1287,66 @@ sell_tokens:
     //     fee=0,
     // ).submit()
     itxn_submit
-    // smart_contracts/agent_factory/contract.py:205
+    // smart_contracts/agent_factory/contract.py:412
     // @abimethod()
-    intc_1 // 1
+    intc_2 // 1
     return
+
+sell_tokens_else_body@4:
+    // smart_contracts/agent_factory/contract.py:441
+    // self.agent_supplies[asset.id] = current_supply - amount
+    dup
+    dig 3
+    -
+    dig 4
+    itob
+    bytec 4 // 0x73
+    swap
+    concat
+    swap
+    itob
+    box_put
+    b sell_tokens_after_if_else@5
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.check_graduation[routing]() -> void:
 check_graduation:
+    intc_0 // 0
     pushbytes ""
-    // smart_contracts/agent_factory/contract.py:243
+    // smart_contracts/agent_factory/contract.py:454
     // @abimethod(readonly=True)
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/agent_factory/contract.py:250
-    // if not op.Box.get(op.itob(asset.id))[1]:
-    itob
     dup
+    // smart_contracts/agent_factory/contract.py:67
+    // return op.Box.get(b"c" + op.itob(asset_id))[1]
+    itob
+    bytec 12 // 0x63
+    swap
+    concat
     box_len
     bury 1
-    bnz check_graduation_after_if_else@3
-    // smart_contracts/agent_factory/contract.py:251
+    // smart_contracts/agent_factory/contract.py:461
+    // if not self._agent_config_exists(asset.id) and self.pending_asset_id != asset.id:
+    bnz check_graduation_after_if_else@4
+    intc_0 // 0
+    bytec_0 // "pending_asset_id"
+    app_global_get_ex
+    assert // check self.pending_asset_id exists
+    dig 1
+    !=
+    bz check_graduation_after_if_else@4
+    // smart_contracts/agent_factory/contract.py:462
     // return False
     intc_0 // 0
 
-check_graduation_after_inlined_smart_contracts.agent_factory.contract.AgentFactory.check_graduation@6:
-    // smart_contracts/agent_factory/contract.py:243
+check_graduation_after_inlined_smart_contracts.agent_factory.contract.AgentFactory.check_graduation@7:
+    // smart_contracts/agent_factory/contract.py:454
     // @abimethod(readonly=True)
     pushbytes 0x00
     intc_0 // 0
@@ -707,75 +1356,96 @@ check_graduation_after_inlined_smart_contracts.agent_factory.contract.AgentFacto
     swap
     concat
     log
-    intc_1 // 1
+    intc_2 // 1
     return
 
-check_graduation_after_if_else@3:
-    // smart_contracts/agent_factory/contract.py:253
-    // current_supply = self.agent_supplies[asset.id]
-    bytec_0 // "agent_supplies"
-    dig 1
-    concat
-    box_get
-    assert // check self.agent_supplies entry exists
-    btoi
+check_graduation_after_if_else@4:
+    // smart_contracts/agent_factory/contract.py:464
+    // config_data = self._require_agent_config(asset.id)
+    dupn 2
+    callsub _require_agent_config
+    bury 4
+    // smart_contracts/agent_factory/contract.py:465
+    // current_supply = self._get_agent_supply(asset.id)
+    callsub _get_agent_supply
     dup
     bury 3
-    // smart_contracts/agent_factory/contract.py:254
+    // smart_contracts/agent_factory/contract.py:466
     // if current_supply == UInt64(0):
-    bnz check_graduation_after_if_else@5
-    // smart_contracts/agent_factory/contract.py:255
+    bnz check_graduation_after_if_else@6
+    // smart_contracts/agent_factory/contract.py:467
     // return False
     intc_0 // 0
-    // smart_contracts/agent_factory/contract.py:243
+    // smart_contracts/agent_factory/contract.py:454
     // @abimethod(readonly=True)
-    b check_graduation_after_inlined_smart_contracts.agent_factory.contract.AgentFactory.check_graduation@6
+    b check_graduation_after_inlined_smart_contracts.agent_factory.contract.AgentFactory.check_graduation@7
 
-check_graduation_after_if_else@5:
-    // smart_contracts/agent_factory/contract.py:257-259
-    // # Total value locked = what selling all supply would return (pre-fee)
-    // # We compute gross curve value without the sell fee for this check
-    // base_cost = current_supply * self.BASE_PRICE
-    intc_0 // 0
-    bytec_3 // "BASE_PRICE"
-    app_global_get_ex
-    assert // check self.BASE_PRICE exists
+check_graduation_after_if_else@6:
+    // smart_contracts/agent_factory/contract.py:153
+    // return op.btoi(op.extract(config_data, 0, 8))
     dig 2
     dup
-    uncover 2
-    *
-    // smart_contracts/agent_factory/contract.py:260
-    // current_sq = current_supply * current_supply
-    dig 1
-    uncover 2
-    *
-    // smart_contracts/agent_factory/contract.py:261
-    // slope_cost = (self.SLOPE * current_sq) // UInt64(2)
     intc_0 // 0
-    bytec 4 // "SLOPE"
-    app_global_get_ex
-    assert // check self.SLOPE exists
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:156
+    // return op.btoi(op.extract(config_data, 8, 8))
+    dig 1
+    intc_1 // 8
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:165
+    // return op.btoi(op.extract(config_data, 32, 8))
+    uncover 2
+    pushint 32
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:475
+    // base_cost = (current_supply * base_price) // self.TOKEN_SCALE
+    dig 4
+    dup
+    cover 2
+    uncover 4
     *
-    intc_3 // 2
+    intc_0 // 0
+    bytec 10 // "TOKEN_SCALE"
+    app_global_get_ex
+    assert // check self.TOKEN_SCALE exists
+    swap
+    dig 1
     /
-    // smart_contracts/agent_factory/contract.py:262
+    // smart_contracts/agent_factory/contract.py:476
+    // current_sq = current_supply * current_supply
+    dig 3
+    uncover 4
+    *
+    // smart_contracts/agent_factory/contract.py:477
+    // slope_cost = (slope * current_sq) // (
+    uncover 4
+    *
+    // smart_contracts/agent_factory/contract.py:478
+    // UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
+    intc_3 // 2
+    dig 3
+    *
+    uncover 3
+    *
+    // smart_contracts/agent_factory/contract.py:477-479
+    // slope_cost = (slope * current_sq) // (
+    //     UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
+    // )
+    /
+    // smart_contracts/agent_factory/contract.py:480
     // total_value = base_cost + slope_cost
     +
-    // smart_contracts/agent_factory/contract.py:264
-    // return total_value >= self.GRADUATION_THRESHOLD
-    intc_0 // 0
-    bytec 8 // "GRADUATION_THRESHOLD"
-    app_global_get_ex
-    assert // check self.GRADUATION_THRESHOLD exists
-    >=
-    // smart_contracts/agent_factory/contract.py:243
+    // smart_contracts/agent_factory/contract.py:482
+    // return total_value >= graduation_threshold
+    <=
+    // smart_contracts/agent_factory/contract.py:454
     // @abimethod(readonly=True)
-    b check_graduation_after_inlined_smart_contracts.agent_factory.contract.AgentFactory.check_graduation@6
+    b check_graduation_after_inlined_smart_contracts.agent_factory.contract.AgentFactory.check_graduation@7
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.distribute_cortex[routing]() -> void:
 distribute_cortex:
-    // smart_contracts/agent_factory/contract.py:270
+    // smart_contracts/agent_factory/contract.py:488
     // @abimethod()
     txna ApplicationArgs 1
     dup
@@ -786,29 +1456,35 @@ distribute_cortex:
     txna ApplicationArgs 2
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/agent_factory/contract.py:277
+    // smart_contracts/agent_factory/contract.py:495
     // assert Txn.sender == Global.creator_address, "Only creator can distribute"
     txn Sender
     global CreatorAddress
     ==
     assert // Only creator can distribute
-    // smart_contracts/agent_factory/contract.py:278
+    // smart_contracts/agent_factory/contract.py:496
     // assert self.cortex_token != UInt64(0), "Protocol not bootstrapped"
     intc_0 // 0
-    bytec_1 // "cortex_token"
+    bytec_3 // "cortex_token"
     app_global_get_ex
     assert // check self.cortex_token exists
     dup
     assert // Protocol not bootstrapped
-    // smart_contracts/agent_factory/contract.py:279
+    // smart_contracts/agent_factory/contract.py:497
     // assert amount > UInt64(0), "Amount must be positive"
     dig 1
     assert // Amount must be positive
-    // smart_contracts/agent_factory/contract.py:281-286
+    // smart_contracts/agent_factory/contract.py:498
+    // assert amount <= UInt64(1_000_000_000_000), "Max 1M CORTEX per distribution"
+    dig 1
+    pushint 1000000000000
+    <=
+    assert // Max 1M CORTEX per distribution
+    // smart_contracts/agent_factory/contract.py:500-505
     // itxn.AssetTransfer(
     //     xfer_asset=Asset(self.cortex_token),
     //     asset_receiver=receiver,
@@ -819,15 +1495,15 @@ distribute_cortex:
     itxn_field XferAsset
     itxn_field AssetAmount
     itxn_field AssetReceiver
-    // smart_contracts/agent_factory/contract.py:281
+    // smart_contracts/agent_factory/contract.py:500
     // itxn.AssetTransfer(
     pushint 4 // axfer
     itxn_field TypeEnum
-    // smart_contracts/agent_factory/contract.py:285
+    // smart_contracts/agent_factory/contract.py:504
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/agent_factory/contract.py:281-286
+    // smart_contracts/agent_factory/contract.py:500-505
     // itxn.AssetTransfer(
     //     xfer_asset=Asset(self.cortex_token),
     //     asset_receiver=receiver,
@@ -835,290 +1511,563 @@ distribute_cortex:
     //     fee=0,
     // ).submit()
     itxn_submit
-    // smart_contracts/agent_factory/contract.py:270
+    // smart_contracts/agent_factory/contract.py:488
     // @abimethod()
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.update_fee_parameters[routing]() -> void:
 update_fee_parameters:
-    // smart_contracts/agent_factory/contract.py:292
+    // smart_contracts/agent_factory/contract.py:511
     // @abimethod()
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
     txna ApplicationArgs 2
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/agent_factory/contract.py:301
+    // smart_contracts/agent_factory/contract.py:519
     // assert Txn.sender == Global.creator_address, "Unauthorized"
     txn Sender
     global CreatorAddress
     ==
     assert // Unauthorized
-    // smart_contracts/agent_factory/contract.py:302
-    // assert buy_fee <= UInt64(1000), "Max buy fee is 10%"
+    // smart_contracts/agent_factory/contract.py:520
+    // assert buy_fee >= self.MIN_FEE_BPS, "Buy fee below protocol minimum"
+    intc_0 // 0
+    bytec 15 // "MIN_FEE_BPS"
+    app_global_get_ex
+    assert // check self.MIN_FEE_BPS exists
+    dig 2
     dig 1
-    intc 4 // 1000
+    >=
+    assert // Buy fee below protocol minimum
+    // smart_contracts/agent_factory/contract.py:521
+    // assert buy_fee <= self.MAX_FEE_BPS, "Buy fee above protocol maximum"
+    intc_0 // 0
+    bytec 16 // "MAX_FEE_BPS"
+    app_global_get_ex
+    assert // check self.MAX_FEE_BPS exists
+    dig 3
+    dig 1
     <=
-    assert // Max buy fee is 10%
-    // smart_contracts/agent_factory/contract.py:303
-    // assert sell_fee <= UInt64(1000), "Max sell fee is 10%"
-    dup
-    intc 4 // 1000
-    <=
-    assert // Max sell fee is 10%
-    // smart_contracts/agent_factory/contract.py:304
+    assert // Buy fee above protocol maximum
+    // smart_contracts/agent_factory/contract.py:522
+    // assert sell_fee >= self.MIN_FEE_BPS, "Sell fee below protocol minimum"
+    dig 2
+    uncover 2
+    >=
+    assert // Sell fee below protocol minimum
+    // smart_contracts/agent_factory/contract.py:523
+    // assert sell_fee <= self.MAX_FEE_BPS, "Sell fee above protocol maximum"
+    dig 1
+    >=
+    assert // Sell fee above protocol maximum
+    // smart_contracts/agent_factory/contract.py:524
     // self.buy_fee_bps = buy_fee
-    bytec 5 // "buy_fee_bps"
+    bytec 21 // "buy_fee_bps"
     uncover 2
     app_global_put
-    // smart_contracts/agent_factory/contract.py:305
+    // smart_contracts/agent_factory/contract.py:525
     // self.sell_fee_bps = sell_fee
-    bytec 6 // "sell_fee_bps"
+    bytec 22 // "sell_fee_bps"
     swap
     app_global_put
-    // smart_contracts/agent_factory/contract.py:292
+    // smart_contracts/agent_factory/contract.py:511
     // @abimethod()
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.update_creation_fee[routing]() -> void:
 update_creation_fee:
-    // smart_contracts/agent_factory/contract.py:307
+    // smart_contracts/agent_factory/contract.py:527
     // @abimethod()
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/agent_factory/contract.py:313
+    // smart_contracts/agent_factory/contract.py:533
     // assert Txn.sender == Global.creator_address, "Unauthorized"
     txn Sender
     global CreatorAddress
     ==
     assert // Unauthorized
-    // smart_contracts/agent_factory/contract.py:314
+    // smart_contracts/agent_factory/contract.py:534
+    // assert new_fee >= UInt64(1_000_000), "Minimum creation fee is 1 CORTEX"
+    dup
+    intc 7 // 1000000
+    >=
+    assert // Minimum creation fee is 1 CORTEX
+    // smart_contracts/agent_factory/contract.py:535
     // self.creation_fee = new_fee
-    bytec 7 // "creation_fee"
+    bytec 13 // "creation_fee"
     swap
     app_global_put
-    // smart_contracts/agent_factory/contract.py:307
+    // smart_contracts/agent_factory/contract.py:527
     // @abimethod()
-    intc_1 // 1
+    intc_2 // 1
     return
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.update_graduation_threshold[routing]() -> void:
 update_graduation_threshold:
-    // smart_contracts/agent_factory/contract.py:316
+    // smart_contracts/agent_factory/contract.py:537
     // @abimethod()
     txna ApplicationArgs 1
     dup
     len
-    intc_2 // 8
+    intc_1 // 8
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/agent_factory/contract.py:322
+    // smart_contracts/agent_factory/contract.py:543
     // assert Txn.sender == Global.creator_address, "Unauthorized"
     txn Sender
     global CreatorAddress
     ==
     assert // Unauthorized
-    // smart_contracts/agent_factory/contract.py:323
+    // smart_contracts/agent_factory/contract.py:545
+    // new_threshold >= self.MIN_GRADUATION_THRESHOLD
+    intc_0 // 0
+    bytec 17 // "MIN_GRADUATION_THRESHOLD"
+    app_global_get_ex
+    assert // check self.MIN_GRADUATION_THRESHOLD exists
+    dig 1
+    <=
+    // smart_contracts/agent_factory/contract.py:544-546
+    // assert (
+    //     new_threshold >= self.MIN_GRADUATION_THRESHOLD
+    // ), "Threshold below protocol minimum"
+    assert // Threshold below protocol minimum
+    // smart_contracts/agent_factory/contract.py:548
+    // new_threshold <= self.MAX_GRADUATION_THRESHOLD
+    intc_0 // 0
+    bytec 18 // "MAX_GRADUATION_THRESHOLD"
+    app_global_get_ex
+    assert // check self.MAX_GRADUATION_THRESHOLD exists
+    dig 1
+    >=
+    // smart_contracts/agent_factory/contract.py:547-549
+    // assert (
+    //     new_threshold <= self.MAX_GRADUATION_THRESHOLD
+    // ), "Threshold above protocol maximum"
+    assert // Threshold above protocol maximum
+    // smart_contracts/agent_factory/contract.py:550
     // self.GRADUATION_THRESHOLD = new_threshold
-    bytec 8 // "GRADUATION_THRESHOLD"
+    bytec 14 // "GRADUATION_THRESHOLD"
     swap
     app_global_put
-    // smart_contracts/agent_factory/contract.py:316
+    // smart_contracts/agent_factory/contract.py:537
     // @abimethod()
-    intc_1 // 1
+    intc_2 // 1
     return
+
+
+// smart_contracts.agent_factory.contract.AgentFactory._require_agent_config(asset_id: uint64) -> bytes:
+_require_agent_config:
+    // smart_contracts/agent_factory/contract.py:72
+    // def _require_agent_config(self, asset_id: UInt64) -> Bytes:
+    proto 1 1
+    // smart_contracts/agent_factory/contract.py:67
+    // return op.Box.get(b"c" + op.itob(asset_id))[1]
+    frame_dig -1
+    itob
+    bytec 12 // 0x63
+    swap
+    concat
+    dup
+    box_len
+    bury 1
+    // smart_contracts/agent_factory/contract.py:73
+    // if self._agent_config_exists(asset_id):
+    bz _require_agent_config_after_if_else@2
+    // smart_contracts/agent_factory/contract.py:74
+    // return self.agent_configs[asset_id]
+    frame_dig 0
+    box_get
+    assert // check self.agent_configs entry exists
+    swap
+    retsub
+
+_require_agent_config_after_if_else@2:
+    // smart_contracts/agent_factory/contract.py:75
+    // assert self.pending_asset_id == asset_id, "Agent config not found"
+    intc_0 // 0
+    bytec_0 // "pending_asset_id"
+    app_global_get_ex
+    assert // check self.pending_asset_id exists
+    frame_dig -1
+    ==
+    assert // Agent config not found
+    // smart_contracts/agent_factory/contract.py:77
+    // self.pending_base_price,
+    intc_0 // 0
+    bytec 5 // "pending_base_price"
+    app_global_get_ex
+    assert // check self.pending_base_price exists
+    // smart_contracts/agent_factory/contract.py:78
+    // self.pending_slope,
+    intc_0 // 0
+    bytec 6 // "pending_slope"
+    app_global_get_ex
+    assert // check self.pending_slope exists
+    // smart_contracts/agent_factory/contract.py:79
+    // self.pending_buy_fee_bps,
+    intc_0 // 0
+    bytec 7 // "pending_buy_fee_bps"
+    app_global_get_ex
+    assert // check self.pending_buy_fee_bps exists
+    // smart_contracts/agent_factory/contract.py:80
+    // self.pending_sell_fee_bps,
+    intc_0 // 0
+    bytec 8 // "pending_sell_fee_bps"
+    app_global_get_ex
+    assert // check self.pending_sell_fee_bps exists
+    // smart_contracts/agent_factory/contract.py:81
+    // self.pending_graduation_threshold,
+    intc_0 // 0
+    bytec 9 // "pending_graduation_threshold"
+    app_global_get_ex
+    assert // check self.pending_graduation_threshold exists
+    // smart_contracts/agent_factory/contract.py:76-82
+    // return self._encode_agent_config(
+    //     self.pending_base_price,
+    //     self.pending_slope,
+    //     self.pending_buy_fee_bps,
+    //     self.pending_sell_fee_bps,
+    //     self.pending_graduation_threshold,
+    // )
+    callsub _encode_agent_config
+    swap
+    retsub
+
+
+// smart_contracts.agent_factory.contract.AgentFactory._get_agent_supply(asset_id: uint64) -> uint64:
+_get_agent_supply:
+    // smart_contracts/agent_factory/contract.py:84
+    // def _get_agent_supply(self, asset_id: UInt64) -> UInt64:
+    proto 1 1
+    // smart_contracts/agent_factory/contract.py:70
+    // return op.Box.get(b"s" + op.itob(asset_id))[1]
+    frame_dig -1
+    itob
+    bytec 4 // 0x73
+    swap
+    concat
+    dup
+    box_len
+    bury 1
+    // smart_contracts/agent_factory/contract.py:85
+    // if self._agent_supply_exists(asset_id):
+    bz _get_agent_supply_after_if_else@2
+    // smart_contracts/agent_factory/contract.py:86
+    // return self.agent_supplies[asset_id]
+    frame_dig 0
+    box_get
+    assert // check self.agent_supplies entry exists
+    btoi
+    swap
+    retsub
+
+_get_agent_supply_after_if_else@2:
+    // smart_contracts/agent_factory/contract.py:87
+    // if self.pending_asset_id == asset_id:
+    intc_0 // 0
+    bytec_0 // "pending_asset_id"
+    app_global_get_ex
+    assert // check self.pending_asset_id exists
+    frame_dig -1
+    ==
+    bz _get_agent_supply_after_if_else@4
+    // smart_contracts/agent_factory/contract.py:88
+    // return self.pending_supply
+    intc_0 // 0
+    bytec_1 // "pending_supply"
+    app_global_get_ex
+    assert // check self.pending_supply exists
+    swap
+    retsub
+
+_get_agent_supply_after_if_else@4:
+    // smart_contracts/agent_factory/contract.py:89
+    // return UInt64(0)
+    intc_0 // 0
+    swap
+    retsub
+
+
+// smart_contracts.agent_factory.contract.AgentFactory._encode_agent_config(base_price: uint64, slope: uint64, buy_fee_bps: uint64, sell_fee_bps: uint64, graduation_threshold: uint64) -> bytes:
+_encode_agent_config:
+    // smart_contracts/agent_factory/contract.py:100-107
+    // def _encode_agent_config(
+    //     self,
+    //     base_price: UInt64,
+    //     slope: UInt64,
+    //     buy_fee_bps: UInt64,
+    //     sell_fee_bps: UInt64,
+    //     graduation_threshold: UInt64,
+    // ) -> Bytes:
+    proto 5 1
+    // smart_contracts/agent_factory/contract.py:109
+    // op.itob(base_price)
+    frame_dig -5
+    itob
+    // smart_contracts/agent_factory/contract.py:110
+    // + op.itob(slope)
+    frame_dig -4
+    itob
+    // smart_contracts/agent_factory/contract.py:109-110
+    // op.itob(base_price)
+    // + op.itob(slope)
+    concat
+    // smart_contracts/agent_factory/contract.py:111
+    // + op.itob(buy_fee_bps)
+    frame_dig -3
+    itob
+    // smart_contracts/agent_factory/contract.py:109-111
+    // op.itob(base_price)
+    // + op.itob(slope)
+    // + op.itob(buy_fee_bps)
+    concat
+    // smart_contracts/agent_factory/contract.py:112
+    // + op.itob(sell_fee_bps)
+    frame_dig -2
+    itob
+    // smart_contracts/agent_factory/contract.py:109-112
+    // op.itob(base_price)
+    // + op.itob(slope)
+    // + op.itob(buy_fee_bps)
+    // + op.itob(sell_fee_bps)
+    concat
+    // smart_contracts/agent_factory/contract.py:113
+    // + op.itob(graduation_threshold)
+    frame_dig -1
+    itob
+    // smart_contracts/agent_factory/contract.py:109-113
+    // op.itob(base_price)
+    // + op.itob(slope)
+    // + op.itob(buy_fee_bps)
+    // + op.itob(sell_fee_bps)
+    // + op.itob(graduation_threshold)
+    concat
+    // smart_contracts/agent_factory/contract.py:108-114
+    // return (
+    //     op.itob(base_price)
+    //     + op.itob(slope)
+    //     + op.itob(buy_fee_bps)
+    //     + op.itob(sell_fee_bps)
+    //     + op.itob(graduation_threshold)
+    // )
+    retsub
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price(asset: uint64, amount: uint64) -> uint64:
 smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price:
-    // smart_contracts/agent_factory/contract.py:108-109
+    // smart_contracts/agent_factory/contract.py:301-302
     // @abimethod(readonly=True)
     // def calculate_buy_price(self, asset: Asset, amount: UInt64) -> UInt64:
     proto 2 1
-    // smart_contracts/agent_factory/contract.py:114
+    // smart_contracts/agent_factory/contract.py:307
+    // config_data = self._require_agent_config(asset.id)
+    frame_dig -2
+    callsub _require_agent_config
+    // smart_contracts/agent_factory/contract.py:308
     // assert amount > UInt64(0), "Amount must be positive"
     frame_dig -1
     assert // Amount must be positive
-    // smart_contracts/agent_factory/contract.py:115
-    // assert amount <= UInt64(1_000_000_000), "Amount exceeds max supply"
-    frame_dig -1
-    intc 6 // 1000000000
-    <=
-    assert // Amount exceeds max supply
-    // smart_contracts/agent_factory/contract.py:117-118
-    // # If box doesn't exist, assume supply 0
-    // current_supply = UInt64(0)
+    // smart_contracts/agent_factory/contract.py:309
+    // assert amount <= self.MAX_AGENT_SUPPLY, "Amount exceeds max supply"
     intc_0 // 0
-    // smart_contracts/agent_factory/contract.py:119
-    // if op.Box.get(op.itob(asset.id))[1]:
-    frame_dig -2
-    itob
-    dup
-    box_len
-    bury 1
-    bz smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price_after_if_else@2
-    // smart_contracts/agent_factory/contract.py:120
-    // current_supply = self.agent_supplies[asset.id]
-    bytec_0 // "agent_supplies"
-    frame_dig 1
-    concat
-    box_get
-    assert // check self.agent_supplies entry exists
-    btoi
-    frame_bury 0
-
-smart_contracts.agent_factory.contract.AgentFactory.calculate_buy_price_after_if_else@2:
-    // smart_contracts/agent_factory/contract.py:122
-    // base_cost = amount * self.BASE_PRICE
-    intc_0 // 0
-    bytec_3 // "BASE_PRICE"
+    bytec 19 // "MAX_AGENT_SUPPLY"
     app_global_get_ex
-    assert // check self.BASE_PRICE exists
+    assert // check self.MAX_AGENT_SUPPLY exists
     frame_dig -1
+    >=
+    assert // Amount exceeds max supply
+    // smart_contracts/agent_factory/contract.py:310
+    // assert amount <= self.MAX_TX_AMOUNT, "Amount exceeds max per-transaction limit"
+    intc_0 // 0
+    bytec 11 // "MAX_TX_AMOUNT"
+    app_global_get_ex
+    assert // check self.MAX_TX_AMOUNT exists
+    frame_dig -1
+    >=
+    assert // Amount exceeds max per-transaction limit
+    // smart_contracts/agent_factory/contract.py:153
+    // return op.btoi(op.extract(config_data, 0, 8))
+    dup
+    intc_0 // 0
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:156
+    // return op.btoi(op.extract(config_data, 8, 8))
+    swap
+    intc_1 // 8
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:314
+    // current_supply = self._get_agent_supply(asset.id)
+    frame_dig -2
+    callsub _get_agent_supply
+    // smart_contracts/agent_factory/contract.py:316-318
+    // # Convert micro-token units into whole-token price space so user-facing
+    // # token decimals do not explode the curve math.
+    // base_cost = (amount * base_price) // self.TOKEN_SCALE
+    frame_dig -1
+    uncover 3
     *
-    // smart_contracts/agent_factory/contract.py:124
+    intc_0 // 0
+    bytec 10 // "TOKEN_SCALE"
+    app_global_get_ex
+    assert // check self.TOKEN_SCALE exists
+    swap
+    dig 1
+    /
+    // smart_contracts/agent_factory/contract.py:320
     // two_supply_amount = UInt64(2) * current_supply * amount
     intc_3 // 2
-    frame_dig 0
+    uncover 3
     *
     frame_dig -1
     *
-    // smart_contracts/agent_factory/contract.py:125
+    // smart_contracts/agent_factory/contract.py:321
     // amount_sq = amount * amount
     frame_dig -1
     dup
     *
-    // smart_contracts/agent_factory/contract.py:126
+    // smart_contracts/agent_factory/contract.py:322
     // area_doubled = two_supply_amount + amount_sq
     +
-    // smart_contracts/agent_factory/contract.py:128
-    // slope_cost = (self.SLOPE * area_doubled) // UInt64(2)
-    intc_0 // 0
-    bytec 4 // "SLOPE"
-    app_global_get_ex
-    assert // check self.SLOPE exists
+    // smart_contracts/agent_factory/contract.py:324
+    // slope_cost = (slope * area_doubled) // (
+    uncover 3
     *
+    // smart_contracts/agent_factory/contract.py:325
+    // UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
     intc_3 // 2
+    dig 3
+    *
+    uncover 3
+    *
+    // smart_contracts/agent_factory/contract.py:324-326
+    // slope_cost = (slope * area_doubled) // (
+    //     UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
+    // )
     /
-    // smart_contracts/agent_factory/contract.py:130
+    // smart_contracts/agent_factory/contract.py:328
     // return base_cost + slope_cost
     +
-    frame_bury 0
     retsub
 
 
 // smart_contracts.agent_factory.contract.AgentFactory.calculate_sell_price(asset: uint64, amount: uint64) -> uint64:
 smart_contracts.agent_factory.contract.AgentFactory.calculate_sell_price:
-    // smart_contracts/agent_factory/contract.py:174-175
+    // smart_contracts/agent_factory/contract.py:378-379
     // @abimethod(readonly=True)
     // def calculate_sell_price(self, asset: Asset, amount: UInt64) -> UInt64:
     proto 2 1
-    // smart_contracts/agent_factory/contract.py:180
+    // smart_contracts/agent_factory/contract.py:384
+    // config_data = self._require_agent_config(asset.id)
+    frame_dig -2
+    callsub _require_agent_config
+    // smart_contracts/agent_factory/contract.py:385
     // assert amount > UInt64(0), "Amount must be positive"
     frame_dig -1
     assert // Amount must be positive
-    // smart_contracts/agent_factory/contract.py:182
-    // current_supply = UInt64(0)
-    intc_0 // 0
-    // smart_contracts/agent_factory/contract.py:183
-    // if op.Box.get(op.itob(asset.id))[1]:
-    frame_dig -2
-    itob
+    // smart_contracts/agent_factory/contract.py:153
+    // return op.btoi(op.extract(config_data, 0, 8))
     dup
-    box_len
-    bury 1
-    bz smart_contracts.agent_factory.contract.AgentFactory.calculate_sell_price_after_if_else@2
-    // smart_contracts/agent_factory/contract.py:184
-    // current_supply = self.agent_supplies[asset.id]
-    bytec_0 // "agent_supplies"
-    frame_dig 1
-    concat
-    box_get
-    assert // check self.agent_supplies entry exists
-    btoi
-    frame_bury 0
-
-smart_contracts.agent_factory.contract.AgentFactory.calculate_sell_price_after_if_else@2:
-    // smart_contracts/agent_factory/contract.py:186
+    intc_0 // 0
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:156
+    // return op.btoi(op.extract(config_data, 8, 8))
+    dig 1
+    intc_1 // 8
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:389
+    // current_supply = self._get_agent_supply(asset.id)
+    frame_dig -2
+    callsub _get_agent_supply
+    // smart_contracts/agent_factory/contract.py:391
     // assert current_supply >= amount, "Cannot sell more than supply"
-    frame_dig 0
     dup
     frame_dig -1
     >=
     assert // Cannot sell more than supply
-    // smart_contracts/agent_factory/contract.py:188
+    // smart_contracts/agent_factory/contract.py:393
     // new_supply = current_supply - amount
     dup
     frame_dig -1
     -
-    // smart_contracts/agent_factory/contract.py:190-191
+    // smart_contracts/agent_factory/contract.py:395-396
     // # Base component
-    // base_cost = amount * self.BASE_PRICE
-    intc_0 // 0
-    bytec_3 // "BASE_PRICE"
-    app_global_get_ex
-    assert // check self.BASE_PRICE exists
+    // base_cost = (amount * base_price) // self.TOKEN_SCALE
     frame_dig -1
+    uncover 4
     *
-    // smart_contracts/agent_factory/contract.py:193-194
+    intc_0 // 0
+    bytec 10 // "TOKEN_SCALE"
+    app_global_get_ex
+    assert // check self.TOKEN_SCALE exists
+    swap
+    dig 1
+    /
+    // smart_contracts/agent_factory/contract.py:398-399
     // # Slope area: SLOPE * (current_supply^2 - new_supply^2) / 2
     // current_sq = current_supply * current_supply
-    dig 2
-    uncover 3
+    dig 3
+    uncover 4
     *
-    // smart_contracts/agent_factory/contract.py:195
+    // smart_contracts/agent_factory/contract.py:400
     // new_sq = new_supply * new_supply
-    dig 2
+    dig 3
+    uncover 4
+    *
+    // smart_contracts/agent_factory/contract.py:401
+    // slope_cost = (slope * (current_sq - new_sq)) // (
+    -
     uncover 3
     *
-    // smart_contracts/agent_factory/contract.py:196
-    // slope_cost = (self.SLOPE * (current_sq - new_sq)) // UInt64(2)
-    intc_0 // 0
-    bytec 4 // "SLOPE"
-    app_global_get_ex
-    assert // check self.SLOPE exists
-    cover 2
-    -
-    *
+    // smart_contracts/agent_factory/contract.py:402
+    // UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
     intc_3 // 2
+    dig 3
+    *
+    uncover 3
+    *
+    // smart_contracts/agent_factory/contract.py:401-403
+    // slope_cost = (slope * (current_sq - new_sq)) // (
+    //     UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
+    // )
     /
-    // smart_contracts/agent_factory/contract.py:198-199
+    // smart_contracts/agent_factory/contract.py:405-406
     // # Gross before fee
     // gross = base_cost + slope_cost
     +
-    // smart_contracts/agent_factory/contract.py:201-202
-    // # Apply sell fee (default 2%) — fee stays in the protocol
-    // fee = (gross * self.sell_fee_bps) // UInt64(10_000)
-    intc_0 // 0
-    bytec 6 // "sell_fee_bps"
-    app_global_get_ex
-    assert // check self.sell_fee_bps exists
+    // smart_contracts/agent_factory/contract.py:162
+    // return op.btoi(op.extract(config_data, 24, 8))
+    swap
+    pushint 24
+    extract_uint64
+    // smart_contracts/agent_factory/contract.py:408-409
+    // # Apply the per-agent sell fee — fee stays in the protocol.
+    // fee = (gross * self._get_config_sell_fee_bps(config_data)) // UInt64(10_000)
     dig 1
     *
     intc 5 // 10000
     /
-    // smart_contracts/agent_factory/contract.py:203
+    // smart_contracts/agent_factory/contract.py:410
     // return gross - fee
     -
-    frame_bury 0
     retsub

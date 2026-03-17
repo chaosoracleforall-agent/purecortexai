@@ -1,11 +1,14 @@
 import algosdk from 'algosdk';
 import {
+  BASE_PRICE,
   BUY_FEE_BPS,
   FACTORY_APP_ID,
   FACTORY_ADDRESS,
   CORTEX_ASSET_ID,
   CREATION_FEE,
   ALGOD_URL,
+  SELL_FEE_BPS,
+  SLOPE,
   STAKING_APP_ID,
   calculateBuyPrice,
 } from './algorand';
@@ -134,6 +137,11 @@ const ABI_CREATE_AGENT = new algosdk.ABIMethod({
     { type: 'axfer', name: 'cortex_payment' },
     { type: 'string', name: 'name' },
     { type: 'string', name: 'unit_name' },
+    { type: 'uint64', name: 'base_price' },
+    { type: 'uint64', name: 'slope' },
+    { type: 'uint64', name: 'buy_fee_bps' },
+    { type: 'uint64', name: 'sell_fee_bps' },
+    { type: 'uint64', name: 'graduation_threshold_override' },
   ],
   returns: { type: 'uint64' },
 });
@@ -193,6 +201,20 @@ function stakingBoxKey(prefix: 's' | 'd', address: string): Uint8Array {
   return key;
 }
 
+function agentBoxRefs(assetId: number): { appIndex: number; name: Uint8Array }[] {
+  const key = algosdk.bigIntToBytes(assetId, 8);
+  const configKey = new Uint8Array(1 + key.length);
+  configKey[0] = 'c'.charCodeAt(0);
+  configKey.set(key, 1);
+  const supplyKey = new Uint8Array(1 + key.length);
+  supplyKey[0] = 's'.charCodeAt(0);
+  supplyKey.set(key, 1);
+  return [
+    { appIndex: FACTORY_APP_ID, name: configKey },
+    { appIndex: FACTORY_APP_ID, name: supplyKey },
+  ];
+}
+
 /**
  * Build an atomic transaction group for creating a new agent.
  * Group: [CORTEX asset transfer → create_agent app call]
@@ -201,6 +223,13 @@ export async function buildCreateAgentTxns(
   sender: string,
   name: string,
   symbol: string,
+  launchParams?: {
+    basePrice?: bigint;
+    slope?: bigint;
+    buyFeeBps?: bigint;
+    sellFeeBps?: bigint;
+    graduationThresholdOverride?: bigint;
+  },
 ): Promise<algosdk.Transaction[]> {
   const params = await fetchSuggestedParams();
 
@@ -224,6 +253,11 @@ export async function buildCreateAgentTxns(
       { txn: cortexTransfer, signer: algosdk.makeEmptyTransactionSigner() },
       name,
       symbol,
+      launchParams?.basePrice ?? BASE_PRICE,
+      launchParams?.slope ?? SLOPE,
+      launchParams?.buyFeeBps ?? BigInt(BUY_FEE_BPS),
+      launchParams?.sellFeeBps ?? BigInt(SELL_FEE_BPS),
+      launchParams?.graduationThresholdOverride ?? 0n,
     ],
     sender,
     suggestedParams: appCallParams,
@@ -243,13 +277,16 @@ export async function buildBuyTokensTxns(
   assetId: number,
   amount: bigint,
   currentSupply: bigint,
+  buyFeeBps: bigint = BigInt(BUY_FEE_BPS),
+  expectedTotalAlgo?: bigint,
 ): Promise<algosdk.Transaction[]> {
   const params = await fetchSuggestedParams();
 
-  // Calculate required ALGO (add 1% fee on top)
-  const rawPrice = calculateBuyPrice(currentSupply, amount);
-  const fee = (rawPrice * BigInt(BUY_FEE_BPS)) / 10_000n;
-  const totalAlgo = rawPrice + fee;
+  const totalAlgo = expectedTotalAlgo ?? (() => {
+    const rawPrice = calculateBuyPrice(currentSupply, amount);
+    const fee = (rawPrice * buyFeeBps) / 10_000n;
+    return rawPrice + fee;
+  })();
 
   if (totalAlgo > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new Error('Transaction amount exceeds safe precision limit');
@@ -278,9 +315,7 @@ export async function buildBuyTokensTxns(
     sender,
     suggestedParams: appCallParams,
     signer: algosdk.makeEmptyTransactionSigner(),
-    boxes: [
-      { appIndex: FACTORY_APP_ID, name: algosdk.bigIntToBytes(assetId, 8) },
-    ],
+    boxes: agentBoxRefs(assetId),
   });
 
   const group = composer.buildGroup();
@@ -320,9 +355,7 @@ export async function buildSellTokensTxns(
     sender,
     suggestedParams: appCallParams,
     signer: algosdk.makeEmptyTransactionSigner(),
-    boxes: [
-      { appIndex: FACTORY_APP_ID, name: algosdk.bigIntToBytes(assetId, 8) },
-    ],
+    boxes: agentBoxRefs(assetId),
   });
 
   return composer.buildGroup().map((grouped) => grouped.txn);

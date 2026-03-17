@@ -5,6 +5,7 @@ Official JavaScript/TypeScript client for the PURECORTEX API and chat-session wo
 ## Current coverage
 
 - Public health, transparency, governance, and agent-registry endpoints
+- Public marketplace rollout status, per-agent state, and quote previews
 - Authenticated agent chat
 - Chat session bootstrap for WebSocket usage
 - Browser/runtime WebSocket helpers
@@ -25,6 +26,12 @@ const client = new PureCortexClient({ apiKey: "ctx_your_key" });
 
 const health = await client.health();
 console.log(health.status);
+
+const marketplace = await client.marketplaceConfig();
+console.log(marketplace.trading_enabled);
+
+const quote = await client.previewBuyQuote({ assetId: 757199999, amount: 1_000_000 });
+console.log(quote.net);
 
 const registry = await client.listAgents();
 console.log(registry.total_agents);

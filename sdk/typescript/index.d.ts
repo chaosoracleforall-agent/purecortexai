@@ -35,6 +35,52 @@ export interface AgentRegistryResponse {
   agents: AgentRecord[];
 }
 
+export interface MarketplaceConfigResponse {
+  trading_enabled: boolean;
+  launch_enabled: boolean;
+  maintenance_reason: string | null;
+  active_factory_app_id: number;
+  deprecated_factory_app_id: number;
+  legacy_factory_app_ids: number[];
+  cortex_asset_id: number;
+  creation_fee: number;
+  buy_fee_bps: number;
+  sell_fee_bps: number;
+  graduation_threshold: number;
+  base_price: number;
+  slope: number;
+  next_deployment: Record<string, unknown>;
+  notes: string[];
+}
+
+export interface MarketplaceAgentStateResponse {
+  asset_id: number;
+  supply: number;
+  config: {
+    base_price: number;
+    slope: number;
+    buy_fee_bps: number;
+    sell_fee_bps: number;
+    graduation_threshold: number;
+  };
+}
+
+export interface MarketplaceQuotePreviewResponse {
+  asset_id: number;
+  amount: number;
+  current_supply: number;
+  config: {
+    base_price: number;
+    slope: number;
+    buy_fee_bps: number;
+    sell_fee_bps: number;
+    graduation_threshold: number;
+  };
+  gross: number;
+  fee: number;
+  net: number;
+}
+
 export interface AgentActivityResponse {
   agent: string;
   total_actions: number;
@@ -183,6 +229,10 @@ export class PureCortexClient {
   governanceTransparency(): Promise<GovernanceTransparencyResponse>;
   transparencyAgents(): Promise<TransparencyAgentsResponse>;
   listAgents(): Promise<AgentRegistryResponse>;
+  marketplaceConfig(): Promise<MarketplaceConfigResponse>;
+  marketplaceAgentState(assetId: number): Promise<MarketplaceAgentStateResponse>;
+  previewBuyQuote(input: { assetId: number; amount: number }): Promise<MarketplaceQuotePreviewResponse>;
+  previewSellQuote(input: { assetId: number; amount: number }): Promise<MarketplaceQuotePreviewResponse>;
   agentActivity(agentName: AgentName): Promise<AgentActivityResponse>;
   chat(agentName: AgentName, message: string, options?: { apiKey?: string }): Promise<ChatResponse>;
   createChatSession(options?: { apiKey?: string }): Promise<ChatSessionResponse>;

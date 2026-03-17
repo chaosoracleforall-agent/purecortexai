@@ -98,6 +98,26 @@ export class PureCortexClient {
     return this.#request("GET", "/api/agents/registry");
   }
 
+  marketplaceConfig() {
+    return this.#request("GET", "/api/marketplace/config");
+  }
+
+  marketplaceAgentState(assetId) {
+    return this.#request("GET", `/api/marketplace/agents/${assetId}/state`);
+  }
+
+  previewBuyQuote({ assetId, amount }) {
+    return this.#request("GET", "/api/marketplace/quote/buy", {
+      params: { asset_id: assetId, amount },
+    });
+  }
+
+  previewSellQuote({ assetId, amount }) {
+    return this.#request("GET", "/api/marketplace/quote/sell", {
+      params: { asset_id: assetId, amount },
+    });
+  }
+
   agentActivity(agentName) {
     return this.#request("GET", `/api/agents/${agentName}/activity`);
   }

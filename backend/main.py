@@ -27,6 +27,7 @@ from src.api.chat import router as chat_router
 from src.api.admin import router as admin_router, set_api_key_manager
 from src.api.developer_access import router as developer_access_router
 from src.api.internal_admin import router as internal_admin_router
+from src.api.marketplace import router as marketplace_router
 
 # Auth
 from src.api.auth import APIKeyMiddleware
@@ -204,15 +205,20 @@ app.include_router(chat_router)
 app.include_router(admin_router)
 app.include_router(developer_access_router)
 app.include_router(internal_admin_router)
+app.include_router(marketplace_router)
 
 # ── Security Proxy ──
 proxy = PermissionProxy(PermissionTier.READ_ONLY)
 
 # ── Initialize Orchestrator ──
-try:
-    orchestrator = ConsensusOrchestrator()
-except Exception as e:
-    logger.warning("Failed to initialize orchestrator: %s", e)
+if os.getenv("ENABLE_AGENTS", "1") == "1":
+    try:
+        orchestrator = ConsensusOrchestrator()
+    except Exception as e:
+        logger.warning("Failed to initialize orchestrator: %s", e)
+        orchestrator = None
+else:
+    logger.info("Skipping orchestrator initialization (ENABLE_AGENTS=0).")
     orchestrator = None
 
 

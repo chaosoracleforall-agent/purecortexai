@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PURECORTEX API Gateway",
-    "version": "0.7.0"
+    "version": "0.7.7"
   },
   "paths": {
     "/health": {
@@ -11,7 +11,7 @@
           "health"
         ],
         "summary": "Health",
-        "description": "Basic health check for load balancers and monitoring.",
+        "description": "Health check with dependency status for load balancers and monitoring.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -163,7 +163,7 @@
           "governance"
         ],
         "summary": "Get Governance Overview",
-        "description": "High-level governance stats (proposals, participation, veCORTEX).",
+        "description": "High-level governance stats computed from canonical proposal storage.",
         "operationId": "get_governance_overview_api_governance_overview_get",
         "responses": {
           "200": {
@@ -185,7 +185,7 @@
           "governance"
         ],
         "summary": "List Proposals",
-        "description": "List all governance proposals.",
+        "description": "List all governance proposals with status and vote counts.",
         "operationId": "list_proposals_api_governance_proposals_get",
         "responses": {
           "200": {
@@ -199,6 +199,46 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Create Proposal",
+        "description": "Create a new governance proposal in the canonical governance API.",
+        "operationId": "create_proposal_api_governance_proposals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/governance/proposals/{proposal_id}": {
@@ -207,7 +247,7 @@
           "governance"
         ],
         "summary": "Get Proposal",
-        "description": "Get a single proposal by ID.",
+        "description": "Get a specific proposal with full details including curator review and voter list.",
         "operationId": "get_proposal_api_governance_proposals__proposal_id__get",
         "parameters": [
           {
@@ -227,6 +267,343 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProposalDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/proposals/{proposal_id}/power/{address}": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Get Proposal Vote Power",
+        "operationId": "get_proposal_vote_power_api_governance_proposals__proposal_id__power__address__get",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          },
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Address"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VotePowerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/proposals/{proposal_id}/review": {
+      "post": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Review Proposal",
+        "description": "Curator reviews a proposal. Moves status to 'voting' if compliant, 'rejected' if not.",
+        "operationId": "review_proposal_api_governance_proposals__proposal_id__review_post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/proposals/{proposal_id}/vote": {
+      "post": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Vote On Proposal",
+        "description": "Internal/operator vote path for smoke tests and controlled automation.",
+        "operationId": "vote_on_proposal_api_governance_proposals__proposal_id__vote_post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/proposals/{proposal_id}/vote-signed": {
+      "post": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Vote On Proposal Signed",
+        "description": "Public wallet-signed vote path for live token-holder governance.",
+        "operationId": "vote_on_proposal_signed_api_governance_proposals__proposal_id__vote_signed_post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignedVoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/governance/onchain": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Get Onchain Proposals",
+        "description": "Read all proposals directly from the on-chain GovernanceContract.",
+        "operationId": "get_onchain_proposals_api_governance_onchain_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnChainProposalsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staking/overview": {
+      "get": {
+        "tags": [
+          "staking"
+        ],
+        "summary": "Get Staking Overview",
+        "operationId": "get_staking_overview_api_staking_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StakingOverviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staking/account/{address}": {
+      "get": {
+        "tags": [
+          "staking"
+        ],
+        "summary": "Get Staking Account",
+        "operationId": "get_staking_account_api_staking_account__address__get",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Address"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StakingAccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staking/delegate/{address}": {
+      "get": {
+        "tags": [
+          "staking"
+        ],
+        "summary": "Get Delegate Summary",
+        "operationId": "get_delegate_summary_api_staking_delegate__address__get",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Address"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DelegateSummaryResponse"
                 }
               }
             }
@@ -266,13 +643,98 @@
         }
       }
     },
+    "/api/agents/senator/propose": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Senator Propose",
+        "description": "Senator AI creates a governance proposal.\n\nThe Senator agent submits a new proposal to the governance system.\nThe proposal starts in 'review' status, awaiting Curator review.\nIf the orchestrator is available, the Senator's tri-brain is used\nto enrich the proposal; otherwise it is created directly.",
+        "operationId": "senator_propose_api_agents_senator_propose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SenatorProposeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SenatorProposeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/curator/review/{proposal_id}": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Curator Review",
+        "description": "Curator AI reviews a governance proposal for constitutional compliance.\n\nUses the Curator agent's tri-brain (Claude + Gemini + GPT-5) to analyze the\nproposal against the PURECORTEX Constitution. If the orchestrator is\nunavailable, performs a basic compliance pass.",
+        "operationId": "curator_review_api_agents_curator_review__proposal_id__post",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CuratorReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/agents/{agent_name}/chat": {
       "post": {
         "tags": [
           "agents"
         ],
         "summary": "Chat With Agent",
-        "description": "Chat with a specific protocol agent.\nCurrently returns a placeholder response. Post-TGE, this will route\nthrough the Tri-Brain Orchestrator with agent-specific system prompts.",
+        "description": "Chat with a specific protocol agent.\nRoutes through the live tri-brain-backed agent implementation when the\norchestration loop is available.",
         "operationId": "chat_with_agent_api_agents__agent_name__chat_post",
         "parameters": [
           {
@@ -345,6 +807,1002 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/session": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Create Chat Session",
+        "description": "Create a short-lived websocket session from an authenticated API key.",
+        "operationId": "create_chat_session_api_chat_session_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/bootstrap": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Bootstrap Admin Key",
+        "operationId": "bootstrap_admin_key_api_admin_bootstrap_post",
+        "parameters": [
+          {
+            "name": "x-bootstrap-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bootstrap-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BootstrapAdminRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateKeyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/keys": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create Api Key",
+        "operationId": "create_api_key_api_admin_keys_post",
+        "parameters": [
+          {
+            "name": "x-admin-secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Secret"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateKeyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/keys/revoke": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Revoke Api Key",
+        "operationId": "revoke_api_key_api_admin_keys_revoke_post",
+        "parameters": [
+          {
+            "name": "x-admin-secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Secret"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/developer-access/config": {
+      "get": {
+        "tags": [
+          "developer-access"
+        ],
+        "summary": "Get Developer Access Config",
+        "operationId": "get_developer_access_config_api_developer_access_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeveloperAccessConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/developer-access/requests": {
+      "post": {
+        "tags": [
+          "developer-access"
+        ],
+        "summary": "Create Developer Access Request",
+        "operationId": "create_developer_access_request_api_developer_access_requests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeveloperAccessRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeveloperAccessRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/health": {
+      "get": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "Internal Admin Health",
+        "description": "Readiness probe for the internal admin control plane.",
+        "operationId": "internal_admin_health_internal_admin_health_get",
+        "parameters": [
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/access-requests": {
+      "get": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "List Access Requests",
+        "operationId": "list_access_requests_internal_admin_access_requests_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/access-requests/{request_id}": {
+      "get": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "Get Access Request",
+        "operationId": "get_access_request_internal_admin_access_requests__request_id__get",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/api-keys": {
+      "get": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "List Api Keys",
+        "operationId": "list_api_keys_internal_admin_api_keys_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/access-requests/{request_id}/approve": {
+      "post": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "Approve Access Request",
+        "operationId": "approve_access_request_internal_admin_access_requests__request_id__approve_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveAccessRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/access-requests/{request_id}/reject": {
+      "post": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "Reject Access Request",
+        "operationId": "reject_access_request_internal_admin_access_requests__request_id__reject_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          },
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectAccessRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/api-keys/{key_id}": {
+      "patch": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "Update Api Key",
+        "operationId": "update_api_key_internal_admin_api_keys__key_id__patch",
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          },
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAPIKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/api-keys/{key_id}/revoke": {
+      "post": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "Revoke Api Key",
+        "operationId": "revoke_api_key_internal_admin_api_keys__key_id__revoke_post",
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          },
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeAPIKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/admin/api-keys/{key_id}/rotate": {
+      "post": {
+        "tags": [
+          "internal-admin"
+        ],
+        "summary": "Rotate Api Key",
+        "operationId": "rotate_api_key_internal_admin_api_keys__key_id__rotate_post",
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          },
+          {
+            "name": "x-internal-admin-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Admin-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateAPIKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/config": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Get Marketplace Config",
+        "operationId": "get_marketplace_config_api_marketplace_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketplaceConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/agents/{asset_id}/state": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Get Agent State",
+        "operationId": "get_agent_state_api_marketplace_agents__asset_id__state_get",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Asset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentStateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/quote/buy": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Preview Buy Quote",
+        "operationId": "preview_buy_quote_api_marketplace_quote_buy_get",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Asset Id"
+            }
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/marketplace/quote/sell": {
+      "get": {
+        "tags": [
+          "marketplace"
+        ],
+        "summary": "Preview Sell Quote",
+        "operationId": "preview_sell_quote_api_marketplace_quote_sell_get",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Asset Id"
+            }
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePreviewResponse"
                 }
               }
             }
@@ -435,6 +1893,39 @@
           "recent_activity"
         ],
         "title": "ActivityResponse"
+      },
+      "AgentCurveConfig": {
+        "properties": {
+          "base_price": {
+            "type": "integer",
+            "title": "Base Price"
+          },
+          "slope": {
+            "type": "integer",
+            "title": "Slope"
+          },
+          "buy_fee_bps": {
+            "type": "integer",
+            "title": "Buy Fee Bps"
+          },
+          "sell_fee_bps": {
+            "type": "integer",
+            "title": "Sell Fee Bps"
+          },
+          "graduation_threshold": {
+            "type": "integer",
+            "title": "Graduation Threshold"
+          }
+        },
+        "type": "object",
+        "required": [
+          "base_price",
+          "slope",
+          "buy_fee_bps",
+          "sell_fee_bps",
+          "graduation_threshold"
+        ],
+        "title": "AgentCurveConfig"
       },
       "AgentInfo": {
         "properties": {
@@ -559,6 +2050,28 @@
         ],
         "title": "AgentRole"
       },
+      "AgentStateResponse": {
+        "properties": {
+          "asset_id": {
+            "type": "integer",
+            "title": "Asset Id"
+          },
+          "supply": {
+            "type": "integer",
+            "title": "Supply"
+          },
+          "config": {
+            "$ref": "#/components/schemas/AgentCurveConfig"
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_id",
+          "supply",
+          "config"
+        ],
+        "title": "AgentStateResponse"
+      },
       "AgentStatus": {
         "type": "string",
         "enum": [
@@ -629,6 +2142,164 @@
         ],
         "title": "AllocationItem"
       },
+      "ApproveAccessRequest": {
+        "properties": {
+          "actor_email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Actor Email"
+          },
+          "review_notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Notes"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "access_level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Level"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          },
+          "intended_surfaces": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intended Surfaces"
+          },
+          "rate_limit_profile": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Profile"
+          },
+          "ip_allowlists": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/IPAllowlistEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Allowlists"
+          },
+          "override_no_ip_allowlist": {
+            "type": "boolean",
+            "title": "Override No Ip Allowlist",
+            "default": false
+          },
+          "override_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Reason"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "expires_in_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3650.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires In Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actor_email"
+        ],
+        "title": "ApproveAccessRequest"
+      },
+      "BootstrapAdminRequest": {
+        "properties": {
+          "owner": {
+            "type": "string",
+            "title": "Owner",
+            "default": "bootstrap-admin"
+          }
+        },
+        "type": "object",
+        "title": "BootstrapAdminRequest"
+      },
       "BurnRecord": {
         "properties": {
           "txn_id": {
@@ -693,6 +2364,8 @@
         "properties": {
           "message": {
             "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
             "title": "Message"
           }
         },
@@ -725,6 +2398,39 @@
         ],
         "title": "ChatResponse"
       },
+      "ChatSessionResponse": {
+        "properties": {
+          "session_token": {
+            "type": "string",
+            "title": "Session Token"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          },
+          "ttl_seconds": {
+            "type": "integer",
+            "title": "Ttl Seconds"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_token",
+          "expires_at",
+          "ttl_seconds",
+          "owner",
+          "tier"
+        ],
+        "title": "ChatSessionResponse"
+      },
       "ConstitutionResponse": {
         "properties": {
           "preamble": {
@@ -753,28 +2459,163 @@
         ],
         "title": "ConstitutionResponse"
       },
-      "GovernanceOverview": {
+      "CreateKeyRequest": {
         "properties": {
-          "total_proposals": {
-            "type": "integer",
-            "title": "Total Proposals"
+          "owner": {
+            "type": "string",
+            "title": "Owner"
           },
-          "active_proposals": {
+          "tier": {
+            "type": "string",
+            "title": "Tier",
+            "default": "free"
+          }
+        },
+        "type": "object",
+        "required": [
+          "owner"
+        ],
+        "title": "CreateKeyRequest"
+      },
+      "CreateKeyResponse": {
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key",
+          "owner",
+          "tier"
+        ],
+        "title": "CreateKeyResponse"
+      },
+      "CuratorReview": {
+        "properties": {
+          "compliant": {
+            "type": "boolean",
+            "title": "Compliant"
+          },
+          "analysis": {
+            "type": "string",
+            "title": "Analysis"
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation"
+          },
+          "curator_name": {
+            "type": "string",
+            "title": "Curator Name"
+          },
+          "reviewed_at": {
+            "type": "string",
+            "title": "Reviewed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "compliant",
+          "analysis",
+          "recommendation",
+          "curator_name",
+          "reviewed_at"
+        ],
+        "title": "CuratorReview"
+      },
+      "CuratorReviewResponse": {
+        "properties": {
+          "agent": {
+            "type": "string",
+            "title": "Agent",
+            "default": "curator"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "default": "proposal_reviewed"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalDetail"
+          },
+          "review_summary": {
+            "type": "string",
+            "title": "Review Summary"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal",
+          "review_summary",
+          "timestamp"
+        ],
+        "title": "CuratorReviewResponse"
+      },
+      "DelegateSummaryResponse": {
+        "properties": {
+          "delegate": {
+            "type": "string",
+            "title": "Delegate"
+          },
+          "delegator_count": {
+            "type": "integer",
+            "title": "Delegator Count"
+          },
+          "delegated_power": {
+            "type": "integer",
+            "title": "Delegated Power"
+          },
+          "delegated_amount": {
+            "type": "integer",
+            "title": "Delegated Amount"
+          },
+          "delegators": {
             "items": {
-              "$ref": "#/components/schemas/ProposalSummary"
+              "type": "string"
             },
             "type": "array",
-            "title": "Active Proposals"
+            "title": "Delegators"
           },
-          "participation_rate": {
-            "type": "number",
-            "title": "Participation Rate"
-          },
-          "total_vecortex": {
-            "type": "integer",
-            "title": "Total Vecortex"
-          },
-          "note": {
+          "self_stake": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Stake"
+          }
+        },
+        "type": "object",
+        "required": [
+          "delegate",
+          "delegator_count",
+          "delegated_power",
+          "delegated_amount",
+          "delegators"
+        ],
+        "title": "DelegateSummaryResponse"
+      },
+      "DeveloperAccessConfigResponse": {
+        "properties": {
+          "recaptcha_site_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -783,15 +2624,234 @@
                 "type": "null"
               }
             ],
-            "title": "Note"
+            "title": "Recaptcha Site Key"
+          },
+          "recaptcha_required": {
+            "type": "boolean",
+            "title": "Recaptcha Required",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "DeveloperAccessConfigResponse"
+      },
+      "DeveloperAccessRequestCreate": {
+        "properties": {
+          "requester_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 2,
+            "title": "Requester Name"
+          },
+          "requester_email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 5,
+            "title": "Requester Email"
+          },
+          "organization": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization"
+          },
+          "use_case": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 20,
+            "title": "Use Case"
+          },
+          "requested_surfaces": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "api",
+                "cli",
+                "python_sdk",
+                "typescript_sdk",
+                "mcp"
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Requested Surfaces"
+          },
+          "requested_access_level": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write",
+              "custom"
+            ],
+            "title": "Requested Access Level",
+            "default": "read"
+          },
+          "requested_ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Requested Ips"
+          },
+          "expected_rpm": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Rpm"
+          },
+          "recaptcha_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recaptcha Token"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "type": "object",
+        "required": [
+          "requester_name",
+          "requester_email",
+          "use_case",
+          "requested_surfaces"
+        ],
+        "title": "DeveloperAccessRequestCreate"
+      },
+      "DeveloperAccessRequestResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "requester_name": {
+            "type": "string",
+            "title": "Requester Name"
+          },
+          "requester_email": {
+            "type": "string",
+            "title": "Requester Email"
+          },
+          "requested_access_level": {
+            "type": "string",
+            "title": "Requested Access Level"
+          },
+          "requested_surfaces": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Requested Surfaces"
+          },
+          "requested_ips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Requested Ips"
+          },
+          "expected_rpm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Rpm"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "requester_name",
+          "requester_email",
+          "requested_access_level",
+          "requested_surfaces",
+          "requested_ips",
+          "created_at",
+          "message"
+        ],
+        "title": "DeveloperAccessRequestResponse"
+      },
+      "GovernanceOverview": {
+        "properties": {
+          "total_proposals": {
+            "type": "integer",
+            "title": "Total Proposals"
+          },
+          "active_proposals": {
+            "type": "integer",
+            "title": "Active Proposals"
+          },
+          "voting_proposals": {
+            "type": "integer",
+            "title": "Voting Proposals"
+          },
+          "passed_proposals": {
+            "type": "integer",
+            "title": "Passed Proposals"
+          },
+          "rejected_proposals": {
+            "type": "integer",
+            "title": "Rejected Proposals"
+          },
+          "total_votes": {
+            "type": "integer",
+            "title": "Total Votes"
           }
         },
         "type": "object",
         "required": [
           "total_proposals",
           "active_proposals",
-          "participation_rate",
-          "total_vecortex"
+          "voting_proposals",
+          "passed_proposals",
+          "rejected_proposals",
+          "total_votes"
         ],
         "title": "GovernanceOverview"
       },
@@ -848,6 +2908,246 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IPAllowlistEntry": {
+        "properties": {
+          "cidr": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 3,
+            "title": "Cidr"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cidr"
+        ],
+        "title": "IPAllowlistEntry"
+      },
+      "MarketplaceConfigResponse": {
+        "properties": {
+          "trading_enabled": {
+            "type": "boolean",
+            "title": "Trading Enabled"
+          },
+          "launch_enabled": {
+            "type": "boolean",
+            "title": "Launch Enabled"
+          },
+          "maintenance_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Reason"
+          },
+          "active_factory_app_id": {
+            "type": "integer",
+            "title": "Active Factory App Id"
+          },
+          "deprecated_factory_app_id": {
+            "type": "integer",
+            "title": "Deprecated Factory App Id"
+          },
+          "legacy_factory_app_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Legacy Factory App Ids"
+          },
+          "cortex_asset_id": {
+            "type": "integer",
+            "title": "Cortex Asset Id"
+          },
+          "creation_fee": {
+            "type": "integer",
+            "title": "Creation Fee"
+          },
+          "buy_fee_bps": {
+            "type": "integer",
+            "title": "Buy Fee Bps"
+          },
+          "sell_fee_bps": {
+            "type": "integer",
+            "title": "Sell Fee Bps"
+          },
+          "graduation_threshold": {
+            "type": "integer",
+            "title": "Graduation Threshold"
+          },
+          "base_price": {
+            "type": "integer",
+            "title": "Base Price"
+          },
+          "slope": {
+            "type": "integer",
+            "title": "Slope"
+          },
+          "next_deployment": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Next Deployment"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trading_enabled",
+          "launch_enabled",
+          "active_factory_app_id",
+          "deprecated_factory_app_id",
+          "legacy_factory_app_ids",
+          "cortex_asset_id",
+          "creation_fee",
+          "buy_fee_bps",
+          "sell_fee_bps",
+          "graduation_threshold",
+          "base_price",
+          "slope",
+          "next_deployment",
+          "notes"
+        ],
+        "title": "MarketplaceConfigResponse"
+      },
+      "OnChainProposal": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "proposer": {
+            "type": "string",
+            "title": "Proposer"
+          },
+          "created_round": {
+            "type": "integer",
+            "title": "Created Round"
+          },
+          "type": {
+            "type": "integer",
+            "title": "Type"
+          },
+          "type_name": {
+            "type": "string",
+            "title": "Type Name"
+          },
+          "yes_votes": {
+            "type": "integer",
+            "title": "Yes Votes"
+          },
+          "no_votes": {
+            "type": "integer",
+            "title": "No Votes"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status"
+          },
+          "status_name": {
+            "type": "string",
+            "title": "Status Name"
+          },
+          "total_voters": {
+            "type": "integer",
+            "title": "Total Voters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "proposer",
+          "created_round",
+          "type",
+          "type_name",
+          "yes_votes",
+          "no_votes",
+          "status",
+          "status_name",
+          "total_voters"
+        ],
+        "title": "OnChainProposal"
+      },
+      "OnChainProposalsResponse": {
+        "properties": {
+          "app_id": {
+            "type": "integer",
+            "title": "App Id"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/OnChainProposal"
+            },
+            "type": "array",
+            "title": "Proposals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "app_id",
+          "total",
+          "proposals"
+        ],
+        "title": "OnChainProposalsResponse"
+      },
+      "ProposalCreateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 5,
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 10,
+            "title": "Description"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ProposalType",
+            "default": "general"
+          },
+          "proposer": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Proposer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "description",
+          "proposer"
+        ],
+        "title": "ProposalCreateRequest"
+      },
       "ProposalDetail": {
         "properties": {
           "id": {
@@ -857,6 +3157,14 @@
           "title": {
             "type": "string",
             "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
           },
           "status": {
             "$ref": "#/components/schemas/ProposalStatus"
@@ -869,17 +3177,6 @@
             "type": "string",
             "title": "Created At"
           },
-          "voting_ends": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Voting Ends"
-          },
           "votes_for": {
             "type": "integer",
             "title": "Votes For",
@@ -890,55 +3187,31 @@
             "title": "Votes Against",
             "default": 0
           },
-          "quorum_reached": {
-            "type": "boolean",
-            "title": "Quorum Reached",
-            "default": false
-          },
-          "description": {
-            "type": "string",
-            "title": "Description",
-            "default": ""
-          },
-          "rationale": {
-            "type": "string",
-            "title": "Rationale",
-            "default": ""
-          },
-          "affected_articles": {
+          "voters": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Affected Articles",
+            "title": "Voters",
             "default": []
           },
-          "amendment_text": {
-            "type": "string",
-            "title": "Amendment Text",
-            "default": ""
-          },
-          "risk_analysis": {
-            "type": "string",
-            "title": "Risk Analysis",
-            "default": ""
-          },
-          "discussion_url": {
+          "curator_review": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/CuratorReview"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Discussion Url"
+            ]
           }
         },
         "type": "object",
         "required": [
           "id",
           "title",
+          "description",
+          "type",
           "status",
           "proposer",
           "created_at"
@@ -948,7 +3221,8 @@
       "ProposalStatus": {
         "type": "string",
         "enum": [
-          "discussion",
+          "active",
+          "review",
           "voting",
           "passed",
           "rejected",
@@ -967,6 +3241,10 @@
             "type": "string",
             "title": "Title"
           },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
           "status": {
             "$ref": "#/components/schemas/ProposalStatus"
           },
@@ -978,17 +3256,6 @@
             "type": "string",
             "title": "Created At"
           },
-          "voting_ends": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Voting Ends"
-          },
           "votes_for": {
             "type": "integer",
             "title": "Votes For",
@@ -999,9 +3266,14 @@
             "title": "Votes Against",
             "default": 0
           },
-          "quorum_reached": {
+          "voter_count": {
+            "type": "integer",
+            "title": "Voter Count",
+            "default": 0
+          },
+          "curator_reviewed": {
             "type": "boolean",
-            "title": "Quorum Reached",
+            "title": "Curator Reviewed",
             "default": false
           }
         },
@@ -1009,11 +3281,23 @@
         "required": [
           "id",
           "title",
+          "type",
           "status",
           "proposer",
           "created_at"
         ],
         "title": "ProposalSummary"
+      },
+      "ProposalType": {
+        "type": "string",
+        "enum": [
+          "amendment",
+          "parameter",
+          "treasury",
+          "emergency",
+          "general"
+        ],
+        "title": "ProposalType"
       },
       "ProposalsListResponse": {
         "properties": {
@@ -1027,17 +3311,6 @@
             },
             "type": "array",
             "title": "Proposals"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
           }
         },
         "type": "object",
@@ -1046,6 +3319,386 @@
           "proposals"
         ],
         "title": "ProposalsListResponse"
+      },
+      "QuotePreviewResponse": {
+        "properties": {
+          "asset_id": {
+            "type": "integer",
+            "title": "Asset Id"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "current_supply": {
+            "type": "integer",
+            "title": "Current Supply"
+          },
+          "config": {
+            "$ref": "#/components/schemas/AgentCurveConfig"
+          },
+          "gross": {
+            "type": "integer",
+            "title": "Gross"
+          },
+          "fee": {
+            "type": "integer",
+            "title": "Fee"
+          },
+          "net": {
+            "type": "integer",
+            "title": "Net"
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_id",
+          "amount",
+          "current_supply",
+          "config",
+          "gross",
+          "fee",
+          "net"
+        ],
+        "title": "QuotePreviewResponse"
+      },
+      "RejectAccessRequest": {
+        "properties": {
+          "actor_email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Actor Email"
+          },
+          "review_notes": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 3,
+            "title": "Review Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actor_email",
+          "review_notes"
+        ],
+        "title": "RejectAccessRequest"
+      },
+      "ReviewRequest": {
+        "properties": {
+          "compliant": {
+            "type": "boolean",
+            "title": "Compliant"
+          },
+          "analysis": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 5,
+            "title": "Analysis"
+          },
+          "recommendation": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 3,
+            "title": "Recommendation"
+          },
+          "curator_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Curator Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "compliant",
+          "analysis",
+          "recommendation",
+          "curator_name"
+        ],
+        "title": "ReviewRequest"
+      },
+      "RevokeAPIKeyRequest": {
+        "properties": {
+          "actor_email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Actor Email"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actor_email",
+          "reason"
+        ],
+        "title": "RevokeAPIKeyRequest"
+      },
+      "RevokeKeyRequest": {
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key"
+        ],
+        "title": "RevokeKeyRequest"
+      },
+      "RotateAPIKeyRequest": {
+        "properties": {
+          "actor_email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Actor Email"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actor_email",
+          "reason"
+        ],
+        "title": "RotateAPIKeyRequest"
+      },
+      "SenatorProposeRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 5,
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 10,
+            "title": "Description"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ProposalType",
+            "default": "general"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "description"
+        ],
+        "title": "SenatorProposeRequest"
+      },
+      "SenatorProposeResponse": {
+        "properties": {
+          "agent": {
+            "type": "string",
+            "title": "Agent",
+            "default": "senator"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "default": "proposal_created"
+          },
+          "proposal": {
+            "$ref": "#/components/schemas/ProposalDetail"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal",
+          "timestamp"
+        ],
+        "title": "SenatorProposeResponse"
+      },
+      "SignedVoteRequest": {
+        "properties": {
+          "voter": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 32,
+            "title": "Voter"
+          },
+          "vote": {
+            "type": "string",
+            "pattern": "^(for|against)$",
+            "title": "Vote"
+          },
+          "issued_at": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 10,
+            "title": "Issued At"
+          },
+          "nonce": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Nonce"
+          },
+          "signature": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 16,
+            "title": "Signature"
+          }
+        },
+        "type": "object",
+        "required": [
+          "voter",
+          "vote",
+          "issued_at",
+          "nonce",
+          "signature"
+        ],
+        "title": "SignedVoteRequest"
+      },
+      "StakingAccountResponse": {
+        "properties": {
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "has_active_stake": {
+            "type": "boolean",
+            "title": "Has Active Stake"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "unlock_round": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unlock Round"
+          },
+          "current_round": {
+            "type": "integer",
+            "title": "Current Round"
+          },
+          "lock_days_remaining": {
+            "type": "integer",
+            "title": "Lock Days Remaining"
+          },
+          "ve_power": {
+            "type": "integer",
+            "title": "Ve Power"
+          },
+          "boost_bps": {
+            "type": "integer",
+            "title": "Boost Bps"
+          },
+          "delegate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delegate"
+          },
+          "delegated_power_received": {
+            "type": "integer",
+            "title": "Delegated Power Received"
+          },
+          "delegated_amount_received": {
+            "type": "integer",
+            "title": "Delegated Amount Received"
+          },
+          "delegator_count": {
+            "type": "integer",
+            "title": "Delegator Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "address",
+          "has_active_stake",
+          "amount",
+          "unlock_round",
+          "current_round",
+          "lock_days_remaining",
+          "ve_power",
+          "boost_bps",
+          "delegate",
+          "delegated_power_received",
+          "delegated_amount_received",
+          "delegator_count"
+        ],
+        "title": "StakingAccountResponse"
+      },
+      "StakingOverviewResponse": {
+        "properties": {
+          "app_id": {
+            "type": "integer",
+            "title": "App Id"
+          },
+          "cortex_asset_id": {
+            "type": "integer",
+            "title": "Cortex Asset Id"
+          },
+          "total_staked": {
+            "type": "integer",
+            "title": "Total Staked"
+          },
+          "reward_pool": {
+            "type": "integer",
+            "title": "Reward Pool"
+          },
+          "min_lock_days": {
+            "type": "integer",
+            "title": "Min Lock Days"
+          },
+          "max_lock_days": {
+            "type": "integer",
+            "title": "Max Lock Days"
+          },
+          "max_boost_bps": {
+            "type": "integer",
+            "title": "Max Boost Bps"
+          },
+          "current_round": {
+            "type": "integer",
+            "title": "Current Round"
+          }
+        },
+        "type": "object",
+        "required": [
+          "app_id",
+          "cortex_asset_id",
+          "total_staked",
+          "reward_pool",
+          "min_lock_days",
+          "max_lock_days",
+          "max_boost_bps",
+          "current_round"
+        ],
+        "title": "StakingOverviewResponse"
       },
       "SupplyResponse": {
         "properties": {
@@ -1108,6 +3761,147 @@
           "revenue_split"
         ],
         "title": "TreasuryResponse"
+      },
+      "UpdateAPIKeyRequest": {
+        "properties": {
+          "actor_email": {
+            "type": "string",
+            "maxLength": 320,
+            "minLength": 3,
+            "title": "Actor Email"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "access_level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Level"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          },
+          "intended_surfaces": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intended Surfaces"
+          },
+          "rate_limit_profile": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Profile"
+          },
+          "ip_allowlists": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/IPAllowlistEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Allowlists"
+          },
+          "override_no_ip_allowlist": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override No Ip Allowlist"
+          },
+          "override_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Reason"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 5000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "expires_in_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 3650.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires In Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actor_email"
+        ],
+        "title": "UpdateAPIKeyRequest"
       },
       "ValidationError": {
         "properties": {
@@ -1182,6 +3976,120 @@
         ],
         "title": "VestingInfo"
       },
+      "VotePowerResponse": {
+        "properties": {
+          "proposal_id": {
+            "type": "integer",
+            "title": "Proposal Id"
+          },
+          "voter": {
+            "type": "string",
+            "title": "Voter"
+          },
+          "direct_weight": {
+            "type": "integer",
+            "title": "Direct Weight"
+          },
+          "delegated_weight": {
+            "type": "integer",
+            "title": "Delegated Weight"
+          },
+          "effective_weight": {
+            "type": "integer",
+            "title": "Effective Weight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "voter",
+          "direct_weight",
+          "delegated_weight",
+          "effective_weight"
+        ],
+        "title": "VotePowerResponse"
+      },
+      "VoteRequest": {
+        "properties": {
+          "voter": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Voter"
+          },
+          "vote": {
+            "type": "string",
+            "pattern": "^(for|against)$",
+            "title": "Vote"
+          },
+          "weight": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Weight",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "voter",
+          "vote"
+        ],
+        "title": "VoteRequest"
+      },
+      "VoteResponse": {
+        "properties": {
+          "proposal_id": {
+            "type": "integer",
+            "title": "Proposal Id"
+          },
+          "voter": {
+            "type": "string",
+            "title": "Voter"
+          },
+          "vote": {
+            "type": "string",
+            "title": "Vote"
+          },
+          "weight": {
+            "type": "integer",
+            "title": "Weight"
+          },
+          "votes_for": {
+            "type": "integer",
+            "title": "Votes For"
+          },
+          "votes_against": {
+            "type": "integer",
+            "title": "Votes Against"
+          },
+          "direct_weight": {
+            "type": "integer",
+            "title": "Direct Weight",
+            "default": 0
+          },
+          "delegated_weight": {
+            "type": "integer",
+            "title": "Delegated Weight",
+            "default": 0
+          },
+          "auth_method": {
+            "type": "string",
+            "title": "Auth Method",
+            "default": "api_key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "voter",
+          "vote",
+          "weight",
+          "votes_for",
+          "votes_against"
+        ],
+        "title": "VoteResponse"
+      },
       "WalletInfo": {
         "properties": {
           "address": {
@@ -1206,11 +4114,5 @@
         "title": "WalletInfo"
       }
     }
-  },
-  "servers": [
-    {
-      "url": "https://purecortex.ai",
-      "description": "Production"
-    }
-  ]
+  }
 }

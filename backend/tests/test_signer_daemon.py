@@ -5,6 +5,7 @@ import sys
 import tempfile
 import uuid
 from pathlib import Path
+import socket
 
 import pytest
 
@@ -26,7 +27,26 @@ class FakeVault:
         return [b"signed:" + item for item in unsigned_group]
 
 
+def _require_unix_socket_support() -> None:
+    """Skip tests in runtimes that disallow binding unix sockets (sandbox CI)."""
+    socket_dir = Path(tempfile.mkdtemp(prefix="pcxsock_probe_", dir="/tmp"))
+    socket_path = socket_dir / f"{uuid.uuid4().hex[:12]}.sock"
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        try:
+            sock.bind(str(socket_path))
+        except PermissionError:
+            pytest.skip("Unix socket bind is not permitted in this runtime")
+    finally:
+        sock.close()
+        if socket_path.exists():
+            socket_path.unlink()
+        socket_dir.rmdir()
+
+
 def test_remote_signer_round_trip(monkeypatch, tmp_path):
+    _require_unix_socket_support()
+
     async def _run() -> None:
         socket_dir = Path(tempfile.mkdtemp(prefix="pcxsock_", dir="/tmp"))
         socket_path = socket_dir / f"{uuid.uuid4().hex[:12]}.sock"
@@ -72,6 +92,8 @@ def test_remote_signer_round_trip(monkeypatch, tmp_path):
 
 
 def test_remote_signer_rejects_invalid_token(monkeypatch, tmp_path):
+    _require_unix_socket_support()
+
     async def _run() -> None:
         socket_dir = Path(tempfile.mkdtemp(prefix="pcxsock_", dir="/tmp"))
         socket_path = socket_dir / f"{uuid.uuid4().hex[:12]}.sock"

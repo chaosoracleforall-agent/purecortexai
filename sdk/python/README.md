@@ -5,6 +5,7 @@ Official Python client for the PURECORTEX REST API and authenticated chat-sessio
 ## Current coverage
 
 - Public health, transparency, governance, and agent-registry endpoints
+- Public marketplace rollout status, per-agent state, and quote previews
 - Authenticated agent chat
 - Chat session bootstrap for WebSocket usage
 - WebSocket URL helpers and sequential chat helper
@@ -33,6 +34,9 @@ with PureCortexClient(api_key="ctx_your_key") as client:
 
     registry = client.list_agents()
     print(registry["total_agents"])
+
+    quote = client.preview_buy_quote(asset_id=757199999, amount=1_000_000)
+    print(quote["net"])
 
     reply = client.chat("senator", "Summarize the governance system.")
     print(reply["response"])

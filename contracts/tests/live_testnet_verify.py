@@ -32,7 +32,10 @@ DEFAULT_BUY_AMOUNT = 2_000_000
 DEFAULT_SELL_AMOUNT = 1_000_000
 DEFAULT_APP_TOP_UP = 1_000_000
 
-CREATE_AGENT_METHOD = abi.Method.from_signature("create_agent(axfer,string,string)uint64")
+CREATE_AGENT_METHOD = abi.Method.from_signature(
+    "create_agent(axfer,string,string,uint64,uint64,uint64,uint64,uint64)uint64"
+)
+FINALIZE_AGENT_CONFIG_METHOD = abi.Method.from_signature("finalize_agent_config(uint64)void")
 BUY_TOKENS_METHOD = abi.Method.from_signature("buy_tokens(pay,uint64,uint64)void")
 SELL_TOKENS_METHOD = abi.Method.from_signature("sell_tokens(axfer,uint64,uint64)void")
 DISTRIBUTE_CORTEX_METHOD = abi.Method.from_signature("distribute_cortex(address,uint64)void")
@@ -211,14 +214,40 @@ def ensure_app_balance(
 def calculate_buy_price(current_supply: int, amount: int, manifest: dict[str, Any]) -> int:
     base_price = manifest["tokenomics"]["basePrice"]
     slope = manifest["tokenomics"]["slope"]
+    token_scale = 10 ** manifest["tokenomics"]["decimals"]
     buy_fee_bps = manifest["tokenomics"]["buyFeeBps"]
 
-    base_cost = amount * base_price
+    base_cost = (amount * base_price) // token_scale
     area_doubled = (2 * current_supply * amount) + (amount * amount)
-    slope_cost = (slope * area_doubled) // 2
+    slope_cost = (slope * area_doubled) // (2 * token_scale * token_scale)
     raw_cost = base_cost + slope_cost
     fee = (raw_cost * buy_fee_bps) // 10_000
     return raw_cost + fee
+
+
+def inner_txn_fee_budget(params: transaction.SuggestedParams, inner_txn_count: int = 1) -> transaction.SuggestedParams:
+    cloned = transaction.SuggestedParams(
+        fee=params.fee,
+        first=params.first,
+        last=params.last,
+        gh=params.gh,
+        gen=params.gen,
+        flat_fee=params.flat_fee,
+        consensus_version=params.consensus_version,
+        min_fee=params.min_fee,
+    )
+    cloned.flat_fee = True
+    min_fee = int(params.min_fee or params.fee or 1000)
+    cloned.fee = min_fee * (1 + inner_txn_count)
+    return cloned
+
+
+def agent_box_refs(factory_app_id: int, asset_id: int) -> list[tuple[int, bytes]]:
+    asset_key = asset_id.to_bytes(8, "big")
+    return [
+        (factory_app_id, b"c" + asset_key),
+        (factory_app_id, b"s" + asset_key),
+    ]
 
 
 def create_agent(
@@ -231,7 +260,12 @@ def create_agent(
     factory_app_id = manifest["contracts"]["agentFactory"]["appId"]
     cortex_asset_id = manifest["contracts"]["cortexToken"]["assetId"]
     creation_fee = manifest["tokenomics"]["creationFee"]
+    base_price = manifest["tokenomics"]["basePrice"]
+    slope = manifest["tokenomics"]["slope"]
+    buy_fee_bps = manifest["tokenomics"]["buyFeeBps"]
+    sell_fee_bps = manifest["tokenomics"]["sellFeeBps"]
     params = algod_client_.suggested_params()
+    app_call_params = inner_txn_fee_budget(params, 1)
 
     payment_txn = transaction.AssetTransferTxn(
         sender=trader.address,
@@ -246,16 +280,42 @@ def create_agent(
         app_id=factory_app_id,
         method=CREATE_AGENT_METHOD,
         sender=trader.address,
-        sp=params,
+        sp=app_call_params,
         signer=trader.signer,
         method_args=[
             TransactionWithSigner(payment_txn, trader.signer),
             name,
             symbol,
+            base_price,
+            slope,
+            buy_fee_bps,
+            sell_fee_bps,
+            0,
         ],
     )
     result = composer.execute(algod_client_, 8)
     return int(result.abi_results[0].return_value), result.tx_ids[-1]
+
+
+def finalize_agent_config(
+    algod_client_: algod.AlgodClient,
+    manifest: dict[str, Any],
+    trader: WalletRecord,
+    asset_id: int,
+) -> str:
+    factory_app_id = manifest["contracts"]["agentFactory"]["appId"]
+    composer = AtomicTransactionComposer()
+    composer.add_method_call(
+        app_id=factory_app_id,
+        method=FINALIZE_AGENT_CONFIG_METHOD,
+        sender=trader.address,
+        sp=algod_client_.suggested_params(),
+        signer=trader.signer,
+        method_args=[asset_id],
+        boxes=agent_box_refs(factory_app_id, asset_id),
+    )
+    result = composer.execute(algod_client_, 8)
+    return result.tx_ids[-1]
 
 
 def distribute_cortex(
@@ -266,13 +326,16 @@ def distribute_cortex(
     amount: int,
 ) -> str:
     composer = AtomicTransactionComposer()
+    app_call_params = inner_txn_fee_budget(algod_client_.suggested_params(), 1)
     composer.add_method_call(
         app_id=manifest["contracts"]["agentFactory"]["appId"],
         method=DISTRIBUTE_CORTEX_METHOD,
         sender=creator.address,
-        sp=algod_client_.suggested_params(),
+        sp=app_call_params,
         signer=creator.signer,
         method_args=[receiver, amount],
+        foreign_assets=[manifest["contracts"]["cortexToken"]["assetId"]],
+        accounts=[receiver],
     )
     result = composer.execute(algod_client_, 8)
     return result.tx_ids[-1]
@@ -289,6 +352,7 @@ def buy_tokens(
     factory_app_id = manifest["contracts"]["agentFactory"]["appId"]
     total_algo = calculate_buy_price(current_supply, amount, manifest)
     params = algod_client_.suggested_params()
+    app_call_params = inner_txn_fee_budget(params, 1)
 
     payment_txn = transaction.PaymentTxn(
         sender=trader.address,
@@ -302,14 +366,15 @@ def buy_tokens(
         app_id=factory_app_id,
         method=BUY_TOKENS_METHOD,
         sender=trader.address,
-        sp=params,
+        sp=app_call_params,
         signer=trader.signer,
         method_args=[
             TransactionWithSigner(payment_txn, trader.signer),
             asset_id,
             amount,
         ],
-        boxes=[(factory_app_id, asset_id.to_bytes(8, "big"))],
+        foreign_assets=[asset_id],
+        boxes=agent_box_refs(factory_app_id, asset_id),
     )
     result = composer.execute(algod_client_, 8)
     return result.tx_ids[-1]
@@ -324,6 +389,7 @@ def sell_tokens(
 ) -> str:
     factory_app_id = manifest["contracts"]["agentFactory"]["appId"]
     params = algod_client_.suggested_params()
+    app_call_params = inner_txn_fee_budget(params, 1)
     transfer_txn = transaction.AssetTransferTxn(
         sender=trader.address,
         sp=params,
@@ -337,14 +403,15 @@ def sell_tokens(
         app_id=factory_app_id,
         method=SELL_TOKENS_METHOD,
         sender=trader.address,
-        sp=params,
+        sp=app_call_params,
         signer=trader.signer,
         method_args=[
             TransactionWithSigner(transfer_txn, trader.signer),
             asset_id,
             amount,
         ],
-        boxes=[(factory_app_id, asset_id.to_bytes(8, "big"))],
+        foreign_assets=[asset_id],
+        boxes=agent_box_refs(factory_app_id, asset_id),
     )
     result = composer.execute(algod_client_, 8)
     return result.tx_ids[-1]
@@ -381,20 +448,30 @@ def governance_smoke(
     if status != 200:
         raise RuntimeError(f"Failed to review governance proposal: {review_payload}")
 
-    status, vote_payload = http_json(
-        "POST",
-        f"{api_base_url.rstrip('/')}/api/governance/proposals/{proposal_id}/vote",
-        headers=headers,
-        body={"voter": voter_id, "vote": "for", "weight": 1},
-    )
-    if status != 200:
-        raise RuntimeError(f"Failed to vote on governance proposal: {vote_payload}")
+    review_status = review_payload["proposal"]["status"]
+    if review_status == "voting":
+        status, vote_payload = http_json(
+            "POST",
+            f"{api_base_url.rstrip('/')}/api/governance/proposals/{proposal_id}/vote",
+            headers=headers,
+            body={"voter": voter_id, "vote": "for", "weight": 1},
+        )
+        if status != 200:
+            raise RuntimeError(f"Failed to vote on governance proposal: {vote_payload}")
+        return {
+            "proposal_id": proposal_id,
+            "review_status": review_status,
+            "vote_result": vote_payload,
+        }
 
-    return {
-        "proposal_id": proposal_id,
-        "review_status": review_payload["proposal"]["status"],
-        "vote_result": vote_payload,
-    }
+    if review_status == "rejected":
+        return {
+            "proposal_id": proposal_id,
+            "review_status": review_status,
+            "vote_result": {"skipped": True, "reason": "Proposal rejected by curator review"},
+        }
+
+    raise RuntimeError(f"Unexpected governance review status: {review_status}")
 
 
 def prepare(wallet_file: Path, min_trader_algo: int) -> int:
@@ -480,6 +557,12 @@ def smoke(
     )
     summary["agent_asset_id"] = agent_asset_id
     summary["create_agent_txid"] = create_txid
+    summary["finalize_agent_config_txid"] = finalize_agent_config(
+        algod_client_,
+        manifest,
+        trader,
+        agent_asset_id,
+    )
 
     summary["agent_opt_in_txid"] = opt_in_asset(algod_client_, trader, agent_asset_id)
     summary["buy_txid"] = buy_tokens(

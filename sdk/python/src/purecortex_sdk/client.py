@@ -102,6 +102,26 @@ class PureCortexClient:
     def list_agents(self) -> dict[str, Any]:
         return self._request("GET", "/api/agents/registry")
 
+    def marketplace_config(self) -> dict[str, Any]:
+        return self._request("GET", "/api/marketplace/config")
+
+    def marketplace_agent_state(self, asset_id: int) -> dict[str, Any]:
+        return self._request("GET", f"/api/marketplace/agents/{asset_id}/state")
+
+    def preview_buy_quote(self, *, asset_id: int, amount: int) -> dict[str, Any]:
+        return self._request(
+            "GET",
+            "/api/marketplace/quote/buy",
+            params={"asset_id": asset_id, "amount": amount},
+        )
+
+    def preview_sell_quote(self, *, asset_id: int, amount: int) -> dict[str, Any]:
+        return self._request(
+            "GET",
+            "/api/marketplace/quote/sell",
+            params={"asset_id": asset_id, "amount": amount},
+        )
+
     def agent_activity(self, agent_name: AgentName) -> dict[str, Any]:
         return self._request("GET", f"/api/agents/{agent_name}/activity")
 
