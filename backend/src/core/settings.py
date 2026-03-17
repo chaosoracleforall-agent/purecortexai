@@ -31,6 +31,18 @@ def _as_int(value: str | None, default: int) -> int:
         return default
 
 
+def _as_float(value: str | None, default: float) -> float:
+    if value is None:
+        return default
+    stripped = value.strip()
+    if not stripped:
+        return default
+    try:
+        return float(stripped)
+    except ValueError:
+        return default
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str | None
@@ -44,8 +56,9 @@ class Settings:
     google_oauth_client_id: str | None
     google_oauth_client_secret: str | None
     oauth2_proxy_cookie_secret: str | None
-    turnstile_site_key: str | None
-    turnstile_secret_key: str | None
+    recaptcha_site_key: str | None
+    recaptcha_project_id: str
+    recaptcha_min_score: float
     developer_access_cooldown_seconds: int
 
 
@@ -75,8 +88,18 @@ def get_settings() -> Settings:
         google_oauth_client_id=os.getenv("PURECORTEX_GOOGLE_OAUTH_CLIENT_ID"),
         google_oauth_client_secret=os.getenv("PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET"),
         oauth2_proxy_cookie_secret=os.getenv("PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET"),
-        turnstile_site_key=os.getenv("PURECORTEX_TURNSTILE_SITE_KEY"),
-        turnstile_secret_key=os.getenv("PURECORTEX_TURNSTILE_SECRET_KEY"),
+        recaptcha_site_key=os.getenv("PURECORTEX_RECAPTCHA_SITE_KEY"),
+        recaptcha_project_id=(
+            os.getenv("PURECORTEX_RECAPTCHA_PROJECT_ID")
+            or os.getenv("PURECORTEX_GCP_PROJECT")
+            or os.getenv("GCP_PROJECT_ID")
+            or os.getenv("GOOGLE_CLOUD_PROJECT")
+            or "purecortexai"
+        ),
+        recaptcha_min_score=max(
+            min(_as_float(os.getenv("PURECORTEX_RECAPTCHA_MIN_SCORE"), 0.5), 1.0),
+            0.0,
+        ),
         developer_access_cooldown_seconds=max(
             _as_int(os.getenv("PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS"), 300),
             0,

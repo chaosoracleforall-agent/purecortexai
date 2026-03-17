@@ -103,9 +103,9 @@ def test_public_access_request_rejects_honeypot_submission(monkeypatch):
         assert response.json()["detail"] == "Request rejected"
 
 
-def test_public_access_request_requires_turnstile_when_enabled(monkeypatch):
-    monkeypatch.setenv("PURECORTEX_TURNSTILE_SITE_KEY", "site-key")
-    monkeypatch.setenv("PURECORTEX_TURNSTILE_SECRET_KEY", "secret-key")
+def test_public_access_request_requires_recaptcha_when_enabled(monkeypatch):
+    monkeypatch.setenv("PURECORTEX_RECAPTCHA_SITE_KEY", "site-key")
+    monkeypatch.setenv("PURECORTEX_RECAPTCHA_PROJECT_ID", "purecortexai")
     app = load_app(monkeypatch)
 
     with TestClient(app) as client:
