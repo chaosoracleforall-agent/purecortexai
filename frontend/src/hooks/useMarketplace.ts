@@ -1,18 +1,23 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { fetchAgents, AgentData } from '@/lib/marketplace';
+import { fetchAgents, fetchMarketplaceConfig, AgentData, MarketplaceConfig } from '@/lib/marketplace';
 
 const POLL_INTERVAL = 30_000; // 30 seconds
 
 export function useMarketplace() {
   const [agents, setAgents] = useState<AgentData[]>([]);
+  const [config, setConfig] = useState<MarketplaceConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const data = await fetchAgents();
+      const [marketplaceConfig, data] = await Promise.all([
+        fetchMarketplaceConfig(),
+        fetchAgents(),
+      ]);
+      setConfig(marketplaceConfig);
       setAgents(data);
       setError(null);
     } catch (err) {
@@ -28,5 +33,5 @@ export function useMarketplace() {
     return () => clearInterval(interval);
   }, [refresh]);
 
-  return { agents, loading, error, refresh };
+  return { agents, config, loading, error, refresh };
 }

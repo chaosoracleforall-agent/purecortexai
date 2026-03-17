@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from src.services.cache import cache_with_ttl, TTL_AGENTS
@@ -195,7 +195,7 @@ class CuratorReviewResponse(BaseModel):
 
 
 @router.post("/senator/propose", response_model=SenatorProposeResponse, status_code=201)
-async def senator_propose(body: SenatorProposeRequest):
+async def senator_propose(body: SenatorProposeRequest, request: Request):
     """
     Senator AI creates a governance proposal.
 
@@ -239,7 +239,7 @@ async def senator_propose(body: SenatorProposeRequest):
         proposer="senator",
     )
 
-    proposal = await create_proposal(proposal_request)
+    proposal = await create_proposal(proposal_request, request)
 
     now = datetime.now(timezone.utc).isoformat()
     logger.info("Senator created proposal %d: %s", proposal.id, body.title)
@@ -251,7 +251,7 @@ async def senator_propose(body: SenatorProposeRequest):
 
 
 @router.post("/curator/review/{proposal_id}", response_model=CuratorReviewResponse)
-async def curator_review(proposal_id: int):
+async def curator_review(proposal_id: int, request: Request):
     """
     Curator AI reviews a governance proposal for constitutional compliance.
 
@@ -307,7 +307,7 @@ async def curator_review(proposal_id: int):
         curator_name="curator",
     )
 
-    updated_proposal = await governance_review_proposal(proposal_id, review_request)
+    updated_proposal = await governance_review_proposal(proposal_id, review_request, request)
 
     now = datetime.now(timezone.utc).isoformat()
 

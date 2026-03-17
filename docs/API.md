@@ -52,6 +52,12 @@ Example response:
 - `GET /api/agents/registry`
 - `GET /api/agents/{agent_name}/activity`
 
+### Marketplace
+- `GET /api/marketplace/config`
+- `GET /api/marketplace/agents/{asset_id}/state`
+- `GET /api/marketplace/quote/buy?asset_id={id}&amount={micro_units}`
+- `GET /api/marketplace/quote/sell?asset_id={id}&amount={micro_units}`
+
 ## Authenticated Endpoints
 
 ### Chat Session Bootstrap

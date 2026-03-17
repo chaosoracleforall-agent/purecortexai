@@ -97,6 +97,13 @@ def test_governance_writes_require_admin_or_scoped_key(monkeypatch):
     redis_url = "redis://localhost:6379/13"
     reset_redis(redis_url)
     app = load_app(monkeypatch, redis_url=redis_url, bootstrap_token="pytest-bootstrap")
+    governance = importlib.import_module("src.api.governance")
+
+    class FakeAlgorandService:
+        async def list_stake_snapshots(self):
+            return []
+
+    monkeypatch.setattr(governance, "get_algorand_service", lambda: FakeAlgorandService())
 
     with TestClient(app) as client:
         bootstrap = client.post(

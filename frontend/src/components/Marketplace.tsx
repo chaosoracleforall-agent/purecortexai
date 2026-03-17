@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Zap, Search, ArrowUpRight, BarChart3, Plus, X, Loader2, AlertCircle, RefreshCw, ShoppingCart, Coins, ExternalLink } from 'lucide-react';
+import { Users, Zap, Search, ArrowUpRight, BarChart3, Plus, X, Loader2, AlertCircle, RefreshCw, ShoppingCart, Coins, ExternalLink, ChevronDown } from 'lucide-react';
 import { useWallet } from '@txnlab/use-wallet-react';
 import { useMarketplace } from '@/hooks/useMarketplace';
 import WalletButton from '@/components/WalletButton';
@@ -16,10 +16,22 @@ import {
   submitSignedTransactions,
   waitForConfirmation,
 } from '@/lib/transactions';
-import { BUY_FEE_BPS, calculateBuyPrice, calculateNetSellReturn, calculateSellPrice } from '@/lib/algorand';
-import type { AgentData } from '@/lib/marketplace';
+import {
+  fetchBuyQuotePreview,
+  fetchSellQuotePreview,
+  type AgentData,
+  type QuotePreview,
+} from '@/lib/marketplace';
 
 const MAX_MARKET_TRADE_AMOUNT = 100_000_000_000n;
+const MIN_BASE_PRICE = 1_000n;
+const MAX_BASE_PRICE = 100_000n;
+const MIN_SLOPE = 1n;
+const MAX_SLOPE = 10_000n;
+const MIN_FEE_BPS = 0n;
+const MAX_FEE_BPS = 1_000n;
+const MIN_GRAD_THRESHOLD = 1_000_000_000n;
+const MAX_GRAD_THRESHOLD = 500_000_000_000n;
 
 function parseTokenAmountToMicroUnits(value: string): bigint | null {
   const trimmed = value.trim();
@@ -42,24 +54,24 @@ function formatAlgoAmount(value: bigint): string {
   return `${formatFixedUnits(value, 6)} ALGO`;
 }
 
-function calculateBuyQuote(currentSupply: bigint, amount: bigint) {
-  const baseCost = calculateBuyPrice(currentSupply, amount);
-  const fee = (baseCost * BigInt(BUY_FEE_BPS)) / 10_000n;
-  return {
-    baseCost,
-    fee,
-    totalCost: baseCost + fee,
-  };
-}
-
-function calculateSellQuote(currentSupply: bigint, amount: bigint) {
-  const grossReturn = calculateSellPrice(currentSupply, amount);
-  const netReturn = calculateNetSellReturn(currentSupply, amount);
-  return {
-    grossReturn,
-    fee: grossReturn - netReturn,
-    netReturn,
-  };
+function parseBoundedWholeNumber(
+  value: string,
+  options: {
+    label: string;
+    min: bigint;
+    max: bigint;
+  },
+): bigint {
+  const { label, min, max } = options;
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error(`${label} must be a whole number`);
+  }
+  const parsed = BigInt(trimmed);
+  if (parsed < min || parsed > max) {
+    throw new Error(`${label} must be between ${min.toString()} and ${max.toString()}`);
+  }
+  return parsed;
 }
 
 export default function Marketplace() {
@@ -72,6 +84,12 @@ export default function Marketplace() {
   const [deploying, setDeploying] = useState(false);
   const [deployError, setDeployError] = useState<string | null>(null);
   const [deploySuccess, setDeploySuccess] = useState<string | null>(null);
+  const [launchBasePrice, setLaunchBasePrice] = useState('10000');
+  const [launchSlope, setLaunchSlope] = useState('1000');
+  const [launchBuyFeeBps, setLaunchBuyFeeBps] = useState('100');
+  const [launchSellFeeBps, setLaunchSellFeeBps] = useState('200');
+  const [launchGraduationThreshold, setLaunchGraduationThreshold] = useState('');
+  const [showAdvancedLaunch, setShowAdvancedLaunch] = useState(false);
   const [buyAmount, setBuyAmount] = useState('1');
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState<string | null>(null);
@@ -80,11 +98,20 @@ export default function Marketplace() {
   const [selling, setSelling] = useState(false);
   const [sellError, setSellError] = useState<string | null>(null);
   const [sellSuccess, setSellSuccess] = useState<string | null>(null);
+  const [buyQuotePreview, setBuyQuotePreview] = useState<QuotePreview | null>(null);
+  const [sellQuotePreview, setSellQuotePreview] = useState<QuotePreview | null>(null);
+  const [loadingBuyQuote, setLoadingBuyQuote] = useState(false);
+  const [loadingSellQuote, setLoadingSellQuote] = useState(false);
+  const [buyQuoteError, setBuyQuoteError] = useState<string | null>(null);
+  const [sellQuoteError, setSellQuoteError] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<bigint | null>(null);
   const [loadingWalletBalance, setLoadingWalletBalance] = useState(false);
 
-  const { agents, loading, error, refresh } = useMarketplace();
+  const { agents, config, loading, error, refresh } = useMarketplace();
   const { activeAccount, activeWallet, transactionSigner } = useWallet();
+  const tradingEnabled = config?.trading_enabled ?? false;
+  const launchEnabled = config?.launch_enabled ?? true;
+  const maintenanceReason = config?.maintenance_reason ?? null;
 
   const handleEscape = useCallback((e: KeyboardEvent) => {
     if (e.key !== 'Escape') return;
@@ -112,14 +139,38 @@ export default function Marketplace() {
   const liveSelectedAgent = selectedAgent
     ? agents.find((agent) => agent.assetId === selectedAgent.assetId) ?? selectedAgent
     : null;
+  const liveSelectedAssetId = liveSelectedAgent?.assetId ?? null;
+  const liveSelectedSupply = liveSelectedAgent?.supply ?? null;
   const parsedBuyAmount = parseTokenAmountToMicroUnits(buyAmount);
-  const buyQuote = liveSelectedAgent && parsedBuyAmount && parsedBuyAmount > 0n
-    ? calculateBuyQuote(liveSelectedAgent.supply, parsedBuyAmount)
-    : null;
   const parsedSellAmount = parseTokenAmountToMicroUnits(sellAmount);
-  const sellQuote = liveSelectedAgent && parsedSellAmount && parsedSellAmount > 0n && parsedSellAmount <= liveSelectedAgent.supply
-    ? calculateSellQuote(liveSelectedAgent.supply, parsedSellAmount)
+  const buyQuote = buyQuotePreview
+    ? {
+      baseCost: BigInt(buyQuotePreview.gross),
+      fee: BigInt(buyQuotePreview.fee),
+      totalCost: BigInt(buyQuotePreview.net),
+    }
     : null;
+  const sellQuote = sellQuotePreview
+    ? {
+      grossReturn: BigInt(sellQuotePreview.gross),
+      fee: BigInt(sellQuotePreview.fee),
+      netReturn: BigInt(sellQuotePreview.net),
+    }
+    : null;
+
+  const openLaunchModal = useCallback(() => {
+    setDeployError(null);
+    setDeploySuccess(null);
+    setAgentName('');
+    setAgentSymbol('');
+    setLaunchBasePrice(String(config?.base_price ?? 10_000));
+    setLaunchSlope(String(config?.slope ?? 1_000));
+    setLaunchBuyFeeBps(String(config?.buy_fee_bps ?? 100));
+    setLaunchSellFeeBps(String(config?.sell_fee_bps ?? 200));
+    setLaunchGraduationThreshold('');
+    setShowAdvancedLaunch(false);
+    setIsModalOpen(true);
+  }, [config?.base_price, config?.buy_fee_bps, config?.sell_fee_bps, config?.slope]);
 
   function openAgent(agent: AgentData) {
     setSelectedAgent(agent);
@@ -131,8 +182,92 @@ export default function Marketplace() {
     setBuySuccess(null);
     setSellError(null);
     setSellSuccess(null);
+    setBuyQuotePreview(null);
+    setSellQuotePreview(null);
+    setBuyQuoteError(null);
+    setSellQuoteError(null);
     void refresh();
   }
+
+  useEffect(() => {
+    if (!liveSelectedAssetId || parsedBuyAmount === null || parsedBuyAmount <= 0n) {
+      setBuyQuotePreview(null);
+      setBuyQuoteError(null);
+      setLoadingBuyQuote(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      setLoadingBuyQuote(true);
+      fetchBuyQuotePreview(liveSelectedAssetId, parsedBuyAmount)
+        .then((quote) => {
+          if (!cancelled) {
+            setBuyQuotePreview(quote);
+            setBuyQuoteError(null);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setBuyQuotePreview(null);
+            setBuyQuoteError(err instanceof Error ? err.message : 'Unable to fetch buy quote');
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLoadingBuyQuote(false);
+          }
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [liveSelectedAssetId, parsedBuyAmount]);
+
+  useEffect(() => {
+    if (
+      !liveSelectedAssetId ||
+      parsedSellAmount === null ||
+      parsedSellAmount <= 0n ||
+      !liveSelectedSupply ||
+      parsedSellAmount > liveSelectedSupply
+    ) {
+      setSellQuotePreview(null);
+      setSellQuoteError(null);
+      setLoadingSellQuote(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      setLoadingSellQuote(true);
+      fetchSellQuotePreview(liveSelectedAssetId, parsedSellAmount)
+        .then((quote) => {
+          if (!cancelled) {
+            setSellQuotePreview(quote);
+            setSellQuoteError(null);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setSellQuotePreview(null);
+            setSellQuoteError(err instanceof Error ? err.message : 'Unable to fetch sell quote');
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLoadingSellQuote(false);
+          }
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [liveSelectedAssetId, liveSelectedSupply, parsedSellAmount]);
 
   useEffect(() => {
     if (!liveSelectedAgent?.assetId || !activeAccount?.address) {
@@ -167,6 +302,10 @@ export default function Marketplace() {
   }, [activeAccount?.address, liveSelectedAgent?.assetId]);
 
   async function handleDeploy() {
+    if (!launchEnabled) {
+      setDeployError('Agent launch is currently disabled for this deployment.');
+      return;
+    }
     if (!activeAccount || !transactionSigner || !activeWallet) {
       setDeployError('Connect your wallet first');
       return;
@@ -185,11 +324,46 @@ export default function Marketplace() {
     setDeploySuccess(null);
 
     try {
+      const basePrice = parseBoundedWholeNumber(launchBasePrice, {
+        label: 'Base price',
+        min: MIN_BASE_PRICE,
+        max: MAX_BASE_PRICE,
+      });
+      const slope = parseBoundedWholeNumber(launchSlope, {
+        label: 'Slope',
+        min: MIN_SLOPE,
+        max: MAX_SLOPE,
+      });
+      const buyFeeBps = parseBoundedWholeNumber(launchBuyFeeBps, {
+        label: 'Buy fee bps',
+        min: MIN_FEE_BPS,
+        max: MAX_FEE_BPS,
+      });
+      const sellFeeBps = parseBoundedWholeNumber(launchSellFeeBps, {
+        label: 'Sell fee bps',
+        min: MIN_FEE_BPS,
+        max: MAX_FEE_BPS,
+      });
+      const gradOverride = launchGraduationThreshold.trim()
+        ? parseBoundedWholeNumber(launchGraduationThreshold, {
+          label: 'Graduation threshold',
+          min: MIN_GRAD_THRESHOLD,
+          max: MAX_GRAD_THRESHOLD,
+        })
+        : 0n;
+
       // First ensure the user has opted into CORTEX
       const txns = await buildCreateAgentTxns(
         activeAccount.address,
         agentName.trim(),
         agentSymbol.trim().toUpperCase(),
+        {
+          basePrice,
+          slope,
+          buyFeeBps,
+          sellFeeBps,
+          graduationThresholdOverride: gradOverride,
+        },
       );
 
       // Sign with the connected wallet
@@ -226,6 +400,10 @@ export default function Marketplace() {
     if (!liveSelectedAgent) {
       return;
     }
+    if (!tradingEnabled) {
+      setBuyError(maintenanceReason || 'Trading is temporarily disabled on this testnet deployment.');
+      return;
+    }
     if (!activeAccount || !transactionSigner || !activeWallet) {
       setBuyError('Connect your wallet first');
       return;
@@ -256,11 +434,26 @@ export default function Marketplace() {
         }
       }
 
+      const buyPreview = await fetchBuyQuotePreview(liveSelectedAgent.assetId, parsedBuyAmount);
+      if (
+        buyPreview.asset_id !== liveSelectedAgent.assetId ||
+        BigInt(buyPreview.amount) !== parsedBuyAmount
+      ) {
+        throw new Error('Buy quote preview did not match the requested trade');
+      }
+      if (buyPreview.net <= 0) {
+        throw new Error('Buy quote preview returned an invalid total');
+      }
+      setBuyQuotePreview(buyPreview);
+      setBuyQuoteError(null);
+
       const txns = await buildBuyTokensTxns(
         activeAccount.address,
         liveSelectedAgent.assetId,
         parsedBuyAmount,
         liveSelectedAgent.supply,
+        liveSelectedAgent.config.buyFeeBps,
+        BigInt(buyPreview.net),
       );
       const signedTxns = await transactionSigner(
         txns.map((txn) => txn),
@@ -290,6 +483,10 @@ export default function Marketplace() {
     if (!liveSelectedAgent) {
       return;
     }
+    if (!tradingEnabled) {
+      setSellError(maintenanceReason || 'Trading is temporarily disabled on this testnet deployment.');
+      return;
+    }
     if (!activeAccount || !transactionSigner || !activeWallet) {
       setSellError('Connect your wallet first');
       return;
@@ -312,6 +509,22 @@ export default function Marketplace() {
     setSellSuccess(null);
 
     try {
+      const sellPreview = await fetchSellQuotePreview(liveSelectedAgent.assetId, parsedSellAmount);
+      if (
+        sellPreview.asset_id !== liveSelectedAgent.assetId ||
+        BigInt(sellPreview.amount) !== parsedSellAmount
+      ) {
+        throw new Error('Sell quote preview did not match the requested trade');
+      }
+      if (sellPreview.current_supply < sellPreview.amount) {
+        throw new Error('Sell quote preview indicates insufficient curve supply');
+      }
+      if (sellPreview.net <= 0) {
+        throw new Error('Sell quote preview returned an invalid net return');
+      }
+      setSellQuotePreview(sellPreview);
+      setSellQuoteError(null);
+
       const txns = await buildSellTokensTxns(
         activeAccount.address,
         liveSelectedAgent.assetId,
@@ -363,13 +576,28 @@ export default function Marketplace() {
             <RefreshCw className="w-5 h-5" />
           </button>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={openLaunchModal}
+            disabled={!launchEnabled}
             className="bg-[#007AFF] hover:bg-[#0062CC] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 transition-all shadow-lg shadow-[#007AFF]/20 active:scale-95 flex-1 sm:flex-initial justify-center"
           >
             <Plus className="w-5 h-5" /> Launch New Agent
           </button>
         </div>
       </div>
+
+      {!tradingEnabled && maintenanceReason && (
+        <div className="rounded-[28px] border border-yellow-500/20 bg-yellow-500/5 px-6 py-5 text-sm text-yellow-100 space-y-2">
+          <div className="font-bold uppercase tracking-[0.2em] text-yellow-300">Marketplace Maintenance</div>
+          <p>{maintenanceReason}</p>
+          {config?.notes?.length ? (
+            <ul className="space-y-1 text-yellow-50/80">
+              {config.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
@@ -498,6 +726,92 @@ export default function Marketplace() {
                     aria-label="Agent symbol"
                     className="w-full bg-[#050505] border border-white/5 rounded-xl p-3 sm:p-4 text-white outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all font-medium uppercase"
                   />
+                </div>
+
+                <div className="border border-white/5 rounded-2xl bg-[#0b0b10] overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedLaunch((prev) => !prev)}
+                    className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+                    aria-expanded={showAdvancedLaunch}
+                    aria-label="Toggle advanced launch parameters"
+                  >
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      Advanced Launch Parameters
+                    </span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-gray-500 transition-transform ${showAdvancedLaunch ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  {!showAdvancedLaunch && (
+                    <div className="px-4 pb-3 text-[10px] text-gray-600 font-mono uppercase tracking-widest">
+                      Base {launchBasePrice || '--'} • Slope {launchSlope || '--'} • Buy {launchBuyFeeBps || '--'} bps • Sell {launchSellFeeBps || '--'} bps • Threshold {launchGraduationThreshold.trim() || 'default'}
+                    </div>
+                  )}
+
+                  {showAdvancedLaunch && (
+                    <div className="px-4 pb-4 pt-1 space-y-4 border-t border-white/5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Base Price</label>
+                          <input
+                            type="text"
+                            value={launchBasePrice}
+                            onChange={(e) => setLaunchBasePrice(e.target.value)}
+                            aria-label="Base price"
+                            className="w-full bg-[#050505] border border-white/5 rounded-xl p-3 sm:p-4 text-white outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all font-medium"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Slope</label>
+                          <input
+                            type="text"
+                            value={launchSlope}
+                            onChange={(e) => setLaunchSlope(e.target.value)}
+                            aria-label="Slope"
+                            className="w-full bg-[#050505] border border-white/5 rounded-xl p-3 sm:p-4 text-white outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all font-medium"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Buy Fee (BPS)</label>
+                          <input
+                            type="text"
+                            value={launchBuyFeeBps}
+                            onChange={(e) => setLaunchBuyFeeBps(e.target.value)}
+                            aria-label="Buy fee bps"
+                            className="w-full bg-[#050505] border border-white/5 rounded-xl p-3 sm:p-4 text-white outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all font-medium"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Sell Fee (BPS)</label>
+                          <input
+                            type="text"
+                            value={launchSellFeeBps}
+                            onChange={(e) => setLaunchSellFeeBps(e.target.value)}
+                            aria-label="Sell fee bps"
+                            className="w-full bg-[#050505] border border-white/5 rounded-xl p-3 sm:p-4 text-white outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                          Graduation Threshold Override (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={launchGraduationThreshold}
+                          onChange={(e) => setLaunchGraduationThreshold(e.target.value)}
+                          placeholder="Leave blank to use protocol default"
+                          aria-label="Graduation threshold override"
+                          className="w-full bg-[#050505] border border-white/5 rounded-xl p-3 sm:p-4 text-white outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all font-medium"
+                        />
+                        <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
+                          Bounds: base 1000-100000, slope 1-10000, fees 0-1000 bps, threshold 1,000,000,000-500,000,000,000.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {deployError && (
@@ -637,6 +951,11 @@ export default function Marketplace() {
                   <StatCard label="Protocol Fee" value={buyQuote ? formatAlgoAmount(buyQuote.fee) : '--'} />
                   <StatCard label="Total" value={buyQuote ? formatAlgoAmount(buyQuote.totalCost) : '--'} />
                 </div>
+                {(loadingBuyQuote || buyQuoteError) && (
+                  <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+                    {loadingBuyQuote ? 'Fetching buy quote preview...' : `Buy quote unavailable: ${buyQuoteError}`}
+                  </p>
+                )}
 
                 {!activeAccount && (
                   <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest text-center py-2">
@@ -655,7 +974,7 @@ export default function Marketplace() {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={handleBuy}
-                    disabled={buying || !activeAccount || !buyQuote}
+                  disabled={buying || !activeAccount || !buyQuote || !tradingEnabled}
                     className="flex-1 bg-white text-black py-4 rounded-2xl font-black uppercase tracking-tighter text-sm hover:bg-gray-200 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                   >
                     {buying ? (
@@ -666,7 +985,7 @@ export default function Marketplace() {
                     ) : (
                       <>
                         <ShoppingCart className="w-4 h-4" />
-                        Buy on Testnet
+                        {tradingEnabled ? 'Buy on Testnet' : 'Trading Paused'}
                       </>
                     )}
                   </button>
@@ -713,6 +1032,11 @@ export default function Marketplace() {
                   <StatCard label="Protocol Fee" value={sellQuote ? formatAlgoAmount(sellQuote.fee) : '--'} />
                   <StatCard label="Net Return" value={sellQuote ? formatAlgoAmount(sellQuote.netReturn) : '--'} />
                 </div>
+                {(loadingSellQuote || sellQuoteError) && (
+                  <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+                    {loadingSellQuote ? 'Fetching sell quote preview...' : `Sell quote unavailable: ${sellQuoteError}`}
+                  </p>
+                )}
 
                 {!activeAccount && (
                   <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest text-center py-2">
@@ -730,7 +1054,7 @@ export default function Marketplace() {
 
                 <button
                   onClick={handleSell}
-                  disabled={selling || !activeAccount || !sellQuote || loadingWalletBalance || walletBalance === null || (parsedSellAmount !== null && parsedSellAmount > walletBalance)}
+                  disabled={selling || !activeAccount || !sellQuote || loadingWalletBalance || walletBalance === null || (parsedSellAmount !== null && parsedSellAmount > walletBalance) || !tradingEnabled}
                   className="w-full bg-red-500 text-black py-4 rounded-2xl font-black uppercase tracking-tighter text-sm hover:bg-red-400 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                 >
                   {selling ? (
@@ -739,7 +1063,7 @@ export default function Marketplace() {
                       Selling...
                     </>
                   ) : (
-                    'Sell on Testnet'
+                    tradingEnabled ? 'Sell on Testnet' : 'Trading Paused'
                   )}
                 </button>
               </div>

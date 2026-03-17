@@ -71,6 +71,7 @@ def request_json(
     api_key: str | None = None,
     json_body: dict | None = None,
     headers: dict | None = None,
+    params: dict | None = None,
     timeout: float = 10,
 ) -> dict:
     request_headers = {"Accept": "application/json"}
@@ -86,6 +87,7 @@ def request_json(
         f"{get_api_url()}{path}",
         headers=request_headers,
         json=json_body,
+        params=params,
         timeout=timeout,
     )
     response.raise_for_status()
@@ -211,6 +213,93 @@ def agents():
             )
 
         console.print(table)
+    except httpx.HTTPError as e:
+        console.print(f"[red]Error:[/red] {e}")
+
+
+@app.command()
+def marketplace():
+    """Show current marketplace rollout status."""
+    try:
+        data = request_json("/api/marketplace/config")
+        panel_lines = [
+            f"Trading enabled: {data.get('trading_enabled')}",
+            f"Launch enabled: {data.get('launch_enabled')}",
+            f"Active Factory App ID: {data.get('active_factory_app_id')}",
+            f"Legacy Factory App IDs: {data.get('legacy_factory_app_ids', [])}",
+            f"CORTEX Asset ID: {data.get('cortex_asset_id')}",
+        ]
+        if reason := data.get("maintenance_reason"):
+            panel_lines.append(f"Reason: {reason}")
+        console.print(
+            Panel(
+                "\n".join(panel_lines),
+                title="Marketplace Status",
+                border_style="yellow" if not data.get("trading_enabled") else "blue",
+            )
+        )
+        for note in data.get("notes", []):
+            console.print(f"[dim]- {note}[/dim]")
+    except httpx.HTTPError as e:
+        console.print(f"[red]Error:[/red] {e}")
+
+
+@app.command("agent-state")
+def agent_state(
+    asset_id: int = typer.Argument(..., help="Agent ASA ID"),
+):
+    """Show per-agent on-chain config and live supply."""
+    try:
+        data = request_json(f"/api/marketplace/agents/{asset_id}/state")
+        config = data.get("config", {})
+        panel_lines = [
+            f"Asset ID: {data.get('asset_id')}",
+            f"Live supply: {data.get('supply')}",
+            f"Base price: {config.get('base_price')}",
+            f"Slope: {config.get('slope')}",
+            f"Buy fee bps: {config.get('buy_fee_bps')}",
+            f"Sell fee bps: {config.get('sell_fee_bps')}",
+            f"Graduation threshold: {config.get('graduation_threshold')}",
+        ]
+        console.print(
+            Panel(
+                "\n".join(panel_lines),
+                title="Marketplace Agent State",
+                border_style="blue",
+            )
+        )
+    except httpx.HTTPError as e:
+        console.print(f"[red]Error:[/red] {e}")
+
+
+@app.command("quote-buy")
+def quote_buy(
+    asset_id: int = typer.Argument(..., help="Agent ASA ID"),
+    amount: int = typer.Argument(..., help="Buy amount in micro-units"),
+):
+    """Preview a buy quote from the marketplace API."""
+    try:
+        data = request_json(
+            "/api/marketplace/quote/buy",
+            params={"asset_id": asset_id, "amount": amount},
+        )
+        console.print_json(json.dumps(data, indent=2))
+    except httpx.HTTPError as e:
+        console.print(f"[red]Error:[/red] {e}")
+
+
+@app.command("quote-sell")
+def quote_sell(
+    asset_id: int = typer.Argument(..., help="Agent ASA ID"),
+    amount: int = typer.Argument(..., help="Sell amount in micro-units"),
+):
+    """Preview a sell quote from the marketplace API."""
+    try:
+        data = request_json(
+            "/api/marketplace/quote/sell",
+            params={"asset_id": asset_id, "amount": amount},
+        )
+        console.print_json(json.dumps(data, indent=2))
     except httpx.HTTPError as e:
         console.print(f"[red]Error:[/red] {e}")
 

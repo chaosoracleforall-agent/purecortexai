@@ -82,6 +82,30 @@ async def get_agent_registry() -> dict[str, Any]:
 
 
 @mcp.tool()
+async def get_marketplace_config() -> dict[str, Any]:
+    """Fetch current marketplace rollout and trading status."""
+    return await _fetch_public_json("/api/marketplace/config")
+
+
+@mcp.tool()
+async def get_marketplace_agent_state(asset_id: int) -> dict[str, Any]:
+    """Fetch live supply and curve config for one agent asset."""
+    return await _fetch_public_json(f"/api/marketplace/agents/{asset_id}/state")
+
+
+@mcp.tool()
+async def preview_marketplace_buy_quote(asset_id: int, amount: int) -> dict[str, Any]:
+    """Preview a buy quote from the public marketplace API."""
+    return await _fetch_public_json(f"/api/marketplace/quote/buy?asset_id={asset_id}&amount={amount}")
+
+
+@mcp.tool()
+async def preview_marketplace_sell_quote(asset_id: int, amount: int) -> dict[str, Any]:
+    """Preview a sell quote from the public marketplace API."""
+    return await _fetch_public_json(f"/api/marketplace/quote/sell?asset_id={asset_id}&amount={amount}")
+
+
+@mcp.tool()
 async def get_agent_activity(agent_name: str) -> dict[str, Any]:
     """Fetch recent activity for one protocol agent."""
     normalized = agent_name.strip().lower()

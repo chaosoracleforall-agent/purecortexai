@@ -10,15 +10,15 @@
   "tgeDate": "2026-03-31T00:00:00Z",
   "contracts": {
     "agentFactory": {
-      "appId": 757172168,
-      "address": "RPBTMBSBFALFC4SOTUROMRBBSJGFOEGFFGULZEKPGHHXXFSHCNU247CJAM",
+      "appId": 757290073,
+      "address": "AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ",
       "status": "active"
     },
     "cortexToken": {
-      "assetId": 757172171,
+      "assetId": 757290097,
       "name": "PureCortex",
       "unitName": "CORTEX",
-      "creatorAddress": "RPBTMBSBFALFC4SOTUROMRBBSJGFOEGFFGULZEKPGHHXXFSHCNU247CJAM"
+      "creatorAddress": "AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ"
     },
     "governance": {
       "appId": 757157787,
@@ -43,13 +43,47 @@
     "sellFeeBps": 200,
     "graduationThreshold": 50000000000
   },
+  "marketplace": {
+    "tradingEnabled": false,
+    "launchEnabled": true,
+    "maintenanceReason": "Trading is paused on the current testnet factory while corrected bonding-curve math and direct supply indexing are rolled out on a fresh deployment.",
+    "notes": [
+      "Existing testnet agents remain visible for auditability only.",
+      "Agent launch remains enabled for controlled validation.",
+      "Buy and sell flows stay disabled until the corrected factory is redeployed and validated."
+    ]
+  },
+  "nextDeployment": {
+    "status": "completed",
+    "agentFactoryAppId": 757290073,
+    "cortexAssetId": 757290097,
+    "creatorAddress": "R7CLPM5L3CQ62PHF347KDIEHKUHIFJYTYVVG6JU6XNT5MFCQOK5V33XMWI",
+    "notes": [
+      "Patched factory deployed with deferred per-agent config materialization to remove create-time dynamic box key failures.",
+      "Smoke validation should continue against this app/asset pair before re-enabling public trading."
+    ]
+  },
   "wallets": {
-    "agentFactoryEscrow": "RPBTMBSBFALFC4SOTUROMRBBSJGFOEGFFGULZEKPGHHXXFSHCNU247CJAM",
+    "agentFactoryEscrow": "AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ",
     "assistanceFund": null,
     "operations": null,
     "creatorVesting": null
   },
   "legacyDeployments": [
+    {
+      "label": "March 17 R7 redeploy (box reference hotfix iteration)",
+      "agentFactoryAppId": 757288371,
+      "cortexAssetId": 757288754,
+      "status": "deprecated",
+      "note": "Superseded by the follow-up deployment that patched create-time dynamic box reference failures."
+    },
+    {
+      "label": "March 17 corrected factory (pre-R7 redeploy)",
+      "agentFactoryAppId": 757172168,
+      "cortexAssetId": 757172171,
+      "status": "deprecated",
+      "note": "Retired after deploying a fresh factory bound to the currently available deployer key."
+    },
     {
       "label": "March 13 launchpad deployment",
       "agentFactoryAppId": 757089323,
