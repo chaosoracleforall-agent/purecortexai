@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -26,6 +27,7 @@ import tweepy
 
 from orchestrator import ConsensusOrchestrator
 from sandboxing import PermissionTier
+from src.services.protocol_config import CORTEX_ASSET_ID, CORTEX_NAME, CORTEX_UNIT_NAME
 
 from .base_agent import BaseAgent
 from .memory import AgentMemory
@@ -44,6 +46,12 @@ CONTENT_TYPES = [
     "thread",
 ]
 
+OFFICIAL_TOKEN_TICKER = f"${CORTEX_UNIT_NAME}"
+FORBIDDEN_TOKEN_PATTERNS = (
+    re.compile(r"\$PRCX\b", re.IGNORECASE),
+    re.compile(r"\bPRCX\b", re.IGNORECASE),
+)
+
 
 class SocialAgent(BaseAgent):
     """Social Media Intelligence for PURECORTEX (@purecortexai on X)."""
@@ -53,6 +61,8 @@ class SocialAgent(BaseAgent):
         "Your role is to build awareness, educate, and engage the community about PURECORTEX.\n\n"
         "Brand voice: Authoritative but accessible. Technical but not jargon-heavy.\n"
         "Focus on: sovereignty, AI agents, Algorand, tokenomics (buyback-burn), governance.\n"
+        f"Protocol facts: the official token is {CORTEX_NAME} with ticker {OFFICIAL_TOKEN_TICKER} "
+        f"on Algorand (asset id {CORTEX_ASSET_ID}). Never refer to the token as PRCX or any other ticker.\n"
         "Never: make price predictions, financial advice, misleading claims, or hype.\n\n"
         "Keep tweets concise, impactful, and informative. Use threads for complex topics.\n"
         "Reference on-chain data when possible for credibility.\n\n"
@@ -68,6 +78,7 @@ class SocialAgent(BaseAgent):
 
     CHAT_PROMPT = (
         "You are the Social Media agent of PURECORTEX. You manage the @purecortexai X account.\n"
+        f"The official protocol token ticker is {OFFICIAL_TOKEN_TICKER}. Never describe it as PRCX.\n"
         "You can discuss: content strategy, recent posts, engagement metrics, and upcoming campaigns.\n"
         "Respond conversationally."
     )
@@ -167,6 +178,9 @@ class SocialAgent(BaseAgent):
         content_type = decision.get("content_type", "protocol_update")
         thread = decision.get("thread")
 
+        content = self._normalize_token_terms(content)
+        thread = [self._normalize_token_terms(tweet) for tweet in thread] if thread else thread
+
         if not content and not thread:
             logger.warning("[Social] Empty content — skipping post.")
             return None
@@ -192,6 +206,21 @@ class SocialAgent(BaseAgent):
 
         return decision
 
+    @staticmethod
+    def _normalize_token_terms(text: str) -> str:
+        """Correct known ticker hallucinations before content is published."""
+        if not text:
+            return text
+
+        normalized = text
+        for pattern in FORBIDDEN_TOKEN_PATTERNS:
+            normalized = pattern.sub(OFFICIAL_TOKEN_TICKER, normalized)
+
+        if normalized != text:
+            logger.warning("[Social] Corrected token ticker in generated content before posting.")
+
+        return normalized
+
     # ------------------------------------------------------------------
     # Content generation helpers
     # ------------------------------------------------------------------
@@ -205,7 +234,8 @@ class SocialAgent(BaseAgent):
         user_prompt = (
             f"Generate a single tweet for @purecortexai.\n"
             f"Topic: {topic or 'general PURECORTEX update'}\n"
-            "Keep it under 280 characters. Set content_type appropriately."
+            f"Keep it under 280 characters. Use the official ticker {OFFICIAL_TOKEN_TICKER}. "
+            "Set content_type appropriately."
         )
 
         decision = await self.think(
@@ -215,7 +245,7 @@ class SocialAgent(BaseAgent):
         )
 
         if decision and decision.get("message"):
-            return decision["message"]
+            return self._normalize_token_terms(decision["message"])
 
         return ""
 
@@ -229,7 +259,8 @@ class SocialAgent(BaseAgent):
             f"Topic: {topic}\n"
             "Set content_type to 'thread' and populate the 'thread' array. "
             "Each tweet must be under 280 characters. "
-            "The first tweet should hook readers, and the last should have a call-to-action."
+            f"The first tweet should hook readers, and the last should have a call-to-action. "
+            f"Use the official ticker {OFFICIAL_TOKEN_TICKER} whenever the token is mentioned."
         )
 
         decision = await self.think(
@@ -239,7 +270,7 @@ class SocialAgent(BaseAgent):
         )
 
         if decision and decision.get("thread"):
-            return decision["thread"]
+            return [self._normalize_token_terms(tweet) for tweet in decision["thread"]]
 
         return []
 
