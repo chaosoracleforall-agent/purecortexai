@@ -48,8 +48,8 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-10 sm:pt-20 pb-24 sm:pb-32 lg:pb-20 grid lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] gap-10 lg:gap-16 xl:gap-20 items-start">
-        <div className="space-y-6 sm:space-y-10 min-w-0">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-10 sm:pt-20 pb-24 sm:pb-32 xl:pb-20 grid xl:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)] gap-10 lg:gap-14 xl:gap-16 items-start">
+        <div className="space-y-6 sm:space-y-10 min-w-0 max-w-3xl xl:max-w-none">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -62,7 +62,7 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="max-w-[10ch] text-4xl sm:text-5xl lg:text-7xl xl:text-8xl font-bold tracking-tighter leading-[0.92] uppercase italic"
+            className="max-w-[8.5ch] xl:max-w-[10ch] text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter leading-[0.92] uppercase italic"
           >
             Point of <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#007AFF] to-blue-400">Emancipation</span>
@@ -98,7 +98,7 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
-          className="min-w-0 bg-[#1A1A1A] border border-white/5 rounded-3xl sm:rounded-[40px] p-6 sm:p-10 lg:p-12 shadow-2xl relative group"
+          className="min-w-0 w-full max-w-2xl xl:max-w-none xl:ml-auto bg-[#1A1A1A] border border-white/5 rounded-3xl sm:rounded-[40px] p-6 sm:p-10 lg:p-12 shadow-2xl relative group"
         >
           <div className="absolute -inset-1 bg-gradient-to-r from-[#007AFF] to-indigo-600 rounded-[calc(1.5rem+1px)] sm:rounded-[41px] blur opacity-10 group-hover:opacity-20 transition-all" />
 

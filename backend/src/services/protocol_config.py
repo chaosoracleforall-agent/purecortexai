@@ -35,19 +35,16 @@ PROTOCOL_CONFIG: Final[dict[str, Any]] = {'name': 'PURECORTEX',
                 'buyFeeBps': 100,
                 'sellFeeBps': 200,
                 'graduationThreshold': 50000000000},
- 'marketplace': {'tradingEnabled': False,
+ 'marketplace': {'tradingEnabled': True,
                  'launchEnabled': True,
-                 'maintenanceReason': 'Trading is paused on the current '
-                                      'testnet factory while corrected '
-                                      'bonding-curve math and direct supply '
-                                      'indexing are rolled out on a fresh '
-                                      'deployment.',
-                 'notes': ['Existing testnet agents remain visible for '
-                           'auditability only.',
+                 'maintenanceReason': None,
+                 'notes': ['Marketplace buy and sell flows are enabled on the '
+                           'active testnet factory deployment.',
                            'Agent launch remains enabled for controlled '
                            'validation.',
-                           'Buy and sell flows stay disabled until the '
-                           'corrected factory is redeployed and validated.']},
+                           'Continue monitoring create, buy, and sell flows '
+                           'against the active factory while testnet usage '
+                           'expands.']},
  'nextDeployment': {'status': 'completed',
                     'agentFactoryAppId': 757290073,
                     'cortexAssetId': 757290097,
@@ -55,9 +52,9 @@ PROTOCOL_CONFIG: Final[dict[str, Any]] = {'name': 'PURECORTEX',
                     'notes': ['Patched factory deployed with deferred '
                               'per-agent config materialization to remove '
                               'create-time dynamic box key failures.',
-                              'Smoke validation should continue against this '
-                              'app/asset pair before re-enabling public '
-                              'trading.']},
+                              'Core smoke validation passed against this '
+                              'app/asset pair before public trading was '
+                              're-enabled.']},
  'wallets': {'agentFactoryEscrow': 'AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ',
              'assistanceFund': None,
              'operations': None,

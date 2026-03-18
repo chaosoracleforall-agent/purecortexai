@@ -47,13 +47,13 @@ export const protocolConfig = {
     "graduationThreshold": 50000000000
   },
   "marketplace": {
-    "tradingEnabled": false,
+    "tradingEnabled": true,
     "launchEnabled": true,
-    "maintenanceReason": "Trading is paused on the current testnet factory while corrected bonding-curve math and direct supply indexing are rolled out on a fresh deployment.",
+    "maintenanceReason": null,
     "notes": [
-      "Existing testnet agents remain visible for auditability only.",
+      "Marketplace buy and sell flows are enabled on the active testnet factory deployment.",
       "Agent launch remains enabled for controlled validation.",
-      "Buy and sell flows stay disabled until the corrected factory is redeployed and validated."
+      "Continue monitoring create, buy, and sell flows against the active factory while testnet usage expands."
     ]
   },
   "nextDeployment": {
@@ -63,7 +63,7 @@ export const protocolConfig = {
     "creatorAddress": "R7CLPM5L3CQ62PHF347KDIEHKUHIFJYTYVVG6JU6XNT5MFCQOK5V33XMWI",
     "notes": [
       "Patched factory deployed with deferred per-agent config materialization to remove create-time dynamic box key failures.",
-      "Smoke validation should continue against this app/asset pair before re-enabling public trading."
+      "Core smoke validation passed against this app/asset pair before public trading was re-enabled."
     ]
   },
   "wallets": {
