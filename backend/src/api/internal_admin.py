@@ -112,6 +112,25 @@ class RotateAPIKeyRequest(BaseModel):
     reason: str = Field(..., min_length=3, max_length=2000)
 
 
+class SocialDiscoverRequest(BaseModel):
+    max_targets: int = Field(default=8, ge=1, le=25)
+    tweets_per_target: int = Field(default=5, ge=1, le=25)
+    max_candidates: int = Field(default=8, ge=1, le=25)
+    include_reply_drafts: bool = True
+
+
+class SocialReplyRequest(BaseModel):
+    tweet_id: int = Field(..., gt=0)
+    text: str = Field(..., min_length=3, max_length=280)
+    target_handle: str | None = Field(default=None, max_length=64)
+    dry_run: bool = False
+
+
+class SocialFollowRequest(BaseModel):
+    handle: str = Field(..., min_length=1, max_length=64)
+    dry_run: bool = False
+
+
 @router.get("/health")
 async def internal_admin_health(
     request: Request,
@@ -166,6 +185,128 @@ async def run_social_agent(
         "posted": bool(result),
         "result": result,
     }
+
+
+@router.get("/social/campaign")
+async def social_campaign_status(
+    request: Request,
+    response: Response,
+    x_internal_admin_token: str | None = Header(default=None),
+):
+    _require_internal_admin(request, x_internal_admin_token)
+    _set_no_store_headers(response)
+
+    from main import get_agent_loop
+
+    agent_loop = get_agent_loop()
+    if not agent_loop or not getattr(agent_loop, "social", None):
+        raise HTTPException(status_code=503, detail="Social agent is unavailable")
+
+    return await agent_loop.social.get_campaign_status()
+
+
+@router.get("/social/targets")
+async def social_campaign_targets(
+    request: Request,
+    response: Response,
+    x_internal_admin_token: str | None = Header(default=None),
+):
+    _require_internal_admin(request, x_internal_admin_token)
+    _set_no_store_headers(response)
+
+    from main import get_agent_loop
+
+    agent_loop = get_agent_loop()
+    if not agent_loop or not getattr(agent_loop, "social", None):
+        raise HTTPException(status_code=503, detail="Social agent is unavailable")
+
+    targets = await agent_loop.social.get_campaign_targets()
+    return {"total": len(targets), "targets": targets}
+
+
+@router.post("/social/discover")
+async def social_campaign_discover(
+    body: SocialDiscoverRequest,
+    request: Request,
+    response: Response,
+    x_internal_admin_token: str | None = Header(default=None),
+):
+    _require_internal_admin(request, x_internal_admin_token)
+    _set_no_store_headers(response)
+
+    from main import get_agent_loop
+
+    agent_loop = get_agent_loop()
+    if not agent_loop or not getattr(agent_loop, "social", None):
+        raise HTTPException(status_code=503, detail="Social agent is unavailable")
+
+    try:
+        payload = await agent_loop.social.discover_campaign_candidates(
+            max_targets=body.max_targets,
+            tweets_per_target=body.tweets_per_target,
+            max_candidates=body.max_candidates,
+            include_reply_drafts=body.include_reply_drafts,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return payload
+
+
+@router.post("/social/reply")
+async def social_campaign_reply(
+    body: SocialReplyRequest,
+    request: Request,
+    response: Response,
+    x_internal_admin_token: str | None = Header(default=None),
+):
+    _require_internal_admin(request, x_internal_admin_token)
+    _set_no_store_headers(response)
+
+    from main import get_agent_loop
+
+    agent_loop = get_agent_loop()
+    if not agent_loop or not getattr(agent_loop, "social", None):
+        raise HTTPException(status_code=503, detail="Social agent is unavailable")
+
+    try:
+        payload = await agent_loop.social.reply_to_tweet(
+            tweet_id=body.tweet_id,
+            text=body.text,
+            target_handle=body.target_handle,
+            dry_run=body.dry_run,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return payload
+
+
+@router.post("/social/follow")
+async def social_campaign_follow(
+    body: SocialFollowRequest,
+    request: Request,
+    response: Response,
+    x_internal_admin_token: str | None = Header(default=None),
+):
+    _require_internal_admin(request, x_internal_admin_token)
+    _set_no_store_headers(response)
+
+    from main import get_agent_loop
+
+    agent_loop = get_agent_loop()
+    if not agent_loop or not getattr(agent_loop, "social", None):
+        raise HTTPException(status_code=503, detail="Social agent is unavailable")
+
+    try:
+        payload = await agent_loop.social.follow_account(
+            handle=body.handle.lstrip("@"),
+            dry_run=body.dry_run,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return payload
 
 
 @router.get("/access-requests")

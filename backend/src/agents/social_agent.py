@@ -28,6 +28,7 @@ import tweepy
 from orchestrator import ConsensusOrchestrator
 from sandboxing import PermissionTier
 from src.services.protocol_config import CORTEX_ASSET_ID, CORTEX_NAME, CORTEX_UNIT_NAME
+from src.services.social_campaign import get_seed_targets, score_target_tweet
 
 from .base_agent import BaseAgent
 from .memory import AgentMemory
@@ -51,6 +52,17 @@ FORBIDDEN_TOKEN_PATTERNS = (
     re.compile(r"\$PRCX\b", re.IGNORECASE),
     re.compile(r"\bPRCX\b", re.IGNORECASE),
 )
+CAMPAIGN_TARGETS_KEY = "campaign_targets"
+CAMPAIGN_HISTORY_KEY = "campaign_history"
+CAMPAIGN_CANDIDATES_KEY = "campaign_candidates"
+CAMPAIGN_LIMITS_KEY = "campaign_daily_limits"
+MAX_FOLLOWS_PER_DAY = 5
+MAX_REPLIES_PER_DAY = 8
+AUTO_CAMPAIGN_MAX_TARGETS = int(os.getenv("SOCIAL_CAMPAIGN_MAX_TARGETS", "8"))
+AUTO_CAMPAIGN_TWEETS_PER_TARGET = int(os.getenv("SOCIAL_CAMPAIGN_TWEETS_PER_TARGET", "5"))
+AUTO_CAMPAIGN_MAX_CANDIDATES = int(os.getenv("SOCIAL_CAMPAIGN_MAX_CANDIDATES", "8"))
+AUTO_REPLY_SCORE_THRESHOLD = int(os.getenv("SOCIAL_CAMPAIGN_REPLY_SCORE_THRESHOLD", "6"))
+AUTO_FOLLOW_PRIORITY_THRESHOLD = int(os.getenv("SOCIAL_CAMPAIGN_FOLLOW_PRIORITY_THRESHOLD", "9"))
 
 
 class SocialAgent(BaseAgent):
@@ -100,6 +112,441 @@ class SocialAgent(BaseAgent):
 
         # Initialize Twitter/X client from environment variables
         self.twitter_client = self._init_twitter()
+
+    @staticmethod
+    def _env_enabled(name: str, default: str = "1") -> bool:
+        return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+    async def _ensure_campaign_targets(self) -> list[dict[str, Any]]:
+        targets = await self.memory.recall_long(CAMPAIGN_TARGETS_KEY)
+        if targets:
+            return targets
+
+        targets = get_seed_targets()
+        await self.memory.remember_long(CAMPAIGN_TARGETS_KEY, targets)
+        return targets
+
+    async def _load_campaign_history(self) -> dict[str, Any]:
+        history = await self.memory.recall_long(CAMPAIGN_HISTORY_KEY)
+        if history:
+            return history
+
+        history = {
+            "replied_tweet_ids": [],
+            "followed_handles": [],
+            "reply_events": [],
+            "follow_events": [],
+        }
+        await self.memory.remember_long(CAMPAIGN_HISTORY_KEY, history)
+        return history
+
+    async def _save_campaign_history(self, history: dict[str, Any]) -> None:
+        history["replied_tweet_ids"] = history.get("replied_tweet_ids", [])[-500:]
+        history["followed_handles"] = history.get("followed_handles", [])[-200:]
+        history["reply_events"] = history.get("reply_events", [])[-100:]
+        history["follow_events"] = history.get("follow_events", [])[-100:]
+        await self.memory.remember_long(CAMPAIGN_HISTORY_KEY, history)
+
+    async def _load_daily_limits(self) -> dict[str, Any]:
+        limits = await self.memory.recall_long(CAMPAIGN_LIMITS_KEY)
+        today = time.strftime("%Y-%m-%d", time.gmtime())
+        if not limits or limits.get("date") != today:
+            limits = {"date": today, "follow_count": 0, "reply_count": 0}
+            await self.memory.remember_long(CAMPAIGN_LIMITS_KEY, limits)
+        return limits
+
+    async def _increment_daily_limit(self, key: str) -> dict[str, Any]:
+        limits = await self._load_daily_limits()
+        limits[key] = int(limits.get(key, 0)) + 1
+        await self.memory.remember_long(CAMPAIGN_LIMITS_KEY, limits)
+        return limits
+
+    async def _record_reply_event(
+        self,
+        *,
+        tweet_id: int,
+        target_handle: str | None,
+        text: str,
+        response_tweet_id: int | None = None,
+    ) -> None:
+        history = await self._load_campaign_history()
+        history.setdefault("replied_tweet_ids", []).append(str(tweet_id))
+        history.setdefault("reply_events", []).append(
+            {
+                "tweet_id": str(tweet_id),
+                "target_handle": target_handle,
+                "text": text[:280],
+                "response_tweet_id": str(response_tweet_id) if response_tweet_id else None,
+                "timestamp": time.time(),
+            }
+        )
+        await self._save_campaign_history(history)
+
+        if target_handle:
+            await self._update_target(handle=target_handle, last_interaction_at=time.time(), relationship_stage="engaged")
+
+    async def _record_follow_event(self, *, handle: str, target_user_id: int) -> None:
+        history = await self._load_campaign_history()
+        history.setdefault("followed_handles", []).append(handle.lower())
+        history.setdefault("follow_events", []).append(
+            {
+                "handle": handle,
+                "target_user_id": str(target_user_id),
+                "timestamp": time.time(),
+            }
+        )
+        await self._save_campaign_history(history)
+        await self._update_target(handle=handle, last_followed_at=time.time(), relationship_stage="followed")
+
+    async def _update_target(self, *, handle: str, **updates: Any) -> None:
+        targets = await self._ensure_campaign_targets()
+        updated = False
+        for target in targets:
+            if target.get("handle", "").lower() == handle.lower():
+                target.update(updates)
+                updated = True
+                break
+        if updated:
+            await self.memory.remember_long(CAMPAIGN_TARGETS_KEY, targets)
+
+    async def get_campaign_targets(self) -> list[dict[str, Any]]:
+        return await self._ensure_campaign_targets()
+
+    async def get_campaign_status(self) -> dict[str, Any]:
+        targets = await self._ensure_campaign_targets()
+        history = await self._load_campaign_history()
+        limits = await self._load_daily_limits()
+        recent_posts = await self.memory.get_recent_episodes(limit=10)
+
+        return {
+            "account": "@purecortexai",
+            "official_token_ticker": OFFICIAL_TOKEN_TICKER,
+            "twitter_ready": self.twitter_client is not None,
+            "target_count": len(targets),
+            "high_priority_targets": [t["handle"] for t in sorted(targets, key=lambda item: item.get("priority", 0), reverse=True)[:5]],
+            "daily_limits": {
+                "date": limits["date"],
+                "follow_count": limits["follow_count"],
+                "reply_count": limits["reply_count"],
+                "max_follows_per_day": MAX_FOLLOWS_PER_DAY,
+                "max_replies_per_day": MAX_REPLIES_PER_DAY,
+            },
+            "recent_reply_events": history.get("reply_events", [])[-5:],
+            "recent_follow_events": history.get("follow_events", [])[-5:],
+            "recent_social_cycles": recent_posts[:5],
+        }
+
+    async def _draft_reply(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        system_prompt = (
+            "You are drafting a reply for @purecortexai to an Algorand ecosystem post.\n"
+            "Reply only when PURECORTEX can add real value.\n"
+            f"Use {OFFICIAL_TOKEN_TICKER} if the protocol token is mentioned; never use PRCX.\n"
+            "Do not sound spammy. Do not over-tag people. Do not make partnership claims or price claims.\n"
+            "Prefer concise, technical, high-signal replies.\n\n"
+            "Respond ONLY in valid JSON with fields:\n"
+            "  'action': one of 'REPLY' | 'NONE',\n"
+            "  'message': the reply text or empty string,\n"
+            "  'rationale': short explanation of why this is worth posting."
+        )
+        user_prompt = (
+            f"TARGET HANDLE: @{candidate['target_handle']}\n"
+            f"TARGET CATEGORY: {candidate['target_category']}\n"
+            f"CANDIDATE SCORE: {candidate['score']}\n"
+            f"REASONS: {', '.join(candidate.get('reasons', []))}\n"
+            f"POST TEXT:\n{candidate['text']}\n\n"
+            "Draft a reply only if PURECORTEX has a genuinely relevant contribution."
+        )
+
+        decision = await self.think(system_prompt, user_prompt, task_type="REPLY")
+        if not decision:
+            return {"action": "NONE", "message": "", "rationale": "Consensus unavailable"}
+
+        action = decision.get("action", "NONE")
+        message = self._normalize_token_terms(decision.get("message", ""))
+        if action != "REPLY" or not message:
+            return {
+                "action": "NONE",
+                "message": "",
+                "rationale": decision.get("rationale", "No useful reply drafted"),
+            }
+
+        return {
+            "action": "REPLY",
+            "message": message[:280],
+            "rationale": decision.get("rationale", ""),
+        }
+
+    async def discover_campaign_candidates(
+        self,
+        *,
+        max_targets: int = 8,
+        tweets_per_target: int = 5,
+        max_candidates: int = 8,
+        include_reply_drafts: bool = True,
+    ) -> dict[str, Any]:
+        if not self.twitter_client:
+            raise RuntimeError("Twitter client is unavailable")
+
+        targets = sorted(
+            await self._ensure_campaign_targets(),
+            key=lambda item: item.get("priority", 0),
+            reverse=True,
+        )
+        history = await self._load_campaign_history()
+        replied_ids = {tweet_id for tweet_id in history.get("replied_tweet_ids", [])}
+        candidates: list[dict[str, Any]] = []
+        scanned_targets: list[dict[str, Any]] = []
+
+        for target in targets[:max_targets]:
+            handle = target.get("handle")
+            if not handle:
+                continue
+
+            try:
+                user_response = self.twitter_client.get_user(
+                    username=handle,
+                    user_auth=True,
+                    user_fields=["description", "public_metrics"],
+                )
+            except Exception as exc:
+                scanned_targets.append({"handle": handle, "status": "resolve_failed", "detail": str(exc)})
+                continue
+
+            user = user_response.data if user_response else None
+            if user is None:
+                scanned_targets.append({"handle": handle, "status": "not_found"})
+                continue
+
+            scanned_targets.append({"handle": handle, "status": "resolved", "user_id": str(user.id)})
+
+            try:
+                tweet_response = self.twitter_client.get_users_tweets(
+                    user.id,
+                    max_results=max(5, min(100, tweets_per_target)),
+                    tweet_fields=["created_at", "public_metrics"],
+                    exclude=["replies", "retweets"],
+                    user_auth=True,
+                )
+            except Exception as exc:
+                scanned_targets.append({"handle": handle, "status": "timeline_failed", "detail": str(exc)})
+                continue
+
+            for tweet in tweet_response.data or []:
+                tweet_id = str(tweet.id)
+                if tweet_id in replied_ids:
+                    continue
+
+                text = tweet.text or ""
+                score, reasons = score_target_tweet(text, target)
+                if score < 4:
+                    continue
+
+                metrics = getattr(tweet, "public_metrics", None) or {}
+                candidate = {
+                    "tweet_id": tweet_id,
+                    "target_handle": handle,
+                    "target_name": getattr(user, "name", handle),
+                    "target_category": target.get("category"),
+                    "score": score,
+                    "reasons": reasons,
+                    "created_at": str(getattr(tweet, "created_at", "")),
+                    "text": text,
+                    "public_metrics": metrics,
+                }
+                candidates.append(candidate)
+
+        def sort_key(item: dict[str, Any]) -> tuple[int, int, int]:
+            metrics = item.get("public_metrics") or {}
+            return (
+                int(item.get("score", 0)),
+                int(metrics.get("like_count", 0)),
+                int(metrics.get("retweet_count", 0)),
+            )
+
+        candidates.sort(key=sort_key, reverse=True)
+        candidates = candidates[:max_candidates]
+
+        if include_reply_drafts:
+            for candidate in candidates:
+                candidate["draft"] = await self._draft_reply(candidate)
+
+        recommended_follows = [
+            {
+                "handle": target["handle"],
+                "priority": target.get("priority", 0),
+                "category": target.get("category"),
+                "rationale": target.get("rationale"),
+            }
+            for target in targets
+            if not target.get("last_followed_at")
+        ][:5]
+
+        payload = {
+            "scanned_at": time.time(),
+            "scanned_targets": scanned_targets,
+            "candidates": candidates,
+            "recommended_follows": recommended_follows,
+        }
+        await self.memory.remember_short(CAMPAIGN_CANDIDATES_KEY, payload)
+        return payload
+
+    async def _autonomous_campaign_cycle(self) -> dict[str, Any]:
+        if not self.twitter_client:
+            return {"enabled": False, "reason": "twitter_client_unavailable"}
+
+        if not self._env_enabled("SOCIAL_CAMPAIGN_ENABLED", "1"):
+            return {"enabled": False, "reason": "campaign_disabled"}
+
+        limits = await self._load_daily_limits()
+        payload = await self.discover_campaign_candidates(
+            max_targets=AUTO_CAMPAIGN_MAX_TARGETS,
+            tweets_per_target=AUTO_CAMPAIGN_TWEETS_PER_TARGET,
+            max_candidates=AUTO_CAMPAIGN_MAX_CANDIDATES,
+            include_reply_drafts=True,
+        )
+
+        result: dict[str, Any] = {
+            "enabled": True,
+            "candidates_scanned": len(payload.get("candidates", [])),
+            "reply_action": None,
+            "follow_action": None,
+            "daily_limits": limits,
+        }
+
+        if self._env_enabled("SOCIAL_CAMPAIGN_AUTO_FOLLOW", "1") and limits.get("follow_count", 0) < MAX_FOLLOWS_PER_DAY:
+            history = await self._load_campaign_history()
+            followed = {handle.lower() for handle in history.get("followed_handles", [])}
+            for candidate in payload.get("recommended_follows", []):
+                handle = candidate.get("handle")
+                if not handle or handle.lower() in followed:
+                    continue
+                if int(candidate.get("priority", 0)) < AUTO_FOLLOW_PRIORITY_THRESHOLD:
+                    continue
+                try:
+                    follow_result = await self.follow_account(handle=handle, dry_run=False)
+                    result["follow_action"] = follow_result
+                except RuntimeError as exc:
+                    result["follow_action"] = {"handle": handle, "error": str(exc)}
+                break
+
+        limits = await self._load_daily_limits()
+        if self._env_enabled("SOCIAL_CAMPAIGN_AUTO_REPLY", "1") and limits.get("reply_count", 0) < MAX_REPLIES_PER_DAY:
+            for candidate in payload.get("candidates", []):
+                draft = candidate.get("draft") or {}
+                if draft.get("action") != "REPLY":
+                    continue
+                if int(candidate.get("score", 0)) < AUTO_REPLY_SCORE_THRESHOLD:
+                    continue
+                try:
+                    reply_result = await self.reply_to_tweet(
+                        tweet_id=int(candidate["tweet_id"]),
+                        text=draft["message"],
+                        target_handle=candidate.get("target_handle"),
+                        dry_run=False,
+                    )
+                    result["reply_action"] = reply_result
+                except RuntimeError as exc:
+                    result["reply_action"] = {
+                        "tweet_id": candidate.get("tweet_id"),
+                        "target_handle": candidate.get("target_handle"),
+                        "error": str(exc),
+                    }
+                break
+
+        await self.memory.log_episode(
+            action="CAMPAIGN",
+            context={
+                "auto_follow_enabled": self._env_enabled("SOCIAL_CAMPAIGN_AUTO_FOLLOW", "1"),
+                "auto_reply_enabled": self._env_enabled("SOCIAL_CAMPAIGN_AUTO_REPLY", "1"),
+                "candidates_scanned": result["candidates_scanned"],
+            },
+            outcome=result,
+            score=1.0 if result.get("reply_action") or result.get("follow_action") else 0.2,
+        )
+
+        return result
+
+    async def follow_account(self, handle: str, *, dry_run: bool = False) -> dict[str, Any]:
+        if not self.twitter_client:
+            raise RuntimeError("Twitter client is unavailable")
+
+        limits = await self._load_daily_limits()
+        if limits.get("follow_count", 0) >= MAX_FOLLOWS_PER_DAY:
+            raise RuntimeError("Daily follow limit reached")
+
+        history = await self._load_campaign_history()
+        if handle.lower() in {value.lower() for value in history.get("followed_handles", [])}:
+            raise RuntimeError(f"@{handle} has already been followed by this campaign")
+
+        response = self.twitter_client.get_user(username=handle, user_auth=True)
+        user = response.data if response else None
+        if user is None:
+            raise RuntimeError(f"Unable to resolve @{handle}")
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "handle": handle,
+                "target_user_id": str(user.id),
+            }
+
+        follow_response = self.twitter_client.follow_user(user.id, user_auth=True)
+        await self._increment_daily_limit("follow_count")
+        await self._record_follow_event(handle=handle, target_user_id=user.id)
+        return {
+            "dry_run": False,
+            "handle": handle,
+            "target_user_id": str(user.id),
+            "response": getattr(follow_response, "data", None),
+        }
+
+    async def reply_to_tweet(
+        self,
+        *,
+        tweet_id: int,
+        text: str,
+        target_handle: str | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        if not self.twitter_client:
+            raise RuntimeError("Twitter client is unavailable")
+
+        limits = await self._load_daily_limits()
+        if limits.get("reply_count", 0) >= MAX_REPLIES_PER_DAY:
+            raise RuntimeError("Daily reply limit reached")
+
+        normalized = self._normalize_token_terms(text.strip())
+        if not normalized:
+            raise RuntimeError("Reply text cannot be empty")
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "tweet_id": str(tweet_id),
+                "target_handle": target_handle,
+                "text": normalized,
+            }
+
+        response = self.twitter_client.create_tweet(
+            text=normalized,
+            in_reply_to_tweet_id=tweet_id,
+            user_auth=True,
+        )
+        response_tweet_id = response.data.get("id") if response and response.data else None
+        await self._increment_daily_limit("reply_count")
+        await self._record_reply_event(
+            tweet_id=tweet_id,
+            target_handle=target_handle,
+            text=normalized,
+            response_tweet_id=response_tweet_id,
+        )
+        return {
+            "dry_run": False,
+            "tweet_id": str(tweet_id),
+            "target_handle": target_handle,
+            "reply_tweet_id": str(response_tweet_id) if response_tweet_id else None,
+            "text": normalized,
+        }
 
     # ------------------------------------------------------------------
     # Twitter client setup
@@ -192,18 +639,25 @@ class SocialAgent(BaseAgent):
         elif content:
             posted = await self._post_tweet(content)
 
+        campaign_result = await self._autonomous_campaign_cycle()
+
         # 5. Log outcome
         score = 1.0 if posted else 0.5  # 0.5 = generated but not posted (no client)
         await self.memory.log_episode(
             action="POST",
             context={"content_type": content_type, "content": content[:200]},
-            outcome={"posted": posted, "content_type": content_type},
+            outcome={
+                "posted": posted,
+                "content_type": content_type,
+                "campaign": campaign_result,
+            },
             score=score,
         )
 
         # Track content type distribution in long-term memory
         await self._update_content_stats(content_type)
 
+        decision["campaign"] = campaign_result
         return decision
 
     @staticmethod
