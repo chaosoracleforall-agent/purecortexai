@@ -25,6 +25,7 @@ PUBLIC_PATHS = {
 # Public prefixes that don't require authentication (any method)
 PUBLIC_PREFIXES = (
     "/api/transparency",
+    "/api/marketplace",
     "/api/governance/onchain",
     "/api/developer-access",
     "/internal/admin",

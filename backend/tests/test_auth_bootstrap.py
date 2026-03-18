@@ -88,6 +88,9 @@ def test_protected_routes_fail_closed_when_auth_is_unavailable(monkeypatch):
         proposals = client.get("/api/governance/proposals")
         assert proposals.status_code == 200
 
+        marketplace = client.get("/api/marketplace/config")
+        assert marketplace.status_code == 200
+
         protected = client.post("/api/chat/session")
         assert protected.status_code == 503
         assert protected.json()["detail"] == "Authentication service unavailable"
