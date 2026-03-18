@@ -143,7 +143,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
       </AnimatePresence>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 sm:pb-20">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-16 sm:pb-20">
         {children}
       </main>
 

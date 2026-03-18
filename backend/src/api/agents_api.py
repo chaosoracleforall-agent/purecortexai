@@ -156,6 +156,34 @@ PROTOCOL_AGENTS: list[AgentRecord] = [
 AGENTS_BY_NAME = {a.name: a for a in PROTOCOL_AGENTS}
 
 
+def _resolve_runtime_agent_records() -> list[AgentRecord]:
+    """Return agent records with runtime-aware status for live surfaces."""
+    from main import get_agent_loop
+
+    agent_loop = get_agent_loop()
+    if not agent_loop:
+        return PROTOCOL_AGENTS
+
+    resolved: list[AgentRecord] = []
+    for agent in PROTOCOL_AGENTS:
+        status = agent.status
+
+        if agent.role in {AgentRole.SENATOR, AgentRole.CURATOR} and agent_loop._running:
+            status = AgentStatus.ACTIVE
+
+        if agent.role is AgentRole.SOCIAL:
+            if agent_loop._running and getattr(agent_loop.social, "twitter_client", None):
+                status = AgentStatus.ACTIVE
+            elif agent_loop._running:
+                status = AgentStatus.STANDBY
+            else:
+                status = AgentStatus.OFFLINE
+
+        resolved.append(agent.model_copy(update={"status": status}))
+
+    return resolved
+
+
 # ──────────────────────────────────────────────
 # Endpoints
 # ──────────────────────────────────────────────
@@ -163,9 +191,10 @@ AGENTS_BY_NAME = {a.name: a for a in PROTOCOL_AGENTS}
 @cache_with_ttl("agents:registry", TTL_AGENTS)
 async def get_agent_registry():
     """List all protocol AI agents with their roles, addresses, and status."""
+    agents = _resolve_runtime_agent_records()
     return AgentRegistryResponse(
-        total_agents=len(PROTOCOL_AGENTS),
-        agents=PROTOCOL_AGENTS,
+        total_agents=len(agents),
+        agents=agents,
     )
 
 

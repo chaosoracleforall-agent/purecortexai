@@ -2,9 +2,10 @@ import crypto from 'node:crypto';
 
 export const TRUSTED_ADMIN_EMAIL_HEADER = 'x-purecortex-auth-email';
 export const LOCAL_ADMIN_SESSION_COOKIE = 'purecortex_admin_session';
+const DEFAULT_ADMIN_EMAIL = 'chaosoracleforall@gmail.com';
 
 export function getAllowedAdminEmails(): string[] {
-  return (process.env.PURECORTEX_ADMIN_ALLOWED_EMAILS || 'chaosoracleforall@gmail.com')
+  return (process.env.PURECORTEX_ADMIN_ALLOWED_EMAILS || DEFAULT_ADMIN_EMAIL)
     .split(',')
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);

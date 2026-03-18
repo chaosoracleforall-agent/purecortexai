@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 from src.models import APIKeyIPAllowlist, APIKeyRecord, AuditEvent, DeveloperAccessRequest
 
 KEY_PREFIX = "ctx"
+OWNER_ADMIN_EMAIL = "chaosoracleforall@gmail.com"
 
 
 def _utcnow() -> datetime:
@@ -54,7 +55,7 @@ def _default_scopes(access_level: str, surfaces: list[str]) -> list[str]:
 
 
 def _runtime_tier(model: APIKeyRecord) -> str:
-    if model.owner_email == "chaosoracleforall@gmail.com":
+    if model.owner_email == OWNER_ADMIN_EMAIL:
         return "admin"
     if model.access_level in {"write", "custom"}:
         return "paid"

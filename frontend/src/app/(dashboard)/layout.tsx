@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PureCortexLogo } from '@/components/Logo';
+import { REPO_URL } from '@/lib/protocolConfig';
 import WalletButton from '@/components/WalletButton';
 import { BarChart3, MessageSquare, Eye, Scale, ShieldCheck, Menu, X, Github } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -85,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden lg:flex items-center gap-2">
-              <a href="https://github.com/chaosoracleforall-agent/purecortexai" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="p-2 text-gray-500 hover:text-white transition-colors">
+              <a href={REPO_URL} target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="p-2 text-gray-500 hover:text-white transition-colors">
                 <Github className="w-4 h-4" />
               </a>
               <a href="https://x.com/purecortexai" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className="p-2 text-gray-500 hover:text-white transition-colors">
@@ -160,7 +161,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
 
               <div className="mt-4 flex items-center gap-4 px-4">
-                <a href="https://github.com/chaosoracleforall-agent/purecortexai" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">
+                <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">
                   <Github className="w-5 h-5" />
                 </a>
                 <a href="https://x.com/purecortexai" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-white transition-colors">

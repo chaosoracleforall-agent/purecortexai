@@ -138,6 +138,36 @@ async def internal_admin_health(
     }
 
 
+@router.post("/social/run")
+async def run_social_agent(
+    request: Request,
+    response: Response,
+    x_internal_admin_token: str | None = Header(default=None),
+):
+    """Trigger one immediate social-agent cycle from the secured admin plane."""
+    _require_internal_admin(request, x_internal_admin_token)
+    _set_no_store_headers(response)
+
+    from main import get_agent_loop
+
+    agent_loop = get_agent_loop()
+    if not agent_loop or not getattr(agent_loop, "social", None):
+        raise HTTPException(status_code=503, detail="Social agent is unavailable")
+
+    try:
+        result = await agent_loop.social.act()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Social agent failed: {exc}") from exc
+
+    return {
+        "status": "ok",
+        "surface": "internal-admin",
+        "agent": "social",
+        "posted": bool(result),
+        "result": result,
+    }
+
+
 @router.get("/access-requests")
 async def list_access_requests(
     request: Request,
