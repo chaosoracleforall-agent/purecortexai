@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 SOCIAL_CAMPAIGN_TARGETS: list[dict[str, Any]] = [
@@ -174,13 +175,57 @@ UNSAFE_REPLY_KEYWORDS = {
     "financial advice",
 }
 
+SENSITIVE_TOPIC_KEYWORDS = {
+    "layoff",
+    "layoffs",
+    "reduce our workforce",
+    "reduction in force",
+    "downturn in crypto markets",
+    "macro environment",
+    "bear market",
+    "hack",
+    "hacked",
+    "exploit",
+    "incident",
+    "breach",
+    "phishing",
+    "lawsuit",
+    "investigation",
+    "passed away",
+    "rip ",
+}
+
+LOW_SIGNAL_KEYWORDS = {
+    "gm",
+    "good morning",
+    "good night",
+    "weekend",
+    "happy friday",
+    "monday motivation",
+}
+
+MAX_CANDIDATE_AGE = timedelta(days=14)
+
 
 def get_seed_targets() -> list[dict[str, Any]]:
     """Return a deep copy of the default campaign target registry."""
     return deepcopy(SOCIAL_CAMPAIGN_TARGETS)
 
 
-def score_target_tweet(text: str, target: dict[str, Any]) -> tuple[int, list[str]]:
+def _coerce_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str) and value.strip():
+        try:
+            normalized = value.replace("Z", "+00:00").replace(" ", "T")
+            parsed = datetime.fromisoformat(normalized)
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+    return None
+
+
+def score_target_tweet(text: str, target: dict[str, Any], created_at: Any = None) -> tuple[int, list[str]]:
     """Score a tweet for reply-worthiness relative to PURECORTEX's campaign."""
     normalized = (text or "").lower()
     reasons: list[str] = []
@@ -188,8 +233,18 @@ def score_target_tweet(text: str, target: dict[str, Any]) -> tuple[int, list[str
     if not normalized:
         return 0, reasons
 
+    published_at = _coerce_datetime(created_at)
+    if published_at and datetime.now(timezone.utc) - published_at > MAX_CANDIDATE_AGE:
+        return 0, ["stale_post"]
+
+    if any(sensitive in normalized for sensitive in SENSITIVE_TOPIC_KEYWORDS):
+        return 0, ["sensitive_topic"]
+
     if any(unsafe in normalized for unsafe in UNSAFE_REPLY_KEYWORDS):
         return 0, ["unsafe_topic"]
+
+    if any(low_signal in normalized for low_signal in LOW_SIGNAL_KEYWORDS):
+        return 0, ["low_signal"]
 
     score = 0
 
@@ -221,5 +276,14 @@ def score_target_tweet(text: str, target: dict[str, Any]) -> tuple[int, list[str
     if matched_topics >= 2:
         score += 1
         reasons.append("multi_topic_overlap")
+
+    # Foundation and top-level ecosystem accounts should only trigger when the
+    # post also lands on concrete PURECORTEX-adjacent topics, not general brand
+    # or organizational updates.
+    if target.get("category") == "foundation" and matched_topics == 0:
+        return 0, ["foundation_non_actionable"]
+
+    if matched_topics == 0 and score < 5:
+        return 0, ["weak_fit"]
 
     return score, reasons[:5]

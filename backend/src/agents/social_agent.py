@@ -337,7 +337,11 @@ class SocialAgent(BaseAgent):
                     continue
 
                 text = tweet.text or ""
-                score, reasons = score_target_tweet(text, target)
+                score, reasons = score_target_tweet(
+                    text,
+                    target,
+                    getattr(tweet, "created_at", None),
+                )
                 if score < 4:
                     continue
 
