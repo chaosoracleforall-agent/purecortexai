@@ -5,12 +5,13 @@ import { usePathname } from 'next/navigation';
 import { PureCortexLogo } from '@/components/Logo';
 import { REPO_URL } from '@/lib/protocolConfig';
 import WalletButton from '@/components/WalletButton';
-import { BarChart3, MessageSquare, Eye, Scale, ShieldCheck, Menu, X, Github } from 'lucide-react';
+import { BarChart3, MessageSquare, Eye, Scale, ShieldCheck, Menu, X, Github, Gift } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const NAV_ITEMS = [
   { href: '/marketplace', label: 'Marketplace', icon: BarChart3 },
+  { href: '/airdrop', label: 'Airdrop', icon: Gift },
   { href: '/chat', label: 'Neural Link', icon: MessageSquare },
   { href: '/governance', label: 'Governance', icon: Scale },
   { href: '/transparency', label: 'Transparency', icon: Eye },

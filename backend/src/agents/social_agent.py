@@ -29,6 +29,7 @@ from orchestrator import ConsensusOrchestrator
 from sandboxing import PermissionTier
 from src.services.protocol_config import CORTEX_ASSET_ID, CORTEX_NAME, CORTEX_UNIT_NAME
 from src.services.social_campaign import get_seed_targets, score_target_tweet
+from src.services.launch_campaign import get_launch_prompt_for_day
 
 from .base_agent import BaseAgent
 from .memory import AgentMemory
@@ -793,28 +794,42 @@ class SocialAgent(BaseAgent):
     async def _gather_posting_context(self) -> Dict[str, Any]:
         """Gather context to inform content strategy.
 
-        Includes recent posting history, content type distribution, and
-        any protocol events from memory.
+        Includes recent posting history, content type distribution,
+        protocol events, and launch campaign prompts when close to TGE.
         """
-        # Recent episodes to avoid repeating topics
         recent = await self.memory.get_recent_episodes(limit=5)
         recent_types = [
             ep.get("context", {}).get("content_type", "unknown")
             for ep in recent
         ]
 
-        # Content type distribution from long-term memory
         stats = await self.memory.recall_long("content_stats") or {}
-
-        # Any pending protocol events (could be set by Senator or external triggers)
         pending_events = await self.memory.recall_short("protocol_events") or []
 
-        return {
+        ctx: Dict[str, Any] = {
             "recent_content_types": recent_types,
             "content_distribution": stats,
             "pending_events": pending_events,
             "timestamp": time.time(),
         }
+
+        tge_iso = os.getenv("PURECORTEX_TGE_DATE", "2026-03-31T00:00:00Z")
+        try:
+            from datetime import datetime, timezone
+            tge = datetime.fromisoformat(tge_iso.replace("Z", "+00:00"))
+            days_until = (tge - datetime.now(timezone.utc)).days
+            launch_prompt = get_launch_prompt_for_day(days_until)
+            if launch_prompt:
+                ctx["launch_campaign"] = {
+                    "days_until_tge": days_until,
+                    "scheduled_topic": launch_prompt["topic"],
+                    "content_type": launch_prompt["content_type"],
+                    "seed": launch_prompt["seed"],
+                }
+        except Exception:
+            pass
+
+        return ctx
 
     async def _update_content_stats(self, content_type: str) -> None:
         """Track content type distribution in long-term memory."""

@@ -1,0 +1,130 @@
+{
+  "name": "PURECORTEX",
+  "environment": "mainnet",
+  "network": "mainnet",
+  "chainName": "Algorand MainNet",
+  "publicAppUrl": "https://purecortex.ai",
+  "publicApiUrl": "https://purecortex.ai",
+  "publicWsUrl": "wss://purecortex.ai/ws/chat",
+  "repoUrl": "https://github.com/chaosoracleforall-agent/purecortexai",
+  "tgeDate": "2026-03-31T00:00:00Z",
+  "contracts": {
+    "agentFactory": {
+      "appId": 0,
+      "address": "",
+      "status": "pending_deployment"
+    },
+    "cortexToken": {
+      "assetId": 0,
+      "name": "PureCortex",
+      "unitName": "CORTEX",
+      "creatorAddress": ""
+    },
+    "governance": {
+      "appId": 0,
+      "status": "pending_deployment"
+    },
+    "staking": {
+      "appId": 0,
+      "status": "pending_deployment"
+    },
+    "treasury": {
+      "appId": 0,
+      "status": "pending_deployment"
+    },
+    "creatorVesting": {
+      "appId": 0,
+      "status": "pending_deployment"
+    }
+  },
+  "tokenomics": {
+    "totalSupply": 10000000000000000,
+    "decimals": 6,
+    "basePrice": 10000,
+    "slope": 1000,
+    "creationFee": 100000000,
+    "buyFeeBps": 100,
+    "sellFeeBps": 200,
+    "graduationThreshold": 50000000000
+  },
+  "allocation": {
+    "creator": {
+      "percentage": 10,
+      "amount": 1000000000000000,
+      "vestingTgePct": 10,
+      "vestingDays": 180,
+      "wallet": ""
+    },
+    "genesisDistribution": {
+      "percentage": 31,
+      "amount": 3100000000000000,
+      "wallet": ""
+    },
+    "futureEmissions": {
+      "percentage": 24,
+      "amount": 2400000000000000,
+      "halvingSchedule": [0.40, 0.30, 0.20, 0.10],
+      "wallet": ""
+    },
+    "liquidity": {
+      "percentage": 15,
+      "amount": 1500000000000000,
+      "lockYears": 10,
+      "wallet": ""
+    },
+    "agentIncentives": {
+      "percentage": 15,
+      "amount": 1500000000000000,
+      "wallet": ""
+    },
+    "assistanceFund": {
+      "percentage": 5,
+      "amount": 500000000000000,
+      "wallet": ""
+    }
+  },
+  "marketplace": {
+    "tradingEnabled": false,
+    "launchEnabled": false,
+    "maintenanceReason": "Pre-launch: mainnet contracts pending deployment",
+    "notes": [
+      "Trading and launch are disabled until mainnet contracts are deployed and smoke-tested.",
+      "Enable after deployment validation completes and liquidity pools are seeded."
+    ]
+  },
+  "wallets": {
+    "agentFactoryEscrow": "",
+    "assistanceFund": "",
+    "operations": "",
+    "creatorVesting": "",
+    "liquidityPool": ""
+  },
+  "dex": {
+    "tinyman": {
+      "poolId": null,
+      "pair": "CORTEX/ALGO",
+      "status": "pending"
+    },
+    "pact": {
+      "poolId": null,
+      "pair": "CORTEX/ALGO",
+      "status": "pending"
+    }
+  },
+  "airdrop": {
+    "snapshotBlock": null,
+    "merkleRoot": null,
+    "distributionContract": null,
+    "claimDeadline": "2026-07-01T00:00:00Z",
+    "tiers": {
+      "testnetPioneers": { "allocationPct": 5, "minWalletAge": null },
+      "algorandDefiUsers": { "allocationPct": 30, "snapshotProtocols": ["tinyman", "pact", "folks_finance"] },
+      "nfdHolders": { "allocationPct": 10 },
+      "algorandGovernors": { "allocationPct": 20 },
+      "developerBuilders": { "allocationPct": 10 },
+      "socialCampaign": { "allocationPct": 15 },
+      "communityTasks": { "allocationPct": 10 }
+    }
+  },
+  "legacyDeployments": []
+}

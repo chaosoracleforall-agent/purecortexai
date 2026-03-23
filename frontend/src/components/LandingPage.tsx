@@ -84,12 +84,12 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-3 sm:gap-4"
           >
-            <button onClick={onEnter} className="bg-white text-black px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-black uppercase tracking-tighter text-sm flex items-center justify-center gap-3 hover:bg-gray-200 transition-all">
-              Join the Vanguard <ArrowRight className="w-5 h-5" />
-            </button>
-            <Link href="/developers/access" className="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl border border-white/10 font-black uppercase tracking-tighter text-sm hover:bg-white/5 transition-all text-center">
-              Request Developer Access
+            <Link href="/airdrop" className="bg-white text-black px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-black uppercase tracking-tighter text-sm flex items-center justify-center gap-3 hover:bg-gray-200 transition-all">
+              Claim Genesis Airdrop <ArrowRight className="w-5 h-5" />
             </Link>
+            <button onClick={onEnter} className="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl border border-white/10 font-black uppercase tracking-tighter text-sm hover:bg-white/5 transition-all text-center">
+              Explore Marketplace
+            </button>
           </motion.div>
         </div>
 

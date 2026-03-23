@@ -303,6 +303,10 @@ class AgentFactory(ARC4Contract):
         """
         Calculates ALGO required to buy 'amount' of tokens along the curve.
         Price = integral of (BASE_PRICE + SLOPE * supply) from S to S+amount.
+
+        Slope component = slope * (2*S*n + n^2) / (2 * TS^2).
+        Division is split to prevent UInt64 overflow: divide area_doubled
+        by TOKEN_SCALE first, then multiply by slope and divide by 2*TS.
         """
         config_data = self._require_agent_config(asset.id)
         assert amount > UInt64(0), "Amount must be positive"
@@ -313,17 +317,14 @@ class AgentFactory(ARC4Contract):
         slope = self._get_config_slope(config_data)
         current_supply = self._get_agent_supply(asset.id)
 
-        # Convert micro-token units into whole-token price space so user-facing
-        # token decimals do not explode the curve math.
         base_cost = (amount * base_price) // self.TOKEN_SCALE
 
         two_supply_amount = UInt64(2) * current_supply * amount
         amount_sq = amount * amount
         area_doubled = two_supply_amount + amount_sq
 
-        slope_cost = (slope * area_doubled) // (
-            UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
-        )
+        scaled_area = area_doubled // self.TOKEN_SCALE
+        slope_cost = (slope * scaled_area) // (UInt64(2) * self.TOKEN_SCALE)
 
         return base_cost + slope_cost
 
@@ -380,6 +381,8 @@ class AgentFactory(ARC4Contract):
         """
         Calculate ALGO returned for selling 'amount' tokens.
         Integral of curve from (supply - amount) to supply, minus sell fee.
+
+        Division split matches calculate_buy_price to prevent UInt64 overflow.
         """
         config_data = self._require_agent_config(asset.id)
         assert amount > UInt64(0), "Amount must be positive"
@@ -392,20 +395,16 @@ class AgentFactory(ARC4Contract):
 
         new_supply = current_supply - amount
 
-        # Base component
         base_cost = (amount * base_price) // self.TOKEN_SCALE
 
-        # Slope area: SLOPE * (current_supply^2 - new_supply^2) / 2
         current_sq = current_supply * current_supply
         new_sq = new_supply * new_supply
-        slope_cost = (slope * (current_sq - new_sq)) // (
-            UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
-        )
+        sq_diff = current_sq - new_sq
+        scaled_diff = sq_diff // self.TOKEN_SCALE
+        slope_cost = (slope * scaled_diff) // (UInt64(2) * self.TOKEN_SCALE)
 
-        # Gross before fee
         gross = base_cost + slope_cost
 
-        # Apply the per-agent sell fee — fee stays in the protocol.
         fee = (gross * self._get_config_sell_fee_bps(config_data)) // UInt64(10_000)
         return gross - fee
 
@@ -474,9 +473,8 @@ class AgentFactory(ARC4Contract):
 
         base_cost = (current_supply * base_price) // self.TOKEN_SCALE
         current_sq = current_supply * current_supply
-        slope_cost = (slope * current_sq) // (
-            UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
-        )
+        scaled_sq = current_sq // self.TOKEN_SCALE
+        slope_cost = (slope * scaled_sq) // (UInt64(2) * self.TOKEN_SCALE)
         total_value = base_cost + slope_cost
 
         return total_value >= graduation_threshold
