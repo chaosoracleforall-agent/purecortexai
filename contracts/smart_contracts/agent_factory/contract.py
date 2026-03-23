@@ -348,7 +348,10 @@ class AgentFactory(ARC4Contract):
         required_algo = self.calculate_buy_price(asset, amount)
 
         # Apply the per-agent buy fee.
-        fee = (required_algo * self._get_config_buy_fee_bps(config_data)) // UInt64(10_000)
+        buy_fee_bps = self._get_config_buy_fee_bps(config_data)
+        fee = (required_algo * buy_fee_bps) // UInt64(10_000)
+        if fee == UInt64(0) and buy_fee_bps > UInt64(0):
+            fee = UInt64(1)
         total_required = required_algo + fee
         assert (
             payment.amount == total_required
@@ -405,7 +408,10 @@ class AgentFactory(ARC4Contract):
 
         gross = base_cost + slope_cost
 
-        fee = (gross * self._get_config_sell_fee_bps(config_data)) // UInt64(10_000)
+        sell_fee_bps = self._get_config_sell_fee_bps(config_data)
+        fee = (gross * sell_fee_bps) // UInt64(10_000)
+        if fee == UInt64(0) and sell_fee_bps > UInt64(0):
+            fee = UInt64(1)
         return gross - fee
 
     @abimethod()
@@ -514,7 +520,7 @@ class AgentFactory(ARC4Contract):
         Update the default launch fee parameters used for future agent creation.
         Existing agent configs remain immutable once created.
         """
-        assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert Txn.sender == Global.creator_address, "Unauthorized: update_fee_parameters"
         assert buy_fee >= self.MIN_FEE_BPS, "Buy fee below protocol minimum"
         assert buy_fee <= self.MAX_FEE_BPS, "Buy fee above protocol maximum"
         assert sell_fee >= self.MIN_FEE_BPS, "Sell fee below protocol minimum"
@@ -528,7 +534,7 @@ class AgentFactory(ARC4Contract):
         Update agent creation fee (in CORTEX micro-units).
         Only callable by the application creator.
         """
-        assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert Txn.sender == Global.creator_address, "Unauthorized: update_creation_fee"
         assert new_fee >= UInt64(1_000_000), "Minimum creation fee is 1 CORTEX"
         self.creation_fee = new_fee
 
@@ -538,7 +544,7 @@ class AgentFactory(ARC4Contract):
         Update the default graduation threshold for future agent launches.
         Existing agent configs remain immutable once created.
         """
-        assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert Txn.sender == Global.creator_address, "Unauthorized: update_graduation_threshold"
         assert (
             new_threshold >= self.MIN_GRADUATION_THRESHOLD
         ), "Threshold below protocol minimum"

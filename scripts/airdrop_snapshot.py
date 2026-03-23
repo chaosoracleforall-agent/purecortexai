@@ -68,12 +68,17 @@ def snapshot_defi_users(idx: indexer.IndexerClient, block: int | None = None) ->
     wallets: dict[str, dict[str, Any]] = {}
     app_ids = [TINYMAN_V2_APP_ID, PACT_APP_ID, FOLKS_LENDING_APP_ID]
 
+    search_kwargs: dict[str, Any] = {}
+    if block is not None:
+        search_kwargs["max_round"] = block
+
     for app_id in app_ids:
         print(f"  Scanning app {app_id}...")
         try:
             response = idx.search_transactions(
                 application_id=app_id,
                 limit=1000,
+                **search_kwargs,
             )
             for txn in response.get("transactions", []):
                 sender = txn.get("sender", "")
@@ -93,7 +98,27 @@ def snapshot_defi_users(idx: indexer.IndexerClient, block: int | None = None) ->
         except Exception as e:
             print(f"    Warning: Failed to scan app {app_id}: {e}")
 
-    return wallets
+    filtered: dict[str, dict[str, Any]] = {}
+    for addr, info in wallets.items():
+        try:
+            acct_info = idx.account_info(addr)
+            acct = acct_info.get("account", {})
+            balance = acct.get("amount", 0)
+            created_round = acct.get("created-at-round", 0)
+
+            if balance < MIN_ALGO_BALANCE:
+                continue
+
+            if block is not None and created_round > 0:
+                wallet_age = block - created_round
+                if wallet_age < MIN_WALLET_AGE_ROUNDS:
+                    continue
+
+            filtered[addr] = info
+        except Exception as e:
+            print(f"    Warning: Could not verify wallet {addr}: {e}")
+
+    return filtered
 
 
 def snapshot_testnet_pioneers(idx: indexer.IndexerClient, testnet_app_ids: list[int]) -> set[str]:
@@ -118,7 +143,12 @@ def snapshot_testnet_pioneers(idx: indexer.IndexerClient, testnet_app_ids: list[
 
 
 def compute_merkle_root(leaves: list[bytes]) -> bytes:
-    """Compute a Merkle root from a sorted list of leaf hashes."""
+    """Compute a Merkle root from a sorted list of leaf hashes.
+
+    Uses domain separation: leaf nodes are prefixed with 0x00,
+    internal nodes with 0x01 to prevent second-preimage attacks.
+    Odd leaves are carried up rather than duplicated.
+    """
     if not leaves:
         return b"\x00" * 32
 
@@ -128,23 +158,30 @@ def compute_merkle_root(leaves: list[bytes]) -> bytes:
         next_level = []
         for i in range(0, len(level), 2):
             if i + 1 < len(level):
-                combined = level[i] + level[i + 1]
+                combined = b"\x01" + level[i] + level[i + 1]
+                next_level.append(hashlib.sha256(combined).digest())
             else:
-                combined = level[i] + level[i]
-            next_level.append(hashlib.sha256(combined).digest())
+                next_level.append(level[i])
         level = next_level
 
     return level[0]
 
 
 def wallet_leaf(address: str, amount: int) -> bytes:
-    """Compute the Merkle leaf for a wallet's allocation."""
-    data = f"{address}:{amount}".encode()
+    """Compute the Merkle leaf for a wallet's allocation.
+
+    Prefixed with 0x00 for domain separation from internal nodes.
+    """
+    data = b"\x00" + f"{address}:{amount}".encode()
     return hashlib.sha256(data).digest()
 
 
 def generate_merkle_proof(leaves: list[bytes], target_index: int) -> list[dict[str, Any]]:
-    """Generate a Merkle proof for a specific leaf index."""
+    """Generate a Merkle proof for a specific leaf index.
+
+    Uses the same domain separation as compute_merkle_root (0x01 prefix
+    for internal nodes) and carries odd leaves up without duplication.
+    """
     if len(leaves) <= 1:
         return []
 
@@ -162,12 +199,10 @@ def generate_merkle_proof(leaves: list[bytes], target_index: int) -> list[dict[s
                         "hash": level[sibling_idx].hex(),
                         "position": "right" if sibling_idx > idx else "left",
                     })
-                combined = level[i] + level[i + 1]
+                combined = b"\x01" + level[i] + level[i + 1]
+                next_level.append(hashlib.sha256(combined).digest())
             else:
-                if i == idx:
-                    proof.append({"hash": level[i].hex(), "position": "right"})
-                combined = level[i] + level[i]
-            next_level.append(hashlib.sha256(combined).digest())
+                next_level.append(level[i])
 
         idx = idx // 2
         level = next_level

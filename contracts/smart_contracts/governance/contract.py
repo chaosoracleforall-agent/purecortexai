@@ -8,6 +8,8 @@ from algopy import (
     BoxMap,
     Bytes,
     op,
+    gtxn,
+    itxn,
 )
 from algopy.arc4 import abimethod
 
@@ -38,15 +40,15 @@ class GovernanceContract(ARC4Contract):
 
     def __init__(self) -> None:
         self.staking_app = UInt64(0)  # Reference to VeCortexStaking app ID
+        self.cortex_asset_id = UInt64(0)  # CORTEX ASA ID for vote-weight transfers
         self.proposal_count = UInt64(0)
 
         # Proposals: proposal_id -> ProposalData (80 bytes)
-        # key_prefix=b"" ensures op.Box.get(op.itob(id)) matches self.proposals[id]
-        self.proposals = BoxMap(UInt64, Bytes, key_prefix=b"")
+        self.proposals = BoxMap(UInt64, Bytes, key_prefix=b"p")
 
         # Votes: composite key (proposal_id_bytes + voter_bytes) -> vote_data
         # vote_data: vote(8) + ve_power(8) = 16 bytes
-        self.votes = BoxMap(Bytes, Bytes, key_prefix=b"")
+        self.votes = BoxMap(Bytes, Bytes, key_prefix=b"v")
 
         # Governance timing parameters (in rounds, ~3 rounds/minute)
         self.DISCUSSION_PERIOD = UInt64(8640)  # 48 hours (48 * 60 * 3)
@@ -62,14 +64,15 @@ class GovernanceContract(ARC4Contract):
     # ------------------------------------------------------------------ #
 
     @abimethod()
-    def initialize(self, staking_app: UInt64) -> None:
+    def initialize(self, staking_app: UInt64, cortex_asset_id: UInt64) -> None:
         """
-        Set reference to the staking contract app ID.
+        Set reference to the staking contract app ID and CORTEX ASA ID.
         Only callable by the application creator.
         """
         assert Txn.sender == Global.creator_address, "Unauthorized"
         assert self.staking_app == UInt64(0), "Already initialized"
         self.staking_app = staking_app
+        self.cortex_asset_id = cortex_asset_id
 
     # ------------------------------------------------------------------ #
     #  Proposal creation
@@ -131,7 +134,7 @@ class GovernanceContract(ARC4Contract):
         a proposal once the discussion period elapses. The proposer cannot
         cancel during this phase by design, ensuring governance transparency.
         """
-        assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+        assert op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1], "Proposal not found"
         proposal_data = self.proposals[proposal_id]
 
         created_round = op.btoi(op.extract(proposal_data, 32, 8))
@@ -157,7 +160,7 @@ class GovernanceContract(ARC4Contract):
         Checks if quorum was met and if supermajority threshold was reached.
         Sets status to passed (2) or rejected (3).
         """
-        assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+        assert op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1], "Proposal not found"
         proposal_data = self.proposals[proposal_id]
 
         created_round = op.btoi(op.extract(proposal_data, 32, 8))
@@ -174,15 +177,21 @@ class GovernanceContract(ARC4Contract):
 
         total_votes = yes_votes + no_votes
 
-        # Quorum check: require minimum vote participation to prevent
-        # low-turnout proposals from passing. Uses absolute threshold
-        # since cross-contract staking supply reads are not yet available.
-        assert total_votes >= UInt64(100), "Quorum not met: minimum 100 vePower of votes required"
+        # Quorum check: require minimum 1M CORTEX (in microunits) of total
+        # voting power to prevent low-turnout proposals from passing.
+        # Phase 2 will use percentage-based quorum via cross-app staking reads.
+        assert total_votes >= UInt64(1_000_000_000_000), "Quorum not met: minimum 1M CORTEX voting power required"
 
-        # Determine outcome — supermajority check
-        # passed = yes_votes * 10000 >= total_votes * SUPERMAJORITY_BPS
+        # Determine outcome — supermajority check with overflow protection.
+        # Direct multiplication overflows UInt64 when total_votes > ~1.8e15,
+        # so we fall back to division-first arithmetic for large totals.
         new_status = UInt64(3)  # default: rejected
-        if yes_votes * UInt64(10000) >= total_votes * self.SUPERMAJORITY_BPS:
+        if total_votes <= UInt64(1_844_000_000_000_000):
+            passed = yes_votes * UInt64(10000) >= total_votes * self.SUPERMAJORITY_BPS
+        else:
+            threshold = (total_votes // UInt64(10000)) * self.SUPERMAJORITY_BPS
+            passed = yes_votes >= threshold
+        if passed:
             new_status = UInt64(2)  # passed
 
         new_data = (
@@ -200,7 +209,7 @@ class GovernanceContract(ARC4Contract):
         or via a separate transaction group.
         """
         assert Txn.sender == Global.creator_address, "Unauthorized"
-        assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+        assert op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1], "Proposal not found"
         proposal_data = self.proposals[proposal_id]
 
         created_round = op.btoi(op.extract(proposal_data, 32, 8))
@@ -232,7 +241,7 @@ class GovernanceContract(ARC4Contract):
         Can only cancel proposals in discussion or voting phase.
         """
         assert Txn.sender == Global.creator_address, "Unauthorized"
-        assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+        assert op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1], "Proposal not found"
         proposal_data = self.proposals[proposal_id]
 
         current_status = op.btoi(op.extract(proposal_data, 64, 8))
@@ -251,17 +260,26 @@ class GovernanceContract(ARC4Contract):
     # ------------------------------------------------------------------ #
 
     @abimethod()
-    def cast_vote(self, proposal_id: UInt64, vote: UInt64) -> None:
+    def cast_vote(
+        self,
+        proposal_id: UInt64,
+        vote: UInt64,
+        cortex_txn: gtxn.AssetTransferTransaction,
+    ) -> None:
         """
-        Cast a veCORTEX-weighted vote on a proposal.
+        Cast a CORTEX-weighted vote on a proposal.
 
         vote: 1 = yes, 0 = no
 
         Each address can only vote once per proposal.
-        In production, voting weight comes from the staking contract;
-        currently uses a placeholder weight of 1.
+
+        Phase 1 (current): Voter must include a CORTEX asset transfer to this
+        contract in the same group transaction. The transferred amount is used
+        as voting weight and immediately returned via inner transaction.
+        Phase 2: Will implement cross-app veCORTEX reads from the staking
+        contract for time-weighted voting power.
         """
-        assert op.Box.get(op.itob(proposal_id))[1], "Proposal not found"
+        assert op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1], "Proposal not found"
         proposal_data = self.proposals[proposal_id]
 
         current_status = op.btoi(op.extract(proposal_data, 64, 8))
@@ -277,14 +295,18 @@ class GovernanceContract(ARC4Contract):
 
         # Ensure voter hasn't already voted
         vote_key = op.itob(proposal_id) + Txn.sender.bytes
-        assert not op.Box.get(vote_key)[1], "Already voted"
+        assert not op.Box.get(Bytes(b"v") + vote_key)[1], "Already voted"
 
-        # Get voter's veCORTEX power
-        # TESTNET PLACEHOLDER: Each voter gets weight of 1.
-        # In production, this must be replaced with a cross-app call to the
-        # VeCortexStaking contract to read the voter's actual vePower.
-        # Without this, vote weighting is purely 1-address-1-vote.
-        ve_power = UInt64(1)
+        # Phase 1: Derive voting weight from CORTEX asset transfer in group.
+        # Voter sends CORTEX to this contract; amount = voting weight.
+        # CORTEX is returned immediately below.
+        assert self.cortex_asset_id != UInt64(0), "Contract not initialized"
+        assert cortex_txn.xfer_asset.id == self.cortex_asset_id, "Wrong asset"
+        assert (
+            cortex_txn.asset_receiver == Global.current_application_address
+        ), "CORTEX must be sent to governance contract"
+        assert cortex_txn.asset_amount > UInt64(0), "Must transfer CORTEX to vote"
+        ve_power = cortex_txn.asset_amount
 
         # Record the vote
         self.votes[vote_key] = op.itob(vote) + op.itob(ve_power)
@@ -310,6 +332,14 @@ class GovernanceContract(ARC4Contract):
         )
         self.proposals[proposal_id] = new_data
 
+        # Return CORTEX to voter immediately
+        itxn.AssetTransfer(
+            xfer_asset=self.cortex_asset_id,
+            asset_receiver=Txn.sender,
+            asset_amount=ve_power,
+            fee=UInt64(0),
+        ).submit()
+
     # ------------------------------------------------------------------ #
     #  Read-only queries
     # ------------------------------------------------------------------ #
@@ -320,7 +350,7 @@ class GovernanceContract(ARC4Contract):
         Get full proposal data (80 bytes).
         Returns empty bytes if proposal doesn't exist.
         """
-        if not op.Box.get(op.itob(proposal_id))[1]:
+        if not op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1]:
             return Bytes(b"")
         return self.proposals[proposal_id]
 
@@ -330,7 +360,7 @@ class GovernanceContract(ARC4Contract):
         Get the status code of a proposal.
         Returns 99 if proposal doesn't exist.
         """
-        if not op.Box.get(op.itob(proposal_id))[1]:
+        if not op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1]:
             return UInt64(99)
         proposal_data = self.proposals[proposal_id]
         return op.btoi(op.extract(proposal_data, 64, 8))
@@ -342,7 +372,7 @@ class GovernanceContract(ARC4Contract):
         Returns 16 bytes: yes_votes(8) + no_votes(8).
         Returns empty bytes if proposal doesn't exist.
         """
-        if not op.Box.get(op.itob(proposal_id))[1]:
+        if not op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1]:
             return Bytes(b"")
         proposal_data = self.proposals[proposal_id]
         return op.extract(proposal_data, 48, 16)
@@ -356,7 +386,7 @@ class GovernanceContract(ARC4Contract):
     def has_voted(self, proposal_id: UInt64, voter: Account) -> bool:
         """Check if an account has voted on a proposal."""
         vote_key = op.itob(proposal_id) + voter.bytes
-        return op.Box.get(vote_key)[1]
+        return op.Box.get(Bytes(b"v") + vote_key)[1]
 
     # ------------------------------------------------------------------ #
     #  Admin

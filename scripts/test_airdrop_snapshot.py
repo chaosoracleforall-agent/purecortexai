@@ -47,7 +47,7 @@ def test_merkle_root_two_leaves():
     root = compute_merkle_root([leaf1, leaf2])
 
     sorted_leaves = sorted([leaf1, leaf2])
-    expected = hashlib.sha256(sorted_leaves[0] + sorted_leaves[1]).digest()
+    expected = hashlib.sha256(b"\x01" + sorted_leaves[0] + sorted_leaves[1]).digest()
     assert root == expected
 
 

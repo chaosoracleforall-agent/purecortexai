@@ -164,7 +164,7 @@ class BaseAgent(ABC):
 
         decision = await self.orchestrator.decide_action(chat_system, user_message)
 
-        if decision and decision.get("message"):
+        if decision and decision.get("action") == "REPLY" and decision.get("message"):
             return decision["message"]
 
         # Fallback: if consensus fails, use a graceful degradation message
@@ -266,6 +266,7 @@ class BaseAgent(ABC):
         """Clean up GPG keyrings and signing clients on shutdown."""
         if self._gpg:
             await self._gpg.cleanup()
+            self._gpg = None
         if self._signing_vault and hasattr(self._signing_vault, "cleanup"):
             await self._signing_vault.cleanup()
         self._signing_vault = None

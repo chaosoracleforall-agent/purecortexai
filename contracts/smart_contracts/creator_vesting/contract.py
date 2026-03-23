@@ -54,6 +54,9 @@ class CreatorVesting(ARC4Contract):
         """Set up the vesting contract. Only callable by the creator once."""
         assert Txn.sender == Global.creator_address, "Unauthorized"
         assert self.initialized == UInt64(0), "Already initialized"
+        assert tge_timestamp >= Global.latest_timestamp, "TGE timestamp must not be in the past"
+        assert total_allocation > UInt64(0), "Allocation must be positive"
+        assert total_allocation <= UInt64(10_000_000_000_000_000), "Allocation exceeds total supply"
 
         self.cortex_token = cortex_asset.id
         self.beneficiary = beneficiary.bytes

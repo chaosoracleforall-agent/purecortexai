@@ -235,7 +235,7 @@ class SenatorAgent(BaseAgent):
 
         decision = await self.orchestrator.decide_action(chat_system, user_message)
 
-        if decision and decision.get("message"):
+        if decision and decision.get("action") == "REPLY" and decision.get("message"):
             return decision["message"]
 
         return (
