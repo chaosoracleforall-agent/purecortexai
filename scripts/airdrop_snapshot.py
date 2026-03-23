@@ -275,9 +275,7 @@ def main():
     parser.add_argument("--output", default=str(OUTPUT_DIR), help="Output directory")
     args = parser.parse_args()
 
-    global OUTPUT_DIR
-    OUTPUT_DIR = Path(args.output)
-
+    output_dir = Path(args.output)
     run_snapshot(network=args.network, block=args.block)
 
 

@@ -87,16 +87,17 @@ def _encode_agent_key(prefix: bytes, asset_id: int) -> bytes:
 def _calculate_buy_base(current_supply: int, amount: int, *, base_price: int, slope: int) -> int:
     base_cost = (amount * base_price) // TOKEN_SCALE
     area_doubled = (2 * current_supply * amount) + (amount * amount)
-    slope_cost = (slope * area_doubled) // (2 * TOKEN_SCALE * TOKEN_SCALE)
+    scaled_area = area_doubled // TOKEN_SCALE
+    slope_cost = (slope * scaled_area) // (2 * TOKEN_SCALE)
     return base_cost + slope_cost
 
 
 def _calculate_sell_gross(current_supply: int, amount: int, *, base_price: int, slope: int) -> int:
     new_supply = current_supply - amount
     base_return = (amount * base_price) // TOKEN_SCALE
-    slope_return = (slope * ((current_supply * current_supply) - (new_supply * new_supply))) // (
-        2 * TOKEN_SCALE * TOKEN_SCALE
-    )
+    sq_diff = (current_supply * current_supply) - (new_supply * new_supply)
+    scaled_diff = sq_diff // TOKEN_SCALE
+    slope_return = (slope * scaled_diff) // (2 * TOKEN_SCALE)
     return base_return + slope_return
 
 
