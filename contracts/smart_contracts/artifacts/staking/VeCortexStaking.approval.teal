@@ -4,7 +4,7 @@
 // algopy.arc4.ARC4Contract.approval_program() -> uint64:
 main:
     intcblock 0 1 8 4 1000
-    bytecblock "cortex_token" "total_staked" "MAX_BOOST" "stakes" "delegations" 0x151f7c75 "reward_pool" "MIN_LOCK_DAYS" "MAX_LOCK_DAYS" "ROUNDS_PER_DAY"
+    bytecblock "cortex_token" 0x73 "total_staked" "total_ve_power" "reward_pool" 0x151f7c75 "MAX_BOOST" 0x64 "MIN_LOCK_DAYS" "MAX_LOCK_DAYS" "ROUNDS_PER_DAY"
     txn ApplicationID
     bnz main_after_if_else@2
     // smart_contracts/staking/contract.py:32
@@ -14,33 +14,38 @@ main:
     app_global_put
     // smart_contracts/staking/contract.py:33
     // self.total_staked = UInt64(0)
-    bytec_1 // "total_staked"
+    bytec_2 // "total_staked"
     intc_0 // 0
     app_global_put
     // smart_contracts/staking/contract.py:34
-    // self.reward_pool = UInt64(0)
-    bytec 6 // "reward_pool"
+    // self.total_ve_power = UInt64(0)
+    bytec_3 // "total_ve_power"
     intc_0 // 0
     app_global_put
-    // smart_contracts/staking/contract.py:43-44
+    // smart_contracts/staking/contract.py:35
+    // self.reward_pool = UInt64(0)
+    bytec 4 // "reward_pool"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/staking/contract.py:46-47
     // # Staking parameters
     // self.MIN_LOCK_DAYS = UInt64(7)  # 1 week minimum
-    bytec 7 // "MIN_LOCK_DAYS"
+    bytec 8 // "MIN_LOCK_DAYS"
     pushint 7
     app_global_put
-    // smart_contracts/staking/contract.py:45
+    // smart_contracts/staking/contract.py:48
     // self.MAX_LOCK_DAYS = UInt64(1460)  # 4 years maximum
-    bytec 8 // "MAX_LOCK_DAYS"
+    bytec 9 // "MAX_LOCK_DAYS"
     pushint 1460
     app_global_put
-    // smart_contracts/staking/contract.py:46
+    // smart_contracts/staking/contract.py:49
     // self.MAX_BOOST = UInt64(2500)  # 2.5x in basis points (1000 = 1x)
-    bytec_2 // "MAX_BOOST"
+    bytec 6 // "MAX_BOOST"
     pushint 2500
     app_global_put
-    // smart_contracts/staking/contract.py:47
+    // smart_contracts/staking/contract.py:50
     // self.ROUNDS_PER_DAY = UInt64(17280)  # ~3 rounds/min on Algorand
-    bytec 9 // "ROUNDS_PER_DAY"
+    bytec 10 // "ROUNDS_PER_DAY"
     pushint 17280
     app_global_put
 
@@ -48,18 +53,18 @@ main_after_if_else@2:
     // smart_contracts/staking/contract.py:17
     // class VeCortexStaking(ARC4Contract):
     txn NumAppArgs
-    bz main___algopy_default_create@20
+    bz main___algopy_default_create@23
     txn OnCompletion
     !
     assert
     txn ApplicationID
     assert
-    pushbytess 0x08549ad7 0xf4eb4a03 0x1d3f6040 0xb3b65f28 0xeb7ef0d1 0x05c5c47b 0xb8514104 0x789c4582 0xe8ceff56 0x508f3862 0x6e84b500 // method "initialize(uint64)void", method "stake(axfer,uint64)void", method "unstake()void", method "delegate(address)void", method "revoke_delegation()void", method "get_ve_power(address)uint64", method "get_stake_info(address)byte[]", method "get_delegate(address)byte[]", method "get_total_staked()uint64", method "fund_reward_pool(axfer)void", method "update_lock_parameters(uint64,uint64,uint64)void"
+    pushbytess 0x08549ad7 0xf4eb4a03 0x1d3f6040 0xb3b65f28 0xeb7ef0d1 0x05c5c47b 0xb8514104 0x789c4582 0xe8ceff56 0x4e233577 0xb480c0ee 0x508f3862 0xdef86e82 0x6e84b500 // method "initialize(uint64)void", method "stake(axfer,uint64)void", method "unstake()void", method "delegate(address)void", method "revoke_delegation()void", method "get_ve_power(address)uint64", method "get_stake_info(address)byte[]", method "get_delegate(address)byte[]", method "get_total_staked()uint64", method "get_total_ve_power()uint64", method "get_reward_pool()uint64", method "fund_reward_pool(axfer)void", method "distribute_reward(address,uint64)void", method "update_lock_parameters(uint64,uint64,uint64)void"
     txna ApplicationArgs 0
-    match initialize stake unstake delegate revoke_delegation get_ve_power get_stake_info get_delegate get_total_staked fund_reward_pool update_lock_parameters
+    match initialize stake unstake delegate revoke_delegation get_ve_power get_stake_info get_delegate get_total_staked get_total_ve_power get_reward_pool fund_reward_pool distribute_reward update_lock_parameters
     err
 
-main___algopy_default_create@20:
+main___algopy_default_create@23:
     txn OnCompletion
     !
     txn ApplicationID
@@ -70,7 +75,7 @@ main___algopy_default_create@20:
 
 // smart_contracts.staking.contract.VeCortexStaking.initialize[routing]() -> void:
 initialize:
-    // smart_contracts/staking/contract.py:53
+    // smart_contracts/staking/contract.py:56
     // @abimethod()
     txna ApplicationArgs 1
     dup
@@ -79,13 +84,13 @@ initialize:
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/staking/contract.py:60
+    // smart_contracts/staking/contract.py:63
     // assert Txn.sender == Global.creator_address, "Unauthorized"
     txn Sender
     global CreatorAddress
     ==
     assert // Unauthorized
-    // smart_contracts/staking/contract.py:61
+    // smart_contracts/staking/contract.py:64
     // assert self.cortex_token == UInt64(0), "Already initialized"
     intc_0 // 0
     bytec_0 // "cortex_token"
@@ -93,12 +98,12 @@ initialize:
     assert // check self.cortex_token exists
     !
     assert // Already initialized
-    // smart_contracts/staking/contract.py:62
+    // smart_contracts/staking/contract.py:65
     // self.cortex_token = cortex_asset.id
     bytec_0 // "cortex_token"
     dig 1
     app_global_put
-    // smart_contracts/staking/contract.py:64-70
+    // smart_contracts/staking/contract.py:67-73
     // # Opt-in to the CORTEX asset
     // itxn.AssetTransfer(
     //     xfer_asset=cortex_asset,
@@ -107,25 +112,25 @@ initialize:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/staking/contract.py:67
+    // smart_contracts/staking/contract.py:70
     // asset_receiver=Global.current_application_address,
     global CurrentApplicationAddress
-    // smart_contracts/staking/contract.py:68
+    // smart_contracts/staking/contract.py:71
     // asset_amount=UInt64(0),
     intc_0 // 0
     itxn_field AssetAmount
     itxn_field AssetReceiver
     itxn_field XferAsset
-    // smart_contracts/staking/contract.py:64-65
+    // smart_contracts/staking/contract.py:67-68
     // # Opt-in to the CORTEX asset
     // itxn.AssetTransfer(
     intc_3 // axfer
     itxn_field TypeEnum
-    // smart_contracts/staking/contract.py:69
+    // smart_contracts/staking/contract.py:72
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/staking/contract.py:64-70
+    // smart_contracts/staking/contract.py:67-73
     // # Opt-in to the CORTEX asset
     // itxn.AssetTransfer(
     //     xfer_asset=cortex_asset,
@@ -134,7 +139,7 @@ initialize:
     //     fee=0,
     // ).submit()
     itxn_submit
-    // smart_contracts/staking/contract.py:53
+    // smart_contracts/staking/contract.py:56
     // @abimethod()
     intc_1 // 1
     return
@@ -142,7 +147,7 @@ initialize:
 
 // smart_contracts.staking.contract.VeCortexStaking.stake[routing]() -> void:
 stake:
-    // smart_contracts/staking/contract.py:76
+    // smart_contracts/staking/contract.py:79
     // @abimethod()
     txn GroupIndex
     intc_1 // 1
@@ -159,7 +164,7 @@ stake:
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/staking/contract.py:89
+    // smart_contracts/staking/contract.py:92
     // assert self.cortex_token != UInt64(0), "Not initialized"
     intc_0 // 0
     bytec_0 // "cortex_token"
@@ -167,75 +172,86 @@ stake:
     assert // check self.cortex_token exists
     dup
     assert // Not initialized
-    // smart_contracts/staking/contract.py:90
+    // smart_contracts/staking/contract.py:93
+    // assert cortex_transfer.sender == Txn.sender, "Transfer sender must match caller"
+    dig 2
+    gtxns Sender
+    txn Sender
+    ==
+    assert // Transfer sender must match caller
+    // smart_contracts/staking/contract.py:94
     // assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
     dig 2
     gtxns XferAsset
     ==
     assert // Wrong token
-    // smart_contracts/staking/contract.py:91
+    // smart_contracts/staking/contract.py:95
     // assert lock_days >= self.MIN_LOCK_DAYS, "Lock too short"
     intc_0 // 0
-    bytec 7 // "MIN_LOCK_DAYS"
+    bytec 8 // "MIN_LOCK_DAYS"
     app_global_get_ex
     assert // check self.MIN_LOCK_DAYS exists
     dig 1
     <=
     assert // Lock too short
-    // smart_contracts/staking/contract.py:92
+    // smart_contracts/staking/contract.py:96
     // assert lock_days <= self.MAX_LOCK_DAYS, "Lock too long"
     intc_0 // 0
-    bytec 8 // "MAX_LOCK_DAYS"
+    bytec 9 // "MAX_LOCK_DAYS"
     app_global_get_ex
     assert // check self.MAX_LOCK_DAYS exists
     dup2
     <=
     assert // Lock too long
-    // smart_contracts/staking/contract.py:94
+    // smart_contracts/staking/contract.py:98
     // cortex_transfer.asset_receiver == Global.current_application_address
     dig 2
     gtxns AssetReceiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/staking/contract.py:93-95
+    // smart_contracts/staking/contract.py:97-99
     // assert (
     //     cortex_transfer.asset_receiver == Global.current_application_address
     // ), "Must send to contract"
     assert // Must send to contract
-    // smart_contracts/staking/contract.py:97
+    // smart_contracts/staking/contract.py:101
     // amount = cortex_transfer.asset_amount
     uncover 2
     gtxns AssetAmount
     dup
     cover 3
-    // smart_contracts/staking/contract.py:98
+    // smart_contracts/staking/contract.py:102
     // assert amount > UInt64(0), "Must stake a positive amount"
     assert // Must stake a positive amount
-    // smart_contracts/staking/contract.py:100-101
+    // smart_contracts/staking/contract.py:106
+    // assert not op.Box.get(b"s" + stake_key)[1], "Already staking — unstake first"
+    bytec_1 // 0x73
+    // smart_contracts/staking/contract.py:104-105
     // # Check that the sender does not already have an active stake
     // stake_key = Txn.sender.bytes
     txn Sender
+    // smart_contracts/staking/contract.py:106
+    // assert not op.Box.get(b"s" + stake_key)[1], "Already staking — unstake first"
+    concat
     dup
     cover 3
-    // smart_contracts/staking/contract.py:102
-    // assert not op.Box.get(stake_key)[1], "Already staking — unstake first"
     box_len
     bury 1
     !
     assert // Already staking — unstake first
-    // smart_contracts/staking/contract.py:104-105
+    // smart_contracts/staking/contract.py:108-109
     // # Calculate unlock round
     // unlock_round = Global.round + (lock_days * self.ROUNDS_PER_DAY)
     global Round
     intc_0 // 0
-    bytec 9 // "ROUNDS_PER_DAY"
+    bytec 10 // "ROUNDS_PER_DAY"
     app_global_get_ex
     assert // check self.ROUNDS_PER_DAY exists
     dig 3
     *
     +
     cover 2
-    // smart_contracts/staking/contract.py:107-110
+    // smart_contracts/staking/contract.py:111-114
     // # Calculate boost: 1000 (1x) + lock_days * 1500 / MAX_LOCK_DAYS
     // # At MIN_LOCK_DAYS (7):   boost ~1007  (~1.007x)
     // # At MAX_LOCK_DAYS (1460): boost = 2500 (2.5x)
@@ -248,87 +264,97 @@ stake:
     intc 4 // 1000
     +
     dup
-    // smart_contracts/staking/contract.py:111
+    // smart_contracts/staking/contract.py:115
     // if boost > self.MAX_BOOST:
     intc_0 // 0
-    bytec_2 // "MAX_BOOST"
+    bytec 6 // "MAX_BOOST"
     app_global_get_ex
     assert // check self.MAX_BOOST exists
     >
     bz stake_after_if_else@3
-    // smart_contracts/staking/contract.py:112
+    // smart_contracts/staking/contract.py:116
     // boost = self.MAX_BOOST
     intc_0 // 0
-    bytec_2 // "MAX_BOOST"
+    bytec 6 // "MAX_BOOST"
     app_global_get_ex
     swap
     bury 2
     assert // check self.MAX_BOOST exists
 
 stake_after_if_else@3:
-    // smart_contracts/staking/contract.py:114-115
+    // smart_contracts/staking/contract.py:118-120
     // # veCORTEX power = amount * boost / 1000
-    // ve_power = (amount * boost) // UInt64(1000)
+    // # Divide first to prevent UInt64 overflow for large stakes (loses at most 999 micro-units)
+    // ve_power = (amount // UInt64(1000)) * boost
     dig 3
     dup
+    intc 4 // 1000
+    /
     dig 2
     dup
     cover 3
     *
-    intc 4 // 1000
-    /
-    // smart_contracts/staking/contract.py:119
+    // smart_contracts/staking/contract.py:124
     // op.itob(amount)
     dig 1
     itob
-    // smart_contracts/staking/contract.py:120
+    // smart_contracts/staking/contract.py:125
     // + op.itob(unlock_round)
     dig 5
     itob
-    // smart_contracts/staking/contract.py:119-120
+    // smart_contracts/staking/contract.py:124-125
     // op.itob(amount)
     // + op.itob(unlock_round)
     concat
-    // smart_contracts/staking/contract.py:121
+    // smart_contracts/staking/contract.py:126
     // + op.itob(ve_power)
-    swap
+    dig 1
     itob
-    // smart_contracts/staking/contract.py:119-121
+    // smart_contracts/staking/contract.py:124-126
     // op.itob(amount)
     // + op.itob(unlock_round)
     // + op.itob(ve_power)
     concat
-    // smart_contracts/staking/contract.py:122
+    // smart_contracts/staking/contract.py:127
     // + op.itob(boost)
-    uncover 2
+    uncover 3
     itob
-    // smart_contracts/staking/contract.py:119-122
+    // smart_contracts/staking/contract.py:124-127
     // op.itob(amount)
     // + op.itob(unlock_round)
     // + op.itob(ve_power)
     // + op.itob(boost)
     concat
-    // smart_contracts/staking/contract.py:124
+    // smart_contracts/staking/contract.py:129
     // self.stakes[stake_key] = stake_data
-    bytec_3 // "stakes"
     dig 5
-    concat
     dup
     box_del
     pop
     swap
     box_put
-    // smart_contracts/staking/contract.py:126
+    // smart_contracts/staking/contract.py:131
     // self.total_staked = self.total_staked + amount
     intc_0 // 0
-    bytec_1 // "total_staked"
+    bytec_2 // "total_staked"
     app_global_get_ex
     assert // check self.total_staked exists
+    uncover 2
     +
-    bytec_1 // "total_staked"
+    bytec_2 // "total_staked"
     swap
     app_global_put
-    // smart_contracts/staking/contract.py:76
+    // smart_contracts/staking/contract.py:132
+    // self.total_ve_power = self.total_ve_power + ve_power
+    intc_0 // 0
+    bytec_3 // "total_ve_power"
+    app_global_get_ex
+    assert // check self.total_ve_power exists
+    +
+    bytec_3 // "total_ve_power"
+    swap
+    app_global_put
+    // smart_contracts/staking/contract.py:79
     // @abimethod()
     intc_1 // 1
     return
@@ -336,45 +362,92 @@ stake_after_if_else@3:
 
 // smart_contracts.staking.contract.VeCortexStaking.unstake[routing]() -> void:
 unstake:
-    // smart_contracts/staking/contract.py:139
+    // smart_contracts/staking/contract.py:145
     // stake_key = Txn.sender.bytes
     txn Sender
-    // smart_contracts/staking/contract.py:139-140
-    // stake_key = Txn.sender.bytes
-    // assert op.Box.get(stake_key)[1], "No active stake"
-    dupn 2
-    // smart_contracts/staking/contract.py:140
-    // assert op.Box.get(stake_key)[1], "No active stake"
-    box_len
-    bury 1
-    assert // No active stake
-    // smart_contracts/staking/contract.py:142
-    // stake_data = self.stakes[stake_key]
-    bytec_3 // "stakes"
+    // smart_contracts/staking/contract.py:146
+    // assert op.Box.get(b"s" + stake_key)[1], "No active stake"
+    bytec_1 // 0x73
     dig 1
     concat
     dup
+    box_len
+    bury 1
+    assert // No active stake
+    // smart_contracts/staking/contract.py:148
+    // stake_data = self.stakes[stake_key]
+    dup
     box_get
-    assert // check self.stakes entry exists
-    // smart_contracts/staking/contract.py:143
+    pop
+    // smart_contracts/staking/contract.py:149
     // amount = op.btoi(op.extract(stake_data, 0, 8))
     dup
     intc_0 // 0
     extract_uint64
-    dup
-    cover 2
-    cover 4
-    intc_2 // 8
-    // smart_contracts/staking/contract.py:144
+    cover 3
+    // smart_contracts/staking/contract.py:150
     // unlock_round = op.btoi(op.extract(stake_data, 8, 8))
+    dup
+    intc_2 // 8
     extract_uint64
-    // smart_contracts/staking/contract.py:146
+    // smart_contracts/staking/contract.py:152
     // assert Global.round >= unlock_round, "Lock period not expired"
     global Round
     <=
     assert // Lock period not expired
-    // smart_contracts/staking/contract.py:148-154
-    // # Return CORTEX via inner transaction
+    pushint 16
+    // smart_contracts/staking/contract.py:154-155
+    // # Read ve_power before deletion for total_ve_power tracking
+    // ve_power = op.btoi(op.extract(stake_data, 16, 8))
+    extract_uint64
+    cover 2
+    // smart_contracts/staking/contract.py:157-158
+    // # State cleanup BEFORE external interaction (checks-effects-interactions)
+    // del self.stakes[stake_key]
+    box_del
+    pop
+    // smart_contracts/staking/contract.py:160
+    // if op.Box.get(b"d" + stake_key)[1]:
+    bytec 7 // 0x64
+    swap
+    concat
+    dup
+    box_len
+    bury 1
+    bz unstake_after_if_else@3
+    // smart_contracts/staking/contract.py:161
+    // del self.delegations[stake_key]
+    dup
+    box_del
+    pop
+
+unstake_after_if_else@3:
+    // smart_contracts/staking/contract.py:163
+    // self.total_staked = self.total_staked - amount
+    intc_0 // 0
+    bytec_2 // "total_staked"
+    app_global_get_ex
+    assert // check self.total_staked exists
+    dig 3
+    dup
+    cover 2
+    -
+    bytec_2 // "total_staked"
+    swap
+    app_global_put
+    // smart_contracts/staking/contract.py:164
+    // self.total_ve_power = self.total_ve_power - ve_power
+    intc_0 // 0
+    bytec_3 // "total_ve_power"
+    app_global_get_ex
+    assert // check self.total_ve_power exists
+    dig 3
+    -
+    bytec_3 // "total_ve_power"
+    swap
+    app_global_put
+    // smart_contracts/staking/contract.py:166-172
+    // # Return CORTEX via inner transaction (after state cleanup)
     // itxn.AssetTransfer(
     //     xfer_asset=Asset(self.cortex_token),
     //     asset_receiver=Txn.sender,
@@ -382,30 +455,30 @@ unstake:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/staking/contract.py:150
+    // smart_contracts/staking/contract.py:168
     // xfer_asset=Asset(self.cortex_token),
     intc_0 // 0
     bytec_0 // "cortex_token"
     app_global_get_ex
     assert // check self.cortex_token exists
-    // smart_contracts/staking/contract.py:151
+    // smart_contracts/staking/contract.py:169
     // asset_receiver=Txn.sender,
     txn Sender
     uncover 2
     itxn_field AssetAmount
     itxn_field AssetReceiver
     itxn_field XferAsset
-    // smart_contracts/staking/contract.py:148-149
-    // # Return CORTEX via inner transaction
+    // smart_contracts/staking/contract.py:166-167
+    // # Return CORTEX via inner transaction (after state cleanup)
     // itxn.AssetTransfer(
     intc_3 // axfer
     itxn_field TypeEnum
-    // smart_contracts/staking/contract.py:153
+    // smart_contracts/staking/contract.py:171
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/staking/contract.py:148-154
-    // # Return CORTEX via inner transaction
+    // smart_contracts/staking/contract.py:166-172
+    // # Return CORTEX via inner transaction (after state cleanup)
     // itxn.AssetTransfer(
     //     xfer_asset=Asset(self.cortex_token),
     //     asset_receiver=Txn.sender,
@@ -413,38 +486,7 @@ unstake:
     //     fee=0,
     // ).submit()
     itxn_submit
-    // smart_contracts/staking/contract.py:156-157
-    // # Remove stake record
-    // del self.stakes[stake_key]
-    box_del
-    pop
-    // smart_contracts/staking/contract.py:159-160
-    // # Remove delegation if one exists
-    // if op.Box.get(stake_key)[1]:
-    box_len
-    bury 1
-    bz unstake_after_if_else@4
-    // smart_contracts/staking/contract.py:161
-    // del self.delegations[stake_key]
-    bytec 4 // "delegations"
-    dig 2
-    concat
-    box_del
-    pop
-
-unstake_after_if_else@4:
-    // smart_contracts/staking/contract.py:163
-    // self.total_staked = self.total_staked - amount
-    intc_0 // 0
-    bytec_1 // "total_staked"
-    app_global_get_ex
-    assert // check self.total_staked exists
-    dig 1
-    -
-    bytec_1 // "total_staked"
-    swap
-    app_global_put
-    // smart_contracts/staking/contract.py:132
+    // smart_contracts/staking/contract.py:138
     // @abimethod()
     intc_1 // 1
     return
@@ -452,7 +494,7 @@ unstake_after_if_else@4:
 
 // smart_contracts.staking.contract.VeCortexStaking.delegate[routing]() -> void:
 delegate:
-    // smart_contracts/staking/contract.py:169
+    // smart_contracts/staking/contract.py:178
     // @abimethod()
     txna ApplicationArgs 1
     dup
@@ -460,18 +502,20 @@ delegate:
     pushint 32
     ==
     assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
-    // smart_contracts/staking/contract.py:175
+    // smart_contracts/staking/contract.py:184
     // stake_key = Txn.sender.bytes
     txn Sender
-    // smart_contracts/staking/contract.py:176
-    // assert op.Box.get(stake_key)[1], "No active stake"
-    dup
+    // smart_contracts/staking/contract.py:185
+    // assert op.Box.get(b"s" + stake_key)[1], "No active stake"
+    bytec_1 // 0x73
+    dig 1
+    concat
     box_len
     bury 1
     assert // No active stake
-    // smart_contracts/staking/contract.py:177
+    // smart_contracts/staking/contract.py:186
     // self.delegations[stake_key] = lawmaker.bytes
-    bytec 4 // "delegations"
+    bytec 7 // 0x64
     swap
     concat
     dup
@@ -479,7 +523,7 @@ delegate:
     pop
     swap
     box_put
-    // smart_contracts/staking/contract.py:169
+    // smart_contracts/staking/contract.py:178
     // @abimethod()
     intc_1 // 1
     return
@@ -487,29 +531,35 @@ delegate:
 
 // smart_contracts.staking.contract.VeCortexStaking.revoke_delegation[routing]() -> void:
 revoke_delegation:
-    // smart_contracts/staking/contract.py:185
+    // smart_contracts/staking/contract.py:194
     // stake_key = Txn.sender.bytes
     txn Sender
-    dup
-    // smart_contracts/staking/contract.py:186
-    // assert op.Box.get(stake_key)[1], "No active stake"
-    box_len
-    bury 1
-    dup
-    assert // No active stake
-    // smart_contracts/staking/contract.py:189
-    // if delegation_exists:
-    bz revoke_delegation_after_if_else@3
-    // smart_contracts/staking/contract.py:190
-    // del self.delegations[stake_key]
-    bytec 4 // "delegations"
+    // smart_contracts/staking/contract.py:195
+    // assert op.Box.get(b"s" + stake_key)[1], "No active stake"
+    bytec_1 // 0x73
     dig 1
     concat
+    box_len
+    bury 1
+    assert // No active stake
+    // smart_contracts/staking/contract.py:196-197
+    // # Only delete if delegation exists (check with "d" prefix for delegations BoxMap)
+    // if op.Box.get(b"d" + stake_key)[1]:
+    bytec 7 // 0x64
+    swap
+    concat
+    dup
+    box_len
+    bury 1
+    bz revoke_delegation_after_if_else@3
+    // smart_contracts/staking/contract.py:198
+    // del self.delegations[stake_key]
+    dup
     box_del
     pop
 
 revoke_delegation_after_if_else@3:
-    // smart_contracts/staking/contract.py:179
+    // smart_contracts/staking/contract.py:188
     // @abimethod()
     intc_1 // 1
     return
@@ -517,25 +567,30 @@ revoke_delegation_after_if_else@3:
 
 // smart_contracts.staking.contract.VeCortexStaking.get_ve_power[routing]() -> void:
 get_ve_power:
-    // smart_contracts/staking/contract.py:196
+    intc_0 // 0
+    // smart_contracts/staking/contract.py:204
     // @abimethod(readonly=True)
     txna ApplicationArgs 1
-    dupn 2
+    dup
     len
     pushint 32
     ==
     assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
-    // smart_contracts/staking/contract.py:200
-    // if not op.Box.get(stake_key)[1]:
+    // smart_contracts/staking/contract.py:208
+    // if not op.Box.get(b"s" + stake_key)[1]:
+    bytec_1 // 0x73
+    swap
+    concat
+    dup
     box_len
     bury 1
     bnz get_ve_power_after_if_else@3
-    // smart_contracts/staking/contract.py:201
+    // smart_contracts/staking/contract.py:209
     // return UInt64(0)
     intc_0 // 0
 
-get_ve_power_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_ve_power@4:
-    // smart_contracts/staking/contract.py:196
+get_ve_power_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_ve_power@6:
+    // smart_contracts/staking/contract.py:204
     // @abimethod(readonly=True)
     itob
     bytec 5 // 0x151f7c75
@@ -546,43 +601,67 @@ get_ve_power_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_
     return
 
 get_ve_power_after_if_else@3:
-    // smart_contracts/staking/contract.py:202
+    // smart_contracts/staking/contract.py:210
     // stake_data = self.stakes[stake_key]
-    bytec_3 // "stakes"
-    dig 1
-    concat
+    dup
     box_get
+    swap
+    dup
+    cover 2
+    bury 4
     assert // check self.stakes entry exists
-    pushint 16
-    // smart_contracts/staking/contract.py:203
-    // return op.btoi(op.extract(stake_data, 16, 8))
+    intc_2 // 8
+    // smart_contracts/staking/contract.py:211
+    // unlock_round = op.btoi(op.extract(stake_data, 8, 8))
     extract_uint64
-    // smart_contracts/staking/contract.py:196
+    // smart_contracts/staking/contract.py:212
+    // if Global.round >= unlock_round:
+    global Round
+    <=
+    bz get_ve_power_after_if_else@5
+    // smart_contracts/staking/contract.py:213
+    // return UInt64(0)
+    intc_0 // 0
+    // smart_contracts/staking/contract.py:204
     // @abimethod(readonly=True)
-    b get_ve_power_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_ve_power@4
+    b get_ve_power_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_ve_power@6
+
+get_ve_power_after_if_else@5:
+    // smart_contracts/staking/contract.py:214
+    // return op.btoi(op.extract(stake_data, 16, 8))
+    dig 1
+    pushint 16
+    extract_uint64
+    // smart_contracts/staking/contract.py:204
+    // @abimethod(readonly=True)
+    b get_ve_power_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_ve_power@6
 
 
 // smart_contracts.staking.contract.VeCortexStaking.get_stake_info[routing]() -> void:
 get_stake_info:
-    // smart_contracts/staking/contract.py:205
+    // smart_contracts/staking/contract.py:216
     // @abimethod(readonly=True)
     txna ApplicationArgs 1
-    dupn 2
+    dup
     len
     pushint 32
     ==
     assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
-    // smart_contracts/staking/contract.py:213
-    // if not op.Box.get(stake_key)[1]:
+    // smart_contracts/staking/contract.py:224
+    // if not op.Box.get(b"s" + stake_key)[1]:
+    bytec_1 // 0x73
+    swap
+    concat
+    dup
     box_len
     bury 1
     bnz get_stake_info_after_if_else@3
-    // smart_contracts/staking/contract.py:214
+    // smart_contracts/staking/contract.py:225
     // return Bytes(b"")
     pushbytes 0x
 
 get_stake_info_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_stake_info@4:
-    // smart_contracts/staking/contract.py:205
+    // smart_contracts/staking/contract.py:216
     // @abimethod(readonly=True)
     dup
     len
@@ -598,41 +677,41 @@ get_stake_info_after_inlined_smart_contracts.staking.contract.VeCortexStaking.ge
     return
 
 get_stake_info_after_if_else@3:
-    // smart_contracts/staking/contract.py:215
+    // smart_contracts/staking/contract.py:226
     // return self.stakes[stake_key]
-    bytec_3 // "stakes"
-    dig 1
-    concat
+    dup
     box_get
     assert // check self.stakes entry exists
-    // smart_contracts/staking/contract.py:205
+    // smart_contracts/staking/contract.py:216
     // @abimethod(readonly=True)
     b get_stake_info_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_stake_info@4
 
 
 // smart_contracts.staking.contract.VeCortexStaking.get_delegate[routing]() -> void:
 get_delegate:
-    // smart_contracts/staking/contract.py:217
+    // smart_contracts/staking/contract.py:228
     // @abimethod(readonly=True)
     txna ApplicationArgs 1
-    dupn 2
+    dup
     len
     pushint 32
     ==
     assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
-    // smart_contracts/staking/contract.py:224
-    // delegation_data = op.Box.get(stake_key)
+    // smart_contracts/staking/contract.py:235
+    // if not op.Box.get(b"d" + stake_key)[1]:
+    bytec 7 // 0x64
+    swap
+    concat
+    dup
     box_len
     bury 1
-    // smart_contracts/staking/contract.py:225
-    // if not delegation_data[1]:
     bnz get_delegate_after_if_else@3
-    // smart_contracts/staking/contract.py:226
+    // smart_contracts/staking/contract.py:236
     // return Bytes(b"")
     pushbytes 0x
 
 get_delegate_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_delegate@4:
-    // smart_contracts/staking/contract.py:217
+    // smart_contracts/staking/contract.py:228
     // @abimethod(readonly=True)
     dup
     len
@@ -648,27 +727,63 @@ get_delegate_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_
     return
 
 get_delegate_after_if_else@3:
-    // smart_contracts/staking/contract.py:227
+    // smart_contracts/staking/contract.py:237
     // return self.delegations[stake_key]
-    bytec 4 // "delegations"
-    dig 1
-    concat
+    dup
     box_get
     assert // check self.delegations entry exists
-    // smart_contracts/staking/contract.py:217
+    // smart_contracts/staking/contract.py:228
     // @abimethod(readonly=True)
     b get_delegate_after_inlined_smart_contracts.staking.contract.VeCortexStaking.get_delegate@4
 
 
 // smart_contracts.staking.contract.VeCortexStaking.get_total_staked[routing]() -> void:
 get_total_staked:
-    // smart_contracts/staking/contract.py:232
+    // smart_contracts/staking/contract.py:242
     // return self.total_staked
     intc_0 // 0
-    bytec_1 // "total_staked"
+    bytec_2 // "total_staked"
     app_global_get_ex
     assert // check self.total_staked exists
-    // smart_contracts/staking/contract.py:229
+    // smart_contracts/staking/contract.py:239
+    // @abimethod(readonly=True)
+    itob
+    bytec 5 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.staking.contract.VeCortexStaking.get_total_ve_power[routing]() -> void:
+get_total_ve_power:
+    // smart_contracts/staking/contract.py:247
+    // return self.total_ve_power
+    intc_0 // 0
+    bytec_3 // "total_ve_power"
+    app_global_get_ex
+    assert // check self.total_ve_power exists
+    // smart_contracts/staking/contract.py:244
+    // @abimethod(readonly=True)
+    itob
+    bytec 5 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.staking.contract.VeCortexStaking.get_reward_pool[routing]() -> void:
+get_reward_pool:
+    // smart_contracts/staking/contract.py:252
+    // return self.reward_pool
+    intc_0 // 0
+    bytec 4 // "reward_pool"
+    app_global_get_ex
+    assert // check self.reward_pool exists
+    // smart_contracts/staking/contract.py:249
     // @abimethod(readonly=True)
     itob
     bytec 5 // 0x151f7c75
@@ -681,7 +796,7 @@ get_total_staked:
 
 // smart_contracts.staking.contract.VeCortexStaking.fund_reward_pool[routing]() -> void:
 fund_reward_pool:
-    // smart_contracts/staking/contract.py:238
+    // smart_contracts/staking/contract.py:258
     // @abimethod()
     txn GroupIndex
     intc_1 // 1
@@ -691,13 +806,13 @@ fund_reward_pool:
     intc_3 // axfer
     ==
     assert // transaction type is axfer
-    // smart_contracts/staking/contract.py:246
+    // smart_contracts/staking/contract.py:266
     // assert Txn.sender == Global.creator_address, "Unauthorized"
     txn Sender
     global CreatorAddress
     ==
     assert // Unauthorized
-    // smart_contracts/staking/contract.py:247
+    // smart_contracts/staking/contract.py:267
     // assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
     dup
     gtxns XferAsset
@@ -707,30 +822,128 @@ fund_reward_pool:
     assert // check self.cortex_token exists
     ==
     assert // Wrong token
-    // smart_contracts/staking/contract.py:249
+    // smart_contracts/staking/contract.py:269
     // cortex_transfer.asset_receiver == Global.current_application_address
     dup
     gtxns AssetReceiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/staking/contract.py:248-250
+    // smart_contracts/staking/contract.py:268-270
     // assert (
     //     cortex_transfer.asset_receiver == Global.current_application_address
     // ), "Must send to contract"
     assert // Must send to contract
-    // smart_contracts/staking/contract.py:251
+    // smart_contracts/staking/contract.py:271
     // self.reward_pool = self.reward_pool + cortex_transfer.asset_amount
     intc_0 // 0
-    bytec 6 // "reward_pool"
+    bytec 4 // "reward_pool"
     app_global_get_ex
     assert // check self.reward_pool exists
     swap
     gtxns AssetAmount
     +
-    bytec 6 // "reward_pool"
+    bytec 4 // "reward_pool"
     swap
     app_global_put
-    // smart_contracts/staking/contract.py:238
+    // smart_contracts/staking/contract.py:258
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.staking.contract.VeCortexStaking.distribute_reward[routing]() -> void:
+distribute_reward:
+    // smart_contracts/staking/contract.py:273
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    pushint 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/staking/contract.py:279
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/staking/contract.py:280
+    // assert self.cortex_token != UInt64(0), "Not initialized"
+    intc_0 // 0
+    bytec_0 // "cortex_token"
+    app_global_get_ex
+    assert // check self.cortex_token exists
+    assert // Not initialized
+    // smart_contracts/staking/contract.py:281
+    // assert amount > UInt64(0), "Amount must be positive"
+    dup
+    assert // Amount must be positive
+    // smart_contracts/staking/contract.py:282
+    // assert amount <= self.reward_pool, "Exceeds reward pool"
+    intc_0 // 0
+    bytec 4 // "reward_pool"
+    app_global_get_ex
+    assert // check self.reward_pool exists
+    dup2
+    <=
+    assert // Exceeds reward pool
+    // smart_contracts/staking/contract.py:283
+    // assert op.Box.get(b"s" + staker.bytes)[1], "Staker not found"
+    bytec_1 // 0x73
+    dig 3
+    concat
+    box_len
+    bury 1
+    assert // Staker not found
+    // smart_contracts/staking/contract.py:285-286
+    // # Deduct before interaction (checks-effects-interactions).
+    // self.reward_pool = self.reward_pool - amount
+    dig 1
+    -
+    bytec 4 // "reward_pool"
+    swap
+    app_global_put
+    // smart_contracts/staking/contract.py:288-293
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=staker,
+    //     asset_amount=amount,
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/staking/contract.py:289
+    // xfer_asset=Asset(self.cortex_token),
+    intc_0 // 0
+    bytec_0 // "cortex_token"
+    app_global_get_ex
+    assert // check self.cortex_token exists
+    itxn_field XferAsset
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    // smart_contracts/staking/contract.py:288
+    // itxn.AssetTransfer(
+    intc_3 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/staking/contract.py:292
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/staking/contract.py:288-293
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=staker,
+    //     asset_amount=amount,
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/staking/contract.py:273
     // @abimethod()
     intc_1 // 1
     return
@@ -738,7 +951,7 @@ fund_reward_pool:
 
 // smart_contracts.staking.contract.VeCortexStaking.update_lock_parameters[routing]() -> void:
 update_lock_parameters:
-    // smart_contracts/staking/contract.py:257
+    // smart_contracts/staking/contract.py:299
     // @abimethod()
     txna ApplicationArgs 1
     dup
@@ -761,50 +974,50 @@ update_lock_parameters:
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/staking/contract.py:265
+    // smart_contracts/staking/contract.py:307
     // assert Txn.sender == Global.creator_address, "Unauthorized"
     txn Sender
     global CreatorAddress
     ==
     assert // Unauthorized
-    // smart_contracts/staking/contract.py:266
+    // smart_contracts/staking/contract.py:308
     // assert min_days >= UInt64(1), "Minimum 1 day"
     dig 2
     assert // Minimum 1 day
-    // smart_contracts/staking/contract.py:267
+    // smart_contracts/staking/contract.py:309
     // assert max_days >= min_days, "Max must exceed min"
     dig 1
     dig 3
     >=
     assert // Max must exceed min
-    // smart_contracts/staking/contract.py:268
+    // smart_contracts/staking/contract.py:310
     // assert max_boost >= UInt64(1000), "Boost must be at least 1x"
     dup
     intc 4 // 1000
     >=
     assert // Boost must be at least 1x
-    // smart_contracts/staking/contract.py:269
+    // smart_contracts/staking/contract.py:311
     // assert max_boost <= UInt64(10000), "Boost cannot exceed 10x"
     dup
     pushint 10000
     <=
     assert // Boost cannot exceed 10x
-    // smart_contracts/staking/contract.py:270
+    // smart_contracts/staking/contract.py:312
     // self.MIN_LOCK_DAYS = min_days
-    bytec 7 // "MIN_LOCK_DAYS"
+    bytec 8 // "MIN_LOCK_DAYS"
     uncover 3
     app_global_put
-    // smart_contracts/staking/contract.py:271
+    // smart_contracts/staking/contract.py:313
     // self.MAX_LOCK_DAYS = max_days
-    bytec 8 // "MAX_LOCK_DAYS"
+    bytec 9 // "MAX_LOCK_DAYS"
     uncover 2
     app_global_put
-    // smart_contracts/staking/contract.py:272
+    // smart_contracts/staking/contract.py:314
     // self.MAX_BOOST = max_boost
-    bytec_2 // "MAX_BOOST"
+    bytec 6 // "MAX_BOOST"
     swap
     app_global_put
-    // smart_contracts/staking/contract.py:257
+    // smart_contracts/staking/contract.py:299
     // @abimethod()
     intc_1 // 1
     return

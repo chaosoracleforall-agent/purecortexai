@@ -1,5 +1,74 @@
 # Changelog
 
+## 0.8.2 - 2026-03-25
+
+### Fixed
+- Hardened `contracts/smart_contracts/agent_factory/contract.py` by enforcing a non-zero protocol fee floor (`MIN_FEE_BPS=1`) and added regression coverage to prevent rounding-driven zero-fee buy/sell edge exploitation.
+- Hardened `contracts/smart_contracts/sovereign_treasury/contract.py` by binding referenced payment/asset-transfer transactions to the caller and enforcing strict adjacent group-index semantics in `process_revenue` and `execute_burn`.
+- Hardened `contracts/smart_contracts/staking/contract.py` by adding creator-gated reward distribution (`distribute_reward`), exposing reward pool reads (`get_reward_pool`), and expiring `ve_power` once locks are past unlock round.
+
+### Updated
+- Recompiled smart contracts and regenerated canonical artifact outputs (`TEAL`, `ARC56`, typed clients) via `poetry run python -m smart_contracts build`.
+- Refreshed launch security documentation to include this follow-up pass and current contract evidence:
+  - `SECURITY_AUDIT.md`
+  - `SECURITY_AUDIT_REPORT.md`
+  - `docs/MAINNET_GO_NO_GO_PACKET_2026-03-25.md`
+- Verified current contract evidence after rebuild:
+  - `PYTHONPATH=. poetry run pytest tests/ -v` -> `51 passed`
+  - `PYTHONPATH=. poetry run pytest tests/test_agent_factory.py tests/test_sovereign_treasury.py tests/test_staking_contract.py -q` -> `31 passed`
+
+### Root Cause
+- Follow-up triage from external-audit control mapping identified unresolved contract-level integrity controls (fee-floor precision symmetry, treasury replay/caller binding, staking reward operability, ve-power expiry) that needed implementation plus artifact/doc re-baselining.
+
+### User Action
+- Redeploy contract-dependent environments using the refreshed artifacts and rerun environment smoke checks before final mainnet go/no-go sign-off.
+
+## 0.8.1 - 2026-03-25
+
+### Updated
+- Updated launch documentation status to mark the Playwright runtime blocker as resolved in this environment across:
+  - `docs/MAINNET_GO_NO_GO_PACKET_2026-03-25.md`
+  - `SECURITY_AUDIT.md`
+  - `SECURITY_AUDIT_REPORT.md`
+- Recorded current frontend E2E evidence in those docs:
+  - `npm run test:e2e:admin:smoke` -> `4 passed`
+  - `npx playwright test` -> `8 passed, 1 skipped`
+
+### Root Cause
+- Launch status documentation still reflected an earlier runtime/browser mismatch even after Playwright configuration hardening and E2E stabilization.
+
+### User Action
+- No action required for this docs-only update; continue with remaining launch blockers (`live_testnet_verify.py smoke` prerequisites).
+
+## 0.8.0 - 2026-03-25
+
+### Fixed
+- Hardened `contracts/smart_contracts/agent_factory/contract.py` sell-fee handling to prevent underflow when gross sell value is extremely small by clamping fee application (`fee <= gross`) and only applying minimum fee when gross value is non-zero.
+- Reworked graduation valuation arithmetic in `contracts/smart_contracts/agent_factory/contract.py` to an overflow-safe split-scaling path, eliminating square/multiply overflow risk at high supply values.
+
+### Updated
+- Added benchmark and traceability audit artifacts:
+  - `docs/ALGOLAND_AUDIT_BENCHMARK_MATRIX.md`
+  - `docs/PURECORTEX_CONTROL_TRACEABILITY.md`
+  - `docs/MAINNET_GO_NO_GO_PACKET_2026-03-25.md`
+- Added contract security regression coverage in:
+  - `contracts/tests/test_agent_factory.py`
+  - `contracts/tests/test_governance_contract.py`
+  - `contracts/tests/test_creator_vesting.py`
+- Added backend security regression coverage in:
+  - `backend/tests/test_orchestrator_security.py`
+  - `backend/tests/test_auth_middleware_security.py`
+  - `backend/tests/test_websocket_auth_security.py`
+- Added Merkle proof generation/verification tests in `scripts/test_airdrop_snapshot.py`.
+- Updated `SECURITY_AUDIT.md` and `SECURITY_AUDIT_REPORT.md` with 2026-03-25 internal audit sprint addendum and current validation status.
+
+### Root Cause
+- Internal-audit benchmark mapping surfaced missing adversarial test coverage for consensus/auth/ws and uncovered two edge-case arithmetic defects in AgentFactory that were not exercised by existing regression tests.
+
+### User Action
+- Use `PYTHONPATH=. poetry run pytest tests/ -v` in `contracts`, `venv/bin/python -m pytest tests/ -v` in `backend`, and `venv/bin/python -m pytest scripts/test_airdrop_snapshot.py -v` from repo root to reproduce this audit sprint’s passing suites.
+- Complete environment prerequisites for final launch gating: resolve Playwright runtime browser path mismatch and run `contracts/tests/live_testnet_verify.py smoke` after funding disposable wallets and exporting `DEPLOYER_MNEMONIC`.
+
 ## 0.7.9 - 2026-03-17
 
 ### Fixed

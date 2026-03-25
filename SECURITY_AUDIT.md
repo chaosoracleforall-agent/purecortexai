@@ -34,3 +34,56 @@
 ### 3.2. Sandboxing (Emancipation Protocol)
 - **Requirement:** Agents must run in a "Restricted Execution Environment."
 - **Implementation:** All agent tool-calls via MCP must be routed through a "Permission Proxy" that checks a whitelist of allowed actions (Tiered Escalation).
+
+## 4. Internal Audit Sprint Update (2026-03-25)
+
+### 4.1. New Security Regression Coverage Added
+
+- **Contracts:** Extended adversarial and boundary tests in:
+  - `contracts/tests/test_agent_factory.py`
+  - `contracts/tests/test_governance_contract.py`
+  - `contracts/tests/test_creator_vesting.py`
+- **Backend:** Added dedicated security suites:
+  - `backend/tests/test_orchestrator_security.py`
+  - `backend/tests/test_auth_middleware_security.py`
+  - `backend/tests/test_websocket_auth_security.py`
+- **Airdrop/Merkle:** Added proof validation tests in:
+  - `scripts/test_airdrop_snapshot.py`
+
+### 4.2. Findings Triaged and Remediated
+
+- **High:** Sell-fee minimum floor could underflow `calculate_sell_price` at tiny gross values.
+  - **Fix:** Clamp fee to `<= gross` and only apply minimum fee when `gross > 0`.
+  - **Code:** `contracts/smart_contracts/agent_factory/contract.py`
+- **High:** Graduation valuation path could overflow on large `current_supply` square arithmetic.
+  - **Fix:** Replaced direct `supply^2` pattern with overflow-safe split scaling.
+  - **Code:** `contracts/smart_contracts/agent_factory/contract.py`
+- **High:** Rounding asymmetry in small-value buy/sell flow could reduce fee capture to zero in edge cases.
+  - **Fix:** Raised protocol fee floor to non-zero by setting `MIN_FEE_BPS = 1` and added anti-profit symmetry regression coverage.
+  - **Code:** `contracts/smart_contracts/agent_factory/contract.py`, `contracts/tests/test_agent_factory.py`
+- **Medium:** Treasury referenced external transactions without strict caller-binding and adjacency checks.
+  - **Fix:** Added sender binding (`payment.sender == Txn.sender` / `cortex_transfer.sender == Txn.sender`) and group adjacency assertions for `process_revenue` and `execute_burn`.
+  - **Code:** `contracts/smart_contracts/sovereign_treasury/contract.py`, `contracts/tests/test_sovereign_treasury.py`
+- **Medium:** Staking reward pool accounting existed without a distribution path.
+  - **Fix:** Added creator-gated `distribute_reward(...)` flow and `get_reward_pool()` accessor, with active-staker enforcement tests.
+  - **Code:** `contracts/smart_contracts/staking/contract.py`, `contracts/tests/test_staking_contract.py`
+- **Medium:** `ve_power` remained non-zero after lock expiry.
+  - **Fix:** Updated `get_ve_power()` to return zero once `Global.round >= unlock_round`, and added explicit expiry regression coverage.
+  - **Code:** `contracts/smart_contracts/staking/contract.py`, `contracts/tests/test_staking_contract.py`
+
+### 4.3. Validation Status
+
+- **Contracts:** `51 passed` via `PYTHONPATH=. poetry run pytest tests/ -v`
+- **Focused security regressions (newly remediated paths):** `31 passed` via `PYTHONPATH=. poetry run pytest tests/test_agent_factory.py tests/test_sovereign_treasury.py tests/test_staking_contract.py -q`
+- **Contract artifact regeneration:** completed via `poetry run python -m smart_contracts build` (updated TEAL / ARC56 / typed clients under `contracts/smart_contracts/artifacts/*`)
+- **Backend:** `53 passed, 2 skipped` via `venv/bin/python -m pytest tests/ -v`
+- **Airdrop tests:** `14 passed` via `venv/bin/python -m pytest scripts/test_airdrop_snapshot.py -v`
+
+### 4.4. Residual Launch Blockers (Operational)
+
+- Playwright runtime blocker is resolved in this environment:
+  - `npm run test:e2e:admin:smoke` -> `4 passed`
+  - `npx playwright test` -> `8 passed, 1 skipped`
+- Live testnet smoke remains blocked until:
+  - disposable trader wallet funding is completed, and
+  - `DEPLOYER_MNEMONIC` is available in environment.
