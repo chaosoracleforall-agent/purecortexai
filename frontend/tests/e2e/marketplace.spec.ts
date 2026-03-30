@@ -41,7 +41,7 @@ test('marketplace excludes the bootstrap CORTEX asset and opens buy details', as
     });
   });
 
-  await page.route(/https:\/\/testnet-idx\.algonode\.cloud\/v2\/transactions\?application-id=.*tx-type=appl.*limit=50/, async (route) => {
+  await page.route(/https:\/\/\w+-idx\.algonode\.cloud\/v2\/transactions\?application-id=.*tx-type=appl.*limit=50/, async (route) => {
     await route.fulfill({
       json: {
         transactions: [
@@ -78,7 +78,7 @@ test('marketplace excludes the bootstrap CORTEX asset and opens buy details', as
     });
   });
 
-  await page.route('https://testnet-idx.algonode.cloud/v2/assets/757199999/balances?currency-greater-than=0&limit=100', async (route) => {
+  await page.route('https://*-idx.algonode.cloud/v2/assets/757199999/balances?currency-greater-than=0&limit=100', async (route) => {
     await route.fulfill({
       json: {
         balances: [
@@ -89,7 +89,7 @@ test('marketplace excludes the bootstrap CORTEX asset and opens buy details', as
     });
   });
 
-  await page.route('https://testnet-api.algonode.cloud/v2/applications/*/box?name=*', async (route) => {
+  await page.route('https://*-api.algonode.cloud/v2/applications/*/box?name=*', async (route) => {
     const requestUrl = new URL(route.request().url());
     const rawName = requestUrl.searchParams.get('name') || '';
     const encoded = rawName.startsWith('b64:') ? rawName.slice(4) : rawName;

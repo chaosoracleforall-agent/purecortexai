@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Scale, FileText, Shield, ChevronDown, ChevronRight, Cpu, Clock, Users, Vote, AlertTriangle, Sparkles, ExternalLink, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { ScopeType, useWallet } from '@txnlab/use-wallet-react';
 import { CORTEX_ASSET_ID, GOVERNANCE_APP_ID } from '@/lib/algorand';
+import { EXPLORER_BASE_URL } from '@/lib/protocolConfig';
 import { fetchJson } from '@/lib/api';
 import {
   buildSignedVoteMessage,
@@ -289,7 +290,7 @@ export default function GovernancePage() {
     try {
       const optedIntoCortex = await accountHasAssetOptIn(connectedAddress, CORTEX_ASSET_ID);
       if (!optedIntoCortex) {
-        throw new Error('Opt into CORTEX and acquire testnet CORTEX before staking.');
+        throw new Error('Opt into CORTEX and acquire CORTEX before staking.');
       }
 
       const txns = await buildStakeTokensTxns(connectedAddress, parsedStakeAmount, lockDaysNumber);
@@ -636,7 +637,7 @@ export default function GovernancePage() {
 
               {!connectedAddress ? (
                 <div className="bg-[#050505] border border-yellow-500/20 rounded-xl p-5 text-sm text-yellow-500/80">
-                  Connect a wallet with testnet CORTEX to stake, delegate, and cast signed governance votes.
+                  Connect a wallet with CORTEX to stake, delegate, and cast signed governance votes.
                 </div>
               ) : (
                 <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -674,7 +675,7 @@ export default function GovernancePage() {
                         </div>
                       </div>
                       <p className="text-sm text-gray-500 leading-relaxed">
-                        Delegation is live on testnet. Delegate votes automatically carry undeclared delegated power,
+                        Delegation is live. Delegate votes automatically carry undeclared delegated power,
                         while a staker&apos;s direct vote overrides delegation for that proposal.
                       </p>
                       {!connectedWalletCanSignData && (
@@ -806,7 +807,7 @@ export default function GovernancePage() {
                 <div className="space-y-2">
                   <h2 className="text-xl font-black uppercase tracking-tighter italic">Live Governance Proposals</h2>
                   <p className="text-sm text-gray-500 max-w-2xl">
-                    Testnet governance currently uses the live backend governance service as the canonical source of truth.
+                    Governance currently uses the live backend governance service as the canonical source of truth.
                     On-chain proposal mirroring remains a follow-up step once contract execution is ready.
                   </p>
                 </div>
@@ -819,7 +820,7 @@ export default function GovernancePage() {
                     Refresh
                   </button>
                   <a
-                    href={`https://testnet.explorer.perawallet.app/application/${GOVERNANCE_APP_ID}`}
+                    href={`${EXPLORER_BASE_URL}/application/${GOVERNANCE_APP_ID}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 text-[10px] font-mono text-[#007AFF] hover:underline"
@@ -886,7 +887,7 @@ export default function GovernancePage() {
                   <Vote className="w-12 h-12 text-gray-700 mx-auto" />
                   <h3 className="text-lg font-bold text-gray-400">No Proposals Found</h3>
                   <p className="text-sm text-gray-600 max-w-md mx-auto">
-                    The governance API is live, but no proposals have been submitted into the current testnet queue yet.
+                    The governance API is live, but no proposals have been submitted yet.
                   </p>
                 </div>
               ) : (
@@ -1017,7 +1018,7 @@ export default function GovernancePage() {
 
               <div className="text-center">
                 <p className="text-[10px] text-gray-600 font-mono">
-                  Governance contract App ID {GOVERNANCE_APP_ID} remains visible on testnet, but the proposal feed above is sourced from the live governance API.
+                  Governance contract App ID {GOVERNANCE_APP_ID} — the proposal feed above is sourced from the live governance API.
                 </p>
               </div>
             </section>
@@ -1037,7 +1038,7 @@ export default function GovernancePage() {
                   <h2 className="text-xl font-black uppercase tracking-tighter italic">The Senator</h2>
                   <p className="text-[10px] font-mono text-[#007AFF] uppercase tracking-widest">Protocol Analyst & Governance Proposer</p>
                 </div>
-                <span className="ml-auto text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Active on Testnet</span>
+                <span className="ml-auto text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Active</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1072,7 +1073,7 @@ export default function GovernancePage() {
                   <h2 className="text-xl font-black uppercase tracking-tighter italic">The Curator</h2>
                   <p className="text-[10px] font-mono text-emerald-500 uppercase tracking-widest">Constitutional Compliance Reviewer</p>
                 </div>
-                <span className="ml-auto text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Active on Testnet</span>
+                <span className="ml-auto text-[9px] font-mono text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full uppercase tracking-widest">Active</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1116,7 +1117,7 @@ export default function GovernancePage() {
               <div className="flex items-center gap-3 p-4 bg-[#050505] border border-[#007AFF]/20 rounded-xl">
                 <AlertTriangle className="w-5 h-5 text-[#007AFF] flex-shrink-0" />
                 <p className="text-xs text-[#9ecbff]">
-                  Delegation is live on testnet. Use the Proposals tab to stake, assign a delegate address, and cast wallet-signed votes with direct-override behavior.
+                  Delegation is live. Use the Proposals tab to stake, assign a delegate address, and cast wallet-signed votes with direct-override behavior.
                 </p>
               </div>
             </section>

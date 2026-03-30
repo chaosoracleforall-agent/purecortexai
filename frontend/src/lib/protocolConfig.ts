@@ -193,3 +193,9 @@ export const OPERATIONS_ADDRESS = protocolConfig.wallets.operations;
 export const CREATOR_VESTING_ADDRESS = protocolConfig.wallets.creatorVesting;
 
 export const LEGACY_DEPLOYMENTS = protocolConfig.legacyDeployments;
+
+// Derived: explorer base URL depends on network
+export const EXPLORER_BASE_URL =
+  PROTOCOL_NETWORK === "mainnet"
+    ? "https://explorer.perawallet.app"
+    : "https://testnet.explorer.perawallet.app";

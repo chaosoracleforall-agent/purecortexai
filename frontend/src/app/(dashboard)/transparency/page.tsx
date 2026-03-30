@@ -210,7 +210,7 @@ export default function TransparencyPage() {
               </div>
               <div className="flex items-center gap-2">
                 <code className="text-[10px] font-mono text-[#007AFF] bg-[#007AFF]/10 px-2 py-1 rounded">
-                  {wallet.address || 'Pending testnet assignment'}
+                  {wallet.address || 'Pending assignment'}
                 </code>
                 {isAlgorandAddress(wallet.address) && (
                   <a href={`https://allo.info/account/${wallet.address}`} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#007AFF] transition-colors">

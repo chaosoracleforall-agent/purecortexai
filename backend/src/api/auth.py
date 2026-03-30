@@ -45,6 +45,7 @@ PUBLIC_GET_PREFIXES = (
 
 PUBLIC_POST_PATTERNS = (
     re.compile(r"^/api/governance/proposals/\d+/vote-signed$"),
+    re.compile(r"^/api/airdrop/register$"),
 )
 
 

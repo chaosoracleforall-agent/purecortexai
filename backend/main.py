@@ -188,6 +188,13 @@ async def rate_limit_middleware(request: Request, call_next):
                 status_code=503,
                 content={"detail": "Rate limiting service unavailable. Try again later."},
             )
+    elif request.url.path not in ("/health", "/health/") and os.getenv("PURECORTEX_NETWORK", "").lower() == "mainnet":
+        # Fail closed on mainnet: if Redis never connected, reject non-health requests.
+        logger.warning("Rate limiter unavailable (Redis not connected); rejecting %s", request.url.path)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Rate limiting service unavailable. Try again later."},
+        )
     response = await call_next(request)
     return response
 

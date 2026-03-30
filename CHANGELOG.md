@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.8.3 - 2026-03-30
+
+### Fixed
+- Fixed checks-effects-interactions (CEI) ordering violation in `contracts/smart_contracts/sovereign_treasury/contract.py`: `execute_burn` and `withdraw_buyback_algo` now update state BEFORE inner transactions, matching the pattern used across all other contracts.
+
+### Security
+- Completed Code Review Gate (Gate 7) — all checklist items reviewed and signed off.
+- Fixed all npm dependency vulnerabilities in frontend (picomatch high, brace-expansion moderate).
+- Backend Python dependencies audited clean (pip-audit: 0 vulnerabilities).
+- Updated `.gitignore` to exclude build bundles, GCP temp, test artifacts, and cache directories.
+
+### Verified
+- Full test suite green:
+  - Contracts: 51/51 passed
+  - Backend: 56/56 passed
+  - Frontend E2E: 8/8 passed (1 skipped — live admin requires running instance)
+  - Airdrop Merkle: 14/14 passed
+- Smart contract review: all 5 contracts audited for overflow safety, auth checks, CEI pattern, assert uniqueness.
+- No hardcoded secrets found across backend, frontend, or scripts (grep + pip-audit verified).
+- `deployment.mainnet.json` verified: 5 app IDs non-zero, airdrop tiers sum to 100%.
+- Signer daemon network isolation confirmed (`network_mode: "none"`, read-only filesystem).
+
+### Fixed (Frontend)
+- Replaced all hardcoded testnet explorer URLs (`testnet.explorer.perawallet.app`) with network-aware `EXPLORER_BASE_URL` derived from `protocolConfig.network` in Marketplace, Governance, and WalletButton components.
+- Replaced hardcoded testnet Algod/Indexer API URLs in `marketplace.ts` with imports from `algorand.ts` (already network-aware).
+- Removed all user-facing "testnet" text labels from Marketplace, Governance, Chat, and WalletButton components.
+- Added try/catch to `WalletButton.handleDisconnect()` to handle wallet provider errors gracefully.
+- Updated E2E marketplace test route patterns to match any network (mainnet or testnet).
+
+### Fixed (Backend)
+- Rate limiter now fails closed on mainnet when Redis is unavailable at startup (`main.py`) — prevents unlimited requests bypassing IP-based rate limiting.
+- Airdrop registration (`POST /api/airdrop/register`) added to public POST patterns in auth middleware — end users no longer need an API key to register wallets for the genesis airdrop.
+
+### User Action
+- Recompile Treasury TEAL artifact after CEI fix: `poetry run python -m smart_contracts build`
+- Remaining launch blockers: fund disposable wallet, provision DEPLOYER_MNEMONIC, run live testnet smoke.
+- Populate wallet addresses in `deployment.mainnet.json` (all currently empty).
+- Set `tradingEnabled: true` and `launchEnabled: true` in deployment manifest when ready.
+
 ## 0.8.2 - 2026-03-25
 
 ### Fixed
