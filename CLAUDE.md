@@ -634,6 +634,50 @@ This gate represents the comprehensive organizational security posture review.
 
 ## 14. Deployment Runbook
 
+### Infrastructure: Mainnet VM Isolation
+
+Mainnet runs on a **dedicated VM** (`purecortex-mainnet`) completely isolated from the testnet
+VM (`purecortex-master`). Both VMs live in the same GCP project (`purecortexai`) and zone
+(`us-central1-a`) but share no state, database, or secrets.
+
+| Resource | Testnet VM | Mainnet VM |
+|----------|-----------|------------|
+| **Instance** | `purecortex-master` | `purecortex-mainnet` |
+| **Domain** | `purecortex.ai` | `mainnet.purecortex.ai` → `purecortex.ai` (post-cutover) |
+| **Nginx config** | `nginx.conf` | `nginx.mainnet.conf` |
+| **Database** | `purecortex` | `purecortex_mainnet` |
+| **Secret prefix** | (none) | `MAINNET_*` in Secret Manager |
+| **PURECORTEX_NETWORK** | `testnet` | `mainnet` |
+| **Service account** | (default) | `purecortex-mainnet-vm` |
+
+#### Provisioning the mainnet VM
+
+```bash
+# 1. Provision (creates VM, static IP, firewall, service account)
+scripts/provision_mainnet_vm.sh          # add --dry-run to preview
+# Note the external IP from the output
+
+# 2. Create DNS A record: mainnet.purecortex.ai → <external IP>
+
+# 3. SSH into the new VM and run bootstrap
+gcloud compute ssh purecortex-mainnet --zone=us-central1-a --project=purecortexai --tunnel-through-iap
+# On the VM:
+bash scripts/setup_mainnet_vm.sh --domain mainnet.purecortex.ai
+
+# 4. Fill in .env secrets, copy signer GPG keys to .signer-secrets/
+
+# 5. Create mainnet secrets in Secret Manager
+gcloud secrets create MAINNET_PURECORTEX_DEPLOYER_MNEMONIC --project=purecortexai
+gcloud secrets create MAINNET_PURECORTEX_CLOUDSQL_APP_PASSWORD --project=purecortexai
+# (shared secrets like OAuth are used without prefix)
+```
+
+#### Deploying to mainnet VM (from local machine)
+
+```bash
+PURECORTEX_GCP_INSTANCE=purecortex-mainnet scripts/deploy_remote_vm.sh
+```
+
 ### Pre-Deployment (Day -2 to Day -1)
 
 ```bash
@@ -648,18 +692,20 @@ cd frontend && npx playwright test
 # 3. Run live testnet smoke
 cd contracts && python tests/live_testnet_verify.py smoke
 
-# 4. Dry-run mainnet deployment
-python scripts/deploy_mainnet.py --deployer-mnemonic "..." --dry-run
+# 4. Dry-run mainnet deployment (mnemonic via env var — never as CLI arg)
+read -s PURECORTEX_DEPLOYER_MNEMONIC && export PURECORTEX_DEPLOYER_MNEMONIC
+python scripts/deploy_mainnet.py --dry-run
 
-# 5. Take VM snapshot for rollback
+# 5. Take VM snapshots for rollback (both VMs)
 gcloud compute disks snapshot purecortex-master --zone=us-central1-a
+gcloud compute disks snapshot purecortex-mainnet --zone=us-central1-a
 ```
 
 ### Deployment (Day 0)
 
 ```bash
-# 1. Deploy contracts to mainnet
-python scripts/deploy_mainnet.py --deployer-mnemonic "..." --confirm
+# 1. Deploy contracts to mainnet (mnemonic from Secret Manager)
+python scripts/deploy_mainnet.py --mnemonic-secret MAINNET_PURECORTEX_DEPLOYER_MNEMONIC --confirm
 
 # 2. Generate mainnet protocol config
 python generate_protocol_config.py mainnet
@@ -667,26 +713,32 @@ python generate_protocol_config.py mainnet
 # 3. Switch frontend to mainnet
 # Edit frontend/src/components/Providers.tsx: NetworkId.TESTNET → NetworkId.MAINNET
 
-# 4. Rebuild and deploy VM stack
-./scripts/deploy_vm.sh
+# 4. Deploy to the mainnet VM (NOT the testnet VM)
+PURECORTEX_GCP_INSTANCE=purecortex-mainnet scripts/deploy_remote_vm.sh
 
-# 5. Verify deployment
-curl https://purecortex.ai/api/health
-python contracts/tests/live_testnet_verify.py smoke  # (pointed at mainnet)
+# 5. Verify mainnet deployment
+curl https://mainnet.purecortex.ai/api/health
+# Smoke test against mainnet endpoint
 
 # 6. Seed DEX liquidity
-python scripts/setup_liquidity.py --deployer-mnemonic "..." --cortex-asset-id <ID> \
-  --cortex-amount 900000000000000 --algo-amount <ALGO_AMOUNT> --confirm
+python scripts/setup_liquidity.py --mnemonic-secret MAINNET_PURECORTEX_DEPLOYER_MNEMONIC \
+  --cortex-asset-id <ID> --cortex-amount 900000000000000 --algo-amount <ALGO_AMOUNT> --confirm
 
 # 7. Enable marketplace trading
 # Update deployment.mainnet.json: tradingEnabled → true, launchEnabled → true
 python generate_protocol_config.py mainnet
-./scripts/deploy_vm.sh
+PURECORTEX_GCP_INSTANCE=purecortex-mainnet scripts/deploy_remote_vm.sh
 
-# 8. Flip GitHub repo to public
+# 8. DNS cutover (when ready to go live on purecortex.ai)
+# Update purecortex.ai A record to point to mainnet VM's static IP
+# Re-run certbot on mainnet VM to add purecortex.ai to the certificate
+# Update PURECORTEX_PUBLIC_DOMAIN=purecortex.ai in mainnet .env
+# Redeploy: PURECORTEX_GCP_INSTANCE=purecortex-mainnet scripts/deploy_remote_vm.sh
+
+# 9. Flip GitHub repo to public
 # GitHub → Settings → Danger Zone → Change visibility → Public
 
-# 9. Publish announcements
+# 10. Publish announcements
 # Social Agent auto-fires Day 0 launch content
 ```
 

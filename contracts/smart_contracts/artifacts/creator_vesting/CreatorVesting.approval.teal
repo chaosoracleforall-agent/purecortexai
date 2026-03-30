@@ -1,0 +1,551 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 0 1 8 32 86400
+    bytecblock "total_claimed" "tge_timestamp" "total_allocation" "initialized" "beneficiary" "vesting_days" 0x151f7c75 "cortex_token" "tge_release_bps"
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/creator_vesting/contract.py:37
+    // self.cortex_token = UInt64(0)
+    bytec 7 // "cortex_token"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:38
+    // self.beneficiary = Bytes()
+    bytec 4 // "beneficiary"
+    pushbytes 0x
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:39
+    // self.tge_timestamp = UInt64(0)
+    bytec_1 // "tge_timestamp"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:40
+    // self.total_allocation = UInt64(0)
+    bytec_2 // "total_allocation"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:41
+    // self.tge_release_bps = UInt64(1000)  # 10%
+    bytec 8 // "tge_release_bps"
+    pushint 1000
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:42
+    // self.vesting_days = UInt64(180)
+    bytec 5 // "vesting_days"
+    pushint 180
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:43
+    // self.total_claimed = UInt64(0)
+    bytec_0 // "total_claimed"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:44
+    // self.initialized = UInt64(0)
+    bytec_3 // "initialized"
+    intc_0 // 0
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/creator_vesting/contract.py:15
+    // class CreatorVesting(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@14
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    assert
+    pushbytess 0xdc4144e0 0x4a002469 0xf4618a3f 0xcc82ab99 0x11d78119 // method "initialize(uint64,address,uint64,uint64)void", method "get_vested_amount()uint64", method "get_claimable()uint64", method "claim()uint64", method "get_vesting_info()byte[]"
+    txna ApplicationArgs 0
+    match initialize get_vested_amount get_claimable claim get_vesting_info
+    err
+
+main___algopy_default_create@14:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// smart_contracts.creator_vesting.contract.CreatorVesting.initialize[routing]() -> void:
+initialize:
+    // smart_contracts/creator_vesting/contract.py:46
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    len
+    intc_3 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    txna ApplicationArgs 3
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 4
+    dup
+    len
+    intc_2 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/creator_vesting/contract.py:55
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/creator_vesting/contract.py:56
+    // assert self.initialized == UInt64(0), "Already initialized"
+    intc_0 // 0
+    bytec_3 // "initialized"
+    app_global_get_ex
+    assert // check self.initialized exists
+    !
+    assert // Already initialized
+    // smart_contracts/creator_vesting/contract.py:57
+    // assert tge_timestamp >= Global.latest_timestamp, "TGE timestamp must not be in the past"
+    dig 1
+    global LatestTimestamp
+    >=
+    assert // TGE timestamp must not be in the past
+    // smart_contracts/creator_vesting/contract.py:58
+    // assert total_allocation > UInt64(0), "Allocation must be positive"
+    dup
+    assert // Allocation must be positive
+    // smart_contracts/creator_vesting/contract.py:59
+    // assert total_allocation <= UInt64(10_000_000_000_000_000), "Allocation exceeds total supply"
+    dup
+    pushint 10000000000000000
+    <=
+    assert // Allocation exceeds total supply
+    // smart_contracts/creator_vesting/contract.py:61
+    // self.cortex_token = cortex_asset.id
+    bytec 7 // "cortex_token"
+    dig 4
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:62
+    // self.beneficiary = beneficiary.bytes
+    bytec 4 // "beneficiary"
+    uncover 3
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:63
+    // self.tge_timestamp = tge_timestamp
+    bytec_1 // "tge_timestamp"
+    uncover 2
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:64
+    // self.total_allocation = total_allocation
+    bytec_2 // "total_allocation"
+    swap
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:65
+    // self.initialized = UInt64(1)
+    bytec_3 // "initialized"
+    intc_1 // 1
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:67-72
+    // itxn.AssetTransfer(
+    //     xfer_asset=cortex_asset,
+    //     asset_receiver=Global.current_application_address,
+    //     asset_amount=UInt64(0),
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/creator_vesting/contract.py:69
+    // asset_receiver=Global.current_application_address,
+    global CurrentApplicationAddress
+    // smart_contracts/creator_vesting/contract.py:70
+    // asset_amount=UInt64(0),
+    intc_0 // 0
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    // smart_contracts/creator_vesting/contract.py:67
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/creator_vesting/contract.py:71
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/creator_vesting/contract.py:67-72
+    // itxn.AssetTransfer(
+    //     xfer_asset=cortex_asset,
+    //     asset_receiver=Global.current_application_address,
+    //     asset_amount=UInt64(0),
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/creator_vesting/contract.py:46
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount[routing]() -> void:
+get_vested_amount:
+    // smart_contracts/creator_vesting/contract.py:74
+    // @abimethod(readonly=True)
+    callsub smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount
+    itob
+    bytec 6 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.creator_vesting.contract.CreatorVesting.get_claimable[routing]() -> void:
+get_claimable:
+    // smart_contracts/creator_vesting/contract.py:98
+    // @abimethod(readonly=True)
+    callsub smart_contracts.creator_vesting.contract.CreatorVesting.get_claimable
+    itob
+    bytec 6 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.creator_vesting.contract.CreatorVesting.claim[routing]() -> void:
+claim:
+    // smart_contracts/creator_vesting/contract.py:109
+    // assert self.initialized == UInt64(1), "Not initialized"
+    intc_0 // 0
+    bytec_3 // "initialized"
+    app_global_get_ex
+    assert // check self.initialized exists
+    intc_1 // 1
+    ==
+    assert // Not initialized
+    // smart_contracts/creator_vesting/contract.py:110
+    // assert Txn.sender == Account(self.beneficiary), "Only beneficiary can claim"
+    txn Sender
+    intc_0 // 0
+    bytec 4 // "beneficiary"
+    app_global_get_ex
+    assert // check self.beneficiary exists
+    dup
+    len
+    intc_3 // 32
+    ==
+    assert // Address length is 32 bytes
+    ==
+    assert // Only beneficiary can claim
+    // smart_contracts/creator_vesting/contract.py:112
+    // claimable = self.get_claimable()
+    callsub smart_contracts.creator_vesting.contract.CreatorVesting.get_claimable
+    // smart_contracts/creator_vesting/contract.py:113
+    // assert claimable > UInt64(0), "Nothing to claim"
+    dup
+    assert // Nothing to claim
+    // smart_contracts/creator_vesting/contract.py:115
+    // self.total_claimed = self.total_claimed + claimable
+    intc_0 // 0
+    bytec_0 // "total_claimed"
+    app_global_get_ex
+    assert // check self.total_claimed exists
+    dig 1
+    +
+    bytec_0 // "total_claimed"
+    swap
+    app_global_put
+    // smart_contracts/creator_vesting/contract.py:117-122
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=Account(self.beneficiary),
+    //     asset_amount=claimable,
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/creator_vesting/contract.py:118
+    // xfer_asset=Asset(self.cortex_token),
+    intc_0 // 0
+    bytec 7 // "cortex_token"
+    app_global_get_ex
+    assert // check self.cortex_token exists
+    // smart_contracts/creator_vesting/contract.py:119
+    // asset_receiver=Account(self.beneficiary),
+    intc_0 // 0
+    bytec 4 // "beneficiary"
+    app_global_get_ex
+    assert // check self.beneficiary exists
+    dup
+    len
+    intc_3 // 32
+    ==
+    assert // Address length is 32 bytes
+    dig 2
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    // smart_contracts/creator_vesting/contract.py:117
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/creator_vesting/contract.py:121
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/creator_vesting/contract.py:117-122
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=Account(self.beneficiary),
+    //     asset_amount=claimable,
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/creator_vesting/contract.py:106
+    // @abimethod()
+    itob
+    bytec 6 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.creator_vesting.contract.CreatorVesting.get_vesting_info[routing]() -> void:
+get_vesting_info:
+    // smart_contracts/creator_vesting/contract.py:130
+    // op.itob(self.total_allocation)
+    intc_0 // 0
+    bytec_2 // "total_allocation"
+    app_global_get_ex
+    assert // check self.total_allocation exists
+    itob
+    // smart_contracts/creator_vesting/contract.py:131
+    // + op.itob(self.total_claimed)
+    intc_0 // 0
+    bytec_0 // "total_claimed"
+    app_global_get_ex
+    assert // check self.total_claimed exists
+    itob
+    // smart_contracts/creator_vesting/contract.py:130-131
+    // op.itob(self.total_allocation)
+    // + op.itob(self.total_claimed)
+    concat
+    // smart_contracts/creator_vesting/contract.py:132
+    // + op.itob(self.tge_timestamp)
+    intc_0 // 0
+    bytec_1 // "tge_timestamp"
+    app_global_get_ex
+    assert // check self.tge_timestamp exists
+    itob
+    // smart_contracts/creator_vesting/contract.py:130-132
+    // op.itob(self.total_allocation)
+    // + op.itob(self.total_claimed)
+    // + op.itob(self.tge_timestamp)
+    concat
+    // smart_contracts/creator_vesting/contract.py:133
+    // + op.itob(self.vesting_days)
+    intc_0 // 0
+    bytec 5 // "vesting_days"
+    app_global_get_ex
+    assert // check self.vesting_days exists
+    itob
+    // smart_contracts/creator_vesting/contract.py:130-133
+    // op.itob(self.total_allocation)
+    // + op.itob(self.total_claimed)
+    // + op.itob(self.tge_timestamp)
+    // + op.itob(self.vesting_days)
+    concat
+    // smart_contracts/creator_vesting/contract.py:134
+    // + op.itob(self.tge_release_bps)
+    intc_0 // 0
+    bytec 8 // "tge_release_bps"
+    app_global_get_ex
+    assert // check self.tge_release_bps exists
+    itob
+    // smart_contracts/creator_vesting/contract.py:130-134
+    // op.itob(self.total_allocation)
+    // + op.itob(self.total_claimed)
+    // + op.itob(self.tge_timestamp)
+    // + op.itob(self.vesting_days)
+    // + op.itob(self.tge_release_bps)
+    concat
+    // smart_contracts/creator_vesting/contract.py:126
+    // @abimethod(readonly=True)
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec 6 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount() -> uint64:
+smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount:
+    // smart_contracts/creator_vesting/contract.py:74-75
+    // @abimethod(readonly=True)
+    // def get_vested_amount(self) -> UInt64:
+    proto 0 1
+    pushbytes ""
+    dupn 2
+    // smart_contracts/creator_vesting/contract.py:77
+    // assert self.initialized == UInt64(1), "Not initialized"
+    intc_0 // 0
+    bytec_3 // "initialized"
+    app_global_get_ex
+    assert // check self.initialized exists
+    intc_1 // 1
+    ==
+    assert // Not initialized
+    // smart_contracts/creator_vesting/contract.py:79
+    // now = Global.latest_timestamp
+    global LatestTimestamp
+    dup
+    // smart_contracts/creator_vesting/contract.py:80
+    // if now < self.tge_timestamp:
+    intc_0 // 0
+    bytec_1 // "tge_timestamp"
+    app_global_get_ex
+    assert // check self.tge_timestamp exists
+    <
+    bz smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount_after_if_else@2
+    // smart_contracts/creator_vesting/contract.py:81
+    // return UInt64(0)
+    intc_0 // 0
+    frame_bury 0
+    retsub
+
+smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount_after_if_else@2:
+    // smart_contracts/creator_vesting/contract.py:83
+    // tge_amount = (self.total_allocation * self.tge_release_bps) // UInt64(10_000)
+    intc_0 // 0
+    bytec_2 // "total_allocation"
+    app_global_get_ex
+    assert // check self.total_allocation exists
+    intc_0 // 0
+    bytec 8 // "tge_release_bps"
+    app_global_get_ex
+    assert // check self.tge_release_bps exists
+    dig 1
+    *
+    pushint 10000
+    /
+    dup
+    frame_bury 2
+    // smart_contracts/creator_vesting/contract.py:84
+    // remaining = self.total_allocation - tge_amount
+    -
+    frame_bury 1
+    // smart_contracts/creator_vesting/contract.py:86
+    // elapsed = now - self.tge_timestamp
+    intc_0 // 0
+    bytec_1 // "tge_timestamp"
+    app_global_get_ex
+    assert // check self.tge_timestamp exists
+    frame_dig 3
+    swap
+    -
+    dup
+    frame_bury 0
+    // smart_contracts/creator_vesting/contract.py:87
+    // total_vesting_seconds = self.vesting_days * UInt64(86_400)
+    intc_0 // 0
+    bytec 5 // "vesting_days"
+    app_global_get_ex
+    assert // check self.vesting_days exists
+    intc 4 // 86400
+    *
+    // smart_contracts/creator_vesting/contract.py:89
+    // if elapsed >= total_vesting_seconds:
+    >=
+    bz smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount_after_if_else@4
+    // smart_contracts/creator_vesting/contract.py:90
+    // return self.total_allocation
+    intc_0 // 0
+    bytec_2 // "total_allocation"
+    app_global_get_ex
+    assert // check self.total_allocation exists
+    frame_bury 0
+    retsub
+
+smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount_after_if_else@4:
+    // smart_contracts/creator_vesting/contract.py:92
+    // daily_vesting = remaining // self.vesting_days
+    intc_0 // 0
+    bytec 5 // "vesting_days"
+    app_global_get_ex
+    assert // check self.vesting_days exists
+    frame_dig 1
+    swap
+    /
+    // smart_contracts/creator_vesting/contract.py:93
+    // days_elapsed = elapsed // UInt64(86_400)
+    frame_dig 0
+    intc 4 // 86400
+    /
+    // smart_contracts/creator_vesting/contract.py:94
+    // vested_from_schedule = daily_vesting * days_elapsed
+    *
+    // smart_contracts/creator_vesting/contract.py:96
+    // return tge_amount + vested_from_schedule
+    frame_dig 2
+    +
+    frame_bury 0
+    retsub
+
+
+// smart_contracts.creator_vesting.contract.CreatorVesting.get_claimable() -> uint64:
+smart_contracts.creator_vesting.contract.CreatorVesting.get_claimable:
+    // smart_contracts/creator_vesting/contract.py:98-99
+    // @abimethod(readonly=True)
+    // def get_claimable(self) -> UInt64:
+    proto 0 1
+    // smart_contracts/creator_vesting/contract.py:101
+    // vested = self.get_vested_amount()
+    callsub smart_contracts.creator_vesting.contract.CreatorVesting.get_vested_amount
+    dup
+    // smart_contracts/creator_vesting/contract.py:102
+    // if vested <= self.total_claimed:
+    intc_0 // 0
+    bytec_0 // "total_claimed"
+    app_global_get_ex
+    assert // check self.total_claimed exists
+    <=
+    bz smart_contracts.creator_vesting.contract.CreatorVesting.get_claimable_after_if_else@2
+    // smart_contracts/creator_vesting/contract.py:103
+    // return UInt64(0)
+    intc_0 // 0
+    swap
+    retsub
+
+smart_contracts.creator_vesting.contract.CreatorVesting.get_claimable_after_if_else@2:
+    // smart_contracts/creator_vesting/contract.py:104
+    // return vested - self.total_claimed
+    intc_0 // 0
+    bytec_0 // "total_claimed"
+    app_global_get_ex
+    assert // check self.total_claimed exists
+    frame_dig 0
+    swap
+    -
+    swap
+    retsub

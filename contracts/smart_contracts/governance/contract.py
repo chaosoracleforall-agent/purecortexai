@@ -49,6 +49,9 @@ class GovernanceContract(ARC4Contract):
         # Votes: composite key (proposal_id_bytes + voter_bytes) -> vote_data
         # vote_data: vote(8) + ve_power(8) = 16 bytes
         self.votes = BoxMap(Bytes, Bytes, key_prefix=b"v")
+        # Snapshot governance parameters at proposal creation time so active
+        # proposals are not affected by later admin parameter updates.
+        self.proposal_params = BoxMap(UInt64, Bytes, key_prefix=b"g")
 
         # Governance timing parameters (in rounds, ~3 rounds/minute)
         self.DISCUSSION_PERIOD = UInt64(8640)  # 48 hours (48 * 60 * 3)
@@ -117,6 +120,13 @@ class GovernanceContract(ARC4Contract):
             + op.itob(UInt64(0))  # total_voters
         )
         self.proposals[proposal_id] = proposal_data
+        self.proposal_params[proposal_id] = (
+            op.itob(self.DISCUSSION_PERIOD)
+            + op.itob(self.VOTING_PERIOD)
+            + op.itob(self.TIMELOCK_PERIOD)
+            + op.itob(self.QUORUM_BPS)
+            + op.itob(self.SUPERMAJORITY_BPS)
+        )
 
         return proposal_id
 
@@ -139,10 +149,13 @@ class GovernanceContract(ARC4Contract):
 
         created_round = op.btoi(op.extract(proposal_data, 32, 8))
         current_status = op.btoi(op.extract(proposal_data, 64, 8))
+        assert op.Box.get(Bytes(b"g") + op.itob(proposal_id))[1], "Proposal params missing"
+        params = self.proposal_params[proposal_id]
+        discussion_period = op.btoi(op.extract(params, 0, 8))
 
         assert current_status == UInt64(0), "Not in discussion phase"
         assert (
-            Global.round >= created_round + self.DISCUSSION_PERIOD
+            Global.round >= created_round + discussion_period
         ), "Discussion period not over"
 
         # Update status to voting (1), preserve all other fields
@@ -167,29 +180,38 @@ class GovernanceContract(ARC4Contract):
         yes_votes = op.btoi(op.extract(proposal_data, 48, 8))
         no_votes = op.btoi(op.extract(proposal_data, 56, 8))
         current_status = op.btoi(op.extract(proposal_data, 64, 8))
+        assert op.Box.get(Bytes(b"g") + op.itob(proposal_id))[1], "Proposal params missing"
+        params = self.proposal_params[proposal_id]
+        discussion_period = op.btoi(op.extract(params, 0, 8))
+        voting_period = op.btoi(op.extract(params, 8, 8))
+        quorum_bps = op.btoi(op.extract(params, 24, 8))
+        supermajority_bps = op.btoi(op.extract(params, 32, 8))
 
         assert current_status == UInt64(1), "Not in voting phase"
 
-        voting_start = created_round + self.DISCUSSION_PERIOD
+        voting_start = created_round + discussion_period
         assert (
-            Global.round >= voting_start + self.VOTING_PERIOD
+            Global.round >= voting_start + voting_period
         ), "Voting period not over"
 
         total_votes = yes_votes + no_votes
 
-        # Quorum check: require minimum 1M CORTEX (in microunits) of total
-        # voting power to prevent low-turnout proposals from passing.
-        # Phase 2 will use percentage-based quorum via cross-app staking reads.
-        assert total_votes >= UInt64(1_000_000_000_000), "Quorum not met: minimum 1M CORTEX voting power required"
+        # Quorum check uses proposal snapshot parameters.
+        # Phase 1 keeps the same baseline total vote power target, but derives
+        # the required quorum from the captured QUORUM_BPS value.
+        quorum_target = (UInt64(1_000_000_000_000) * quorum_bps) // UInt64(10_000)
+        if quorum_target == UInt64(0):
+            quorum_target = UInt64(1)
+        assert total_votes >= quorum_target, "Quorum not met"
 
         # Determine outcome — supermajority check with overflow protection.
         # Direct multiplication overflows UInt64 when total_votes > ~1.8e15,
         # so we fall back to division-first arithmetic for large totals.
         new_status = UInt64(3)  # default: rejected
         if total_votes <= UInt64(1_844_000_000_000_000):
-            passed = yes_votes * UInt64(10000) >= total_votes * self.SUPERMAJORITY_BPS
+            passed = yes_votes * UInt64(10000) >= total_votes * supermajority_bps
         else:
-            threshold = (total_votes // UInt64(10000)) * self.SUPERMAJORITY_BPS
+            threshold = (total_votes // UInt64(10000)) * supermajority_bps
             passed = yes_votes >= threshold
         if passed:
             new_status = UInt64(2)  # passed
@@ -214,15 +236,20 @@ class GovernanceContract(ARC4Contract):
 
         created_round = op.btoi(op.extract(proposal_data, 32, 8))
         current_status = op.btoi(op.extract(proposal_data, 64, 8))
+        assert op.Box.get(Bytes(b"g") + op.itob(proposal_id))[1], "Proposal params missing"
+        params = self.proposal_params[proposal_id]
+        discussion_period = op.btoi(op.extract(params, 0, 8))
+        voting_period = op.btoi(op.extract(params, 8, 8))
+        timelock_period = op.btoi(op.extract(params, 16, 8))
 
         assert current_status == UInt64(2), "Proposal not passed"
 
         # Check timelock: discussion + voting + timelock
         execution_round = (
             created_round
-            + self.DISCUSSION_PERIOD
-            + self.VOTING_PERIOD
-            + self.TIMELOCK_PERIOD
+            + discussion_period
+            + voting_period
+            + timelock_period
         )
         assert Global.round >= execution_round, "Timelock period not over"
 
@@ -275,7 +302,8 @@ class GovernanceContract(ARC4Contract):
 
         Phase 1 (current): Voter must include a CORTEX asset transfer to this
         contract in the same group transaction. The transferred amount is used
-        as voting weight and immediately returned via inner transaction.
+        as voting weight and remains escrowed in this contract until the
+        proposal reaches a terminal state.
         Phase 2: Will implement cross-app veCORTEX reads from the staking
         contract for time-weighted voting power.
         """
@@ -285,12 +313,16 @@ class GovernanceContract(ARC4Contract):
         current_status = op.btoi(op.extract(proposal_data, 64, 8))
         assert current_status == UInt64(1), "Not in voting phase"
         assert vote <= UInt64(1), "Vote must be 0 (no) or 1 (yes)"
+        assert op.Box.get(Bytes(b"g") + op.itob(proposal_id))[1], "Proposal params missing"
+        params = self.proposal_params[proposal_id]
+        discussion_period = op.btoi(op.extract(params, 0, 8))
+        voting_period = op.btoi(op.extract(params, 8, 8))
 
         # Check voting period hasn't expired
         created_round = op.btoi(op.extract(proposal_data, 32, 8))
-        voting_start = created_round + self.DISCUSSION_PERIOD
+        voting_start = created_round + discussion_period
         assert (
-            Global.round <= voting_start + self.VOTING_PERIOD
+            Global.round <= voting_start + voting_period
         ), "Voting period expired"
 
         # Ensure voter hasn't already voted
@@ -302,6 +334,7 @@ class GovernanceContract(ARC4Contract):
         # CORTEX is returned immediately below.
         assert self.cortex_asset_id != UInt64(0), "Contract not initialized"
         assert cortex_txn.xfer_asset.id == self.cortex_asset_id, "Wrong asset"
+        assert cortex_txn.sender == Txn.sender, "CORTEX sender must match caller"
         assert (
             cortex_txn.asset_receiver == Global.current_application_address
         ), "CORTEX must be sent to governance contract"
@@ -332,7 +365,36 @@ class GovernanceContract(ARC4Contract):
         )
         self.proposals[proposal_id] = new_data
 
-        # Return CORTEX to voter immediately
+    @abimethod()
+    def reclaim_vote(self, proposal_id: UInt64) -> None:
+        """
+        Reclaim escrowed CORTEX voting weight once a proposal is terminal.
+
+        Terminal statuses:
+          2 = passed
+          3 = rejected
+          4 = executed
+          5 = cancelled
+        """
+        assert self.cortex_asset_id != UInt64(0), "Contract not initialized"
+        assert op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1], "Proposal not found"
+
+        proposal_data = self.proposals[proposal_id]
+        status = op.btoi(op.extract(proposal_data, 64, 8))
+        assert status >= UInt64(2), "Proposal is still active"
+
+        vote_key = op.itob(proposal_id) + Txn.sender.bytes
+        vote_box_key = Bytes(b"v") + vote_key
+        vote_data, exists = op.Box.get(vote_box_key)
+        assert exists, "No vote to reclaim"
+
+        ve_power = op.btoi(op.extract(vote_data, 8, 8))
+        assert ve_power > UInt64(0), "Nothing to reclaim"
+
+        # Delete vote record before interaction to prevent re-claims.
+        deleted = op.Box.delete(vote_box_key)
+        assert deleted, "Failed to clear vote record"
+
         itxn.AssetTransfer(
             xfer_asset=self.cortex_asset_id,
             asset_receiver=Txn.sender,

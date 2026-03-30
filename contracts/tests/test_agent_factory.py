@@ -53,7 +53,46 @@ def _calculate_sell_price(
     slope_return = (slope * scaled_diff) // (2 * token_scale)
     gross = base_return + slope_return
     fee = (gross * sell_fee_bps) // 10_000
+    if fee == 0 and sell_fee_bps > 0 and gross > 0:
+        fee = 1
+    if fee > gross:
+        fee = gross
     return gross - fee
+
+
+def _simulate_chunked_buy_then_bulk_sell(
+    *,
+    chunks: int,
+    chunk_amount: int,
+    base_price: int,
+    slope: int,
+    buy_fee_bps: int,
+    sell_fee_bps: int,
+) -> tuple[int, int]:
+    supply = 0
+    total_spent = 0
+
+    for _ in range(chunks):
+        required_algo = _calculate_buy_price(
+            current_supply=supply,
+            amount=chunk_amount,
+            base_price=base_price,
+            slope=slope,
+        )
+        buy_fee = (required_algo * buy_fee_bps) // 10_000
+        if buy_fee == 0 and buy_fee_bps > 0:
+            buy_fee = 1
+        total_spent += required_algo + buy_fee
+        supply += chunk_amount
+
+    total_received = _calculate_sell_price(
+        current_supply=supply,
+        amount=supply,
+        base_price=base_price,
+        slope=slope,
+        sell_fee_bps=sell_fee_bps,
+    )
+    return total_spent, total_received
 
 
 def test_initial_state():
@@ -66,6 +105,7 @@ def test_initial_state():
         assert contract.GRADUATION_THRESHOLD == UInt64(50_000_000_000)
         assert contract.MIN_BASE_PRICE == UInt64(1_000)
         assert contract.MAX_BASE_PRICE == UInt64(100_000)
+        assert contract.MIN_FEE_BPS == UInt64(1)
         assert contract.MAX_AGENT_SUPPLY == UInt64(1_000_000_000)
 
 
@@ -358,6 +398,15 @@ def test_validate_launch_params_enforces_protocol_guardrails():
             contract._validate_launch_params(
                 UInt64(10_000),
                 UInt64(1_000),
+                UInt64(0),
+                UInt64(200),
+                UInt64(50_000_000_000),
+            )
+
+        with pytest.raises(AssertionError):
+            contract._validate_launch_params(
+                UInt64(10_000),
+                UInt64(1_000),
                 UInt64(1_100),
                 UInt64(200),
                 UInt64(50_000_000_000),
@@ -371,3 +420,69 @@ def test_validate_launch_params_enforces_protocol_guardrails():
                 UInt64(200),
                 UInt64(999_999_999),
             )
+
+
+def test_calculate_sell_price_rounds_to_zero_for_one_unit():
+    """Required boundary: amount=1, supply=1 should round to zero."""
+    with algopy_testing_context() as ctx:
+        contract = AgentFactory()
+        mock_asset = ctx.any.asset()
+        contract.agent_configs[mock_asset.id] = _agent_config_bytes(
+            base_price=10_000,
+            slope=1_000,
+            buy_fee_bps=100,
+            sell_fee_bps=200,
+            graduation_threshold=50_000_000_000,
+        )
+        contract.agent_supplies[mock_asset.id] = UInt64(1)
+
+        sell_price = contract.calculate_sell_price(mock_asset, UInt64(1))
+        assert sell_price == UInt64(0)
+
+
+def test_check_graduation_override_threshold_boundary():
+    """Boundary: value below threshold does not graduate; exact threshold does."""
+    with algopy_testing_context() as ctx:
+        contract = AgentFactory()
+        mock_asset = ctx.any.asset()
+        # With slope=0 and base_price=100_000, total_value = supply/10.
+        # Set graduation threshold=100 so supply 999 -> 99 (False), 1000 -> 100 (True).
+        contract.agent_configs[mock_asset.id] = _agent_config_bytes(
+            base_price=100_000,
+            slope=0,
+            buy_fee_bps=100,
+            sell_fee_bps=200,
+            graduation_threshold=100,
+        )
+
+        contract.agent_supplies[mock_asset.id] = UInt64(999)
+        assert contract.check_graduation(mock_asset) is False
+
+        contract.agent_supplies[mock_asset.id] = UInt64(1000)
+        assert contract.check_graduation(mock_asset) is True
+
+
+def test_chunked_buy_then_bulk_sell_not_profitable_with_default_fees():
+    """Precision drift plus fees should not produce positive PnL under defaults."""
+    spent, received = _simulate_chunked_buy_then_bulk_sell(
+        chunks=10_000,
+        chunk_amount=1_000,
+        base_price=10_000,
+        slope=10_000,
+        buy_fee_bps=100,
+        sell_fee_bps=200,
+    )
+    assert received <= spent
+
+
+def test_minimum_nonzero_fee_floor_blocks_zero_fee_rounding_profit():
+    """Even a 1 bps floor should prevent positive chunked-buy / bulk-sell extraction."""
+    spent, received = _simulate_chunked_buy_then_bulk_sell(
+        chunks=10_000,
+        chunk_amount=1_000,
+        base_price=10_000,
+        slope=10_000,
+        buy_fee_bps=1,
+        sell_fee_bps=1,
+    )
+    assert received <= spent

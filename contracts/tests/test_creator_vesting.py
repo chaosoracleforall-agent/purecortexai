@@ -139,3 +139,31 @@ class TestVestingInfo:
                 + VESTING_DAYS.to_bytes(8, "big")
                 + TGE_RELEASE_BPS.to_bytes(8, "big")
             )
+
+
+class TestVestingScheduleSafety:
+    def test_daily_rounding_never_over_vests_before_end(self):
+        with algopy_testing_context() as ctx:
+            contract, _, _ = _setup_vesting(ctx, tge_timestamp=1_000_000)
+            # One day before full vesting should never equal full allocation.
+            ctx.ledger.patch_global_fields(
+                latest_timestamp=1_000_000 + ((VESTING_DAYS - 1) * SECONDS_PER_DAY)
+            )
+            vested = int(contract.get_vested_amount())
+            assert vested < TOTAL_ALLOCATION
+
+    def test_claimable_is_zero_when_claimed_exceeds_vested(self):
+        with algopy_testing_context() as ctx:
+            contract, _, _ = _setup_vesting(ctx, tge_timestamp=1_000_000)
+            ctx.ledger.patch_global_fields(latest_timestamp=1_000_000 + (30 * SECONDS_PER_DAY))
+            vested = int(contract.get_vested_amount())
+            contract.total_claimed = UInt64(vested + 1)
+            assert contract.get_claimable() == UInt64(0)
+
+    def test_tge_tranche_is_exact_10_percent(self):
+        with algopy_testing_context() as ctx:
+            contract, _, _ = _setup_vesting(ctx, tge_timestamp=2_000_000)
+            ctx.ledger.patch_global_fields(latest_timestamp=2_000_000)
+            vested = int(contract.get_vested_amount())
+            expected = (TOTAL_ALLOCATION * TGE_RELEASE_BPS) // 10_000
+            assert vested == expected

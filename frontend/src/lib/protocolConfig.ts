@@ -1,11 +1,11 @@
-// Generated from `deployment.testnet.json` by `generate_protocol_config.py`.
+// Generated from `deployment.mainnet.json` by `generate_protocol_config.py`.
 // Do not edit by hand.
 
 export const protocolConfig = {
   "name": "PURECORTEX",
-  "environment": "testnet",
-  "network": "testnet",
-  "chainName": "Algorand Testnet",
+  "environment": "mainnet",
+  "network": "mainnet",
+  "chainName": "Algorand MainNet",
   "publicAppUrl": "https://purecortex.ai",
   "publicApiUrl": "https://purecortex.ai",
   "publicWsUrl": "wss://purecortex.ai/ws/chat",
@@ -13,26 +13,30 @@ export const protocolConfig = {
   "tgeDate": "2026-03-31T00:00:00Z",
   "contracts": {
     "agentFactory": {
-      "appId": 757290073,
-      "address": "AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ",
+      "appId": 3493064595,
+      "address": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU",
       "status": "active"
     },
     "cortexToken": {
-      "assetId": 757290097,
+      "assetId": 3493064714,
       "name": "PureCortex",
       "unitName": "CORTEX",
-      "creatorAddress": "AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ"
+      "creatorAddress": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU"
     },
     "governance": {
-      "appId": 757157787,
+      "appId": 3493064034,
       "status": "active"
     },
     "staking": {
-      "appId": 757172306,
+      "appId": 3493064261,
       "status": "active"
     },
     "treasury": {
-      "appId": 757172354,
+      "appId": 3493064463,
+      "status": "active"
+    },
+    "creatorVesting": {
+      "appId": 3493064628,
       "status": "active"
     }
   },
@@ -46,55 +50,111 @@ export const protocolConfig = {
     "sellFeeBps": 200,
     "graduationThreshold": 50000000000
   },
-  "marketplace": {
-    "tradingEnabled": true,
-    "launchEnabled": true,
-    "maintenanceReason": null,
-    "notes": [
-      "Marketplace buy and sell flows are enabled on the active testnet factory deployment.",
-      "Agent launch remains enabled for controlled validation.",
-      "Continue monitoring create, buy, and sell flows against the active factory while testnet usage expands."
-    ]
+  "allocation": {
+    "creator": {
+      "percentage": 10,
+      "amount": 1000000000000000,
+      "vestingTgePct": 10,
+      "vestingDays": 180,
+      "wallet": ""
+    },
+    "genesisDistribution": {
+      "percentage": 31,
+      "amount": 3100000000000000,
+      "wallet": ""
+    },
+    "futureEmissions": {
+      "percentage": 24,
+      "amount": 2400000000000000,
+      "halvingSchedule": [
+        0.4,
+        0.3,
+        0.2,
+        0.1
+      ],
+      "wallet": ""
+    },
+    "liquidity": {
+      "percentage": 15,
+      "amount": 1500000000000000,
+      "lockYears": 10,
+      "wallet": ""
+    },
+    "agentIncentives": {
+      "percentage": 15,
+      "amount": 1500000000000000,
+      "wallet": ""
+    },
+    "assistanceFund": {
+      "percentage": 5,
+      "amount": 500000000000000,
+      "wallet": ""
+    }
   },
-  "nextDeployment": {
-    "status": "completed",
-    "agentFactoryAppId": 757290073,
-    "cortexAssetId": 757290097,
-    "creatorAddress": "R7CLPM5L3CQ62PHF347KDIEHKUHIFJYTYVVG6JU6XNT5MFCQOK5V33XMWI",
+  "marketplace": {
+    "tradingEnabled": false,
+    "launchEnabled": false,
+    "maintenanceReason": "Pre-launch: mainnet contracts pending deployment",
     "notes": [
-      "Patched factory deployed with deferred per-agent config materialization to remove create-time dynamic box key failures.",
-      "Core smoke validation passed against this app/asset pair before public trading was re-enabled."
+      "Trading and launch are disabled until mainnet contracts are deployed and smoke-tested.",
+      "Enable after deployment validation completes and liquidity pools are seeded."
     ]
   },
   "wallets": {
-    "agentFactoryEscrow": "AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ",
+    "agentFactoryEscrow": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU",
     "assistanceFund": null,
     "operations": null,
-    "creatorVesting": null
+    "creatorVesting": null,
+    "liquidityPool": null
   },
-  "legacyDeployments": [
-    {
-      "label": "March 17 R7 redeploy (box reference hotfix iteration)",
-      "agentFactoryAppId": 757288371,
-      "cortexAssetId": 757288754,
-      "status": "deprecated",
-      "note": "Superseded by the follow-up deployment that patched create-time dynamic box reference failures."
+  "dex": {
+    "tinyman": {
+      "poolId": null,
+      "pair": "CORTEX/ALGO",
+      "status": "pending"
     },
-    {
-      "label": "March 17 corrected factory (pre-R7 redeploy)",
-      "agentFactoryAppId": 757172168,
-      "cortexAssetId": 757172171,
-      "status": "deprecated",
-      "note": "Retired after deploying a fresh factory bound to the currently available deployer key."
-    },
-    {
-      "label": "March 13 launchpad deployment",
-      "agentFactoryAppId": 757089323,
-      "cortexAssetId": 757092088,
-      "status": "deprecated",
-      "note": "Retained for auditability only. Do not target this deployment from active clients."
+    "pact": {
+      "poolId": null,
+      "pair": "CORTEX/ALGO",
+      "status": "pending"
     }
-  ]
+  },
+  "airdrop": {
+    "snapshotBlock": null,
+    "merkleRoot": null,
+    "distributionContract": null,
+    "claimDeadline": "2026-07-01T00:00:00Z",
+    "tiers": {
+      "testnetPioneers": {
+        "allocationPct": 5,
+        "minWalletAge": null
+      },
+      "algorandDefiUsers": {
+        "allocationPct": 30,
+        "snapshotProtocols": [
+          "tinyman",
+          "pact",
+          "folks_finance"
+        ]
+      },
+      "nfdHolders": {
+        "allocationPct": 10
+      },
+      "algorandGovernors": {
+        "allocationPct": 20
+      },
+      "developerBuilders": {
+        "allocationPct": 10
+      },
+      "socialCampaign": {
+        "allocationPct": 15
+      },
+      "communityTasks": {
+        "allocationPct": 10
+      }
+    }
+  },
+  "legacyDeployments": []
 } as const;
 
 export type ProtocolConfig = typeof protocolConfig;

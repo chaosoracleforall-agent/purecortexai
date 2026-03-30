@@ -123,7 +123,8 @@ async def _developer_access_cooldown_active(
             if await redis_rl.exists(key):
                 return True
     except Exception:
-        return False
+        # Fail closed if cooldown storage is unavailable.
+        return True
     return False
 
 

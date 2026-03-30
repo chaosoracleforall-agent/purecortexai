@@ -208,6 +208,9 @@ class VeCortexStaking(ARC4Contract):
         if not op.Box.get(b"s" + stake_key)[1]:
             return UInt64(0)
         stake_data = self.stakes[stake_key]
+        unlock_round = op.btoi(op.extract(stake_data, 8, 8))
+        if Global.round >= unlock_round:
+            return UInt64(0)
         return op.btoi(op.extract(stake_data, 16, 8))
 
     @abimethod(readonly=True)
@@ -243,6 +246,11 @@ class VeCortexStaking(ARC4Contract):
         """Get the aggregate veCORTEX voting power for governance quorum checks."""
         return self.total_ve_power
 
+    @abimethod(readonly=True)
+    def get_reward_pool(self) -> UInt64:
+        """Get the remaining CORTEX reward pool balance tracked by this contract."""
+        return self.reward_pool
+
     # ------------------------------------------------------------------ #
     #  Reward pool management
     # ------------------------------------------------------------------ #
@@ -261,6 +269,28 @@ class VeCortexStaking(ARC4Contract):
             cortex_transfer.asset_receiver == Global.current_application_address
         ), "Must send to contract"
         self.reward_pool = self.reward_pool + cortex_transfer.asset_amount
+
+    @abimethod()
+    def distribute_reward(self, staker: Account, amount: UInt64) -> None:
+        """
+        Distribute reward-pool CORTEX to an active staker.
+        Only callable by the application creator.
+        """
+        assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert self.cortex_token != UInt64(0), "Not initialized"
+        assert amount > UInt64(0), "Amount must be positive"
+        assert amount <= self.reward_pool, "Exceeds reward pool"
+        assert op.Box.get(b"s" + staker.bytes)[1], "Staker not found"
+
+        # Deduct before interaction (checks-effects-interactions).
+        self.reward_pool = self.reward_pool - amount
+
+        itxn.AssetTransfer(
+            xfer_asset=Asset(self.cortex_token),
+            asset_receiver=staker,
+            asset_amount=amount,
+            fee=0,
+        ).submit()
 
     # ------------------------------------------------------------------ #
     #  Admin

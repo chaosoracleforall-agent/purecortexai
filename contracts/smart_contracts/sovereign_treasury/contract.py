@@ -79,6 +79,10 @@ class SovereignTreasury(ARC4Contract):
         (which would swap on a DEX in production).
         """
         assert Txn.sender == Global.creator_address, "Only creator can process revenue"
+        assert payment.sender == Txn.sender, "Payment sender must match caller"
+        assert (
+            payment.group_index + UInt64(1) == Txn.group_index
+        ), "Payment must immediately precede app call"
         assert (
             payment.receiver == Global.current_application_address
         ), "Must pay treasury"
@@ -117,6 +121,10 @@ class SovereignTreasury(ARC4Contract):
         group transaction. The contract then forwards them to the zero
         address, permanently removing them from circulation.
         """
+        assert cortex_transfer.sender == Txn.sender, "Transfer sender must match caller"
+        assert (
+            cortex_transfer.group_index + UInt64(1) == Txn.group_index
+        ), "Transfer must immediately precede app call"
         assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
         assert (
             cortex_transfer.asset_receiver == Global.current_application_address

@@ -1,9 +1,11 @@
-# Dedicated signer image
+# Dedicated signer image — air-gapped container for Algorand transaction signing.
+# This container has NO network access (network_mode: none in docker-compose),
+# a read-only filesystem, and communicates only via a shared Unix socket.
 FROM python:3.12.3-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     && rm -rf /var/lib/apt/lists/*
 
@@ -11,5 +13,12 @@ COPY requirements-signer.txt .
 RUN pip install --no-cache-dir -r requirements-signer.txt
 
 COPY src ./src
+
+RUN addgroup --system --gid 10001 signergroup && \
+    adduser --system --uid 10001 --ingroup signergroup signeruser && \
+    mkdir -p /run/purecortex/socket && \
+    chown signeruser:signergroup /run/purecortex/socket
+
+USER signeruser
 
 CMD ["python", "-m", "src.services.signer_daemon"]

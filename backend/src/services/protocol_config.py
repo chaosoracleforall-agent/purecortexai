@@ -1,5 +1,5 @@
 """
-Generated from `deployment.testnet.json` by `generate_protocol_config.py`.
+Generated from `deployment.mainnet.json` by `generate_protocol_config.py`.
 Do not edit by hand.
 """
 
@@ -9,24 +9,25 @@ from typing import Any, Final
 
 
 PROTOCOL_CONFIG: Final[dict[str, Any]] = {'name': 'PURECORTEX',
- 'environment': 'testnet',
- 'network': 'testnet',
- 'chainName': 'Algorand Testnet',
+ 'environment': 'mainnet',
+ 'network': 'mainnet',
+ 'chainName': 'Algorand MainNet',
  'publicAppUrl': 'https://purecortex.ai',
  'publicApiUrl': 'https://purecortex.ai',
  'publicWsUrl': 'wss://purecortex.ai/ws/chat',
  'repoUrl': 'https://github.com/chaosoracleforall-agent/purecortexai',
  'tgeDate': '2026-03-31T00:00:00Z',
- 'contracts': {'agentFactory': {'appId': 757290073,
-                                'address': 'AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ',
+ 'contracts': {'agentFactory': {'appId': 3493064595,
+                                'address': '34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU',
                                 'status': 'active'},
-               'cortexToken': {'assetId': 757290097,
+               'cortexToken': {'assetId': 3493064714,
                                'name': 'PureCortex',
                                'unitName': 'CORTEX',
-                               'creatorAddress': 'AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ'},
-               'governance': {'appId': 757157787, 'status': 'active'},
-               'staking': {'appId': 757172306, 'status': 'active'},
-               'treasury': {'appId': 757172354, 'status': 'active'}},
+                               'creatorAddress': '34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU'},
+               'governance': {'appId': 3493064034, 'status': 'active'},
+               'staking': {'appId': 3493064261, 'status': 'active'},
+               'treasury': {'appId': 3493064463, 'status': 'active'},
+               'creatorVesting': {'appId': 3493064628, 'status': 'active'}},
  'tokenomics': {'totalSupply': 10000000000000000,
                 'decimals': 6,
                 'basePrice': 10000,
@@ -35,50 +36,61 @@ PROTOCOL_CONFIG: Final[dict[str, Any]] = {'name': 'PURECORTEX',
                 'buyFeeBps': 100,
                 'sellFeeBps': 200,
                 'graduationThreshold': 50000000000},
- 'marketplace': {'tradingEnabled': True,
-                 'launchEnabled': True,
-                 'maintenanceReason': None,
-                 'notes': ['Marketplace buy and sell flows are enabled on the '
-                           'active testnet factory deployment.',
-                           'Agent launch remains enabled for controlled '
-                           'validation.',
-                           'Continue monitoring create, buy, and sell flows '
-                           'against the active factory while testnet usage '
-                           'expands.']},
- 'nextDeployment': {'status': 'completed',
-                    'agentFactoryAppId': 757290073,
-                    'cortexAssetId': 757290097,
-                    'creatorAddress': 'R7CLPM5L3CQ62PHF347KDIEHKUHIFJYTYVVG6JU6XNT5MFCQOK5V33XMWI',
-                    'notes': ['Patched factory deployed with deferred '
-                              'per-agent config materialization to remove '
-                              'create-time dynamic box key failures.',
-                              'Core smoke validation passed against this '
-                              'app/asset pair before public trading was '
-                              're-enabled.']},
- 'wallets': {'agentFactoryEscrow': 'AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ',
+ 'allocation': {'creator': {'percentage': 10,
+                            'amount': 1000000000000000,
+                            'vestingTgePct': 10,
+                            'vestingDays': 180,
+                            'wallet': ''},
+                'genesisDistribution': {'percentage': 31,
+                                        'amount': 3100000000000000,
+                                        'wallet': ''},
+                'futureEmissions': {'percentage': 24,
+                                    'amount': 2400000000000000,
+                                    'halvingSchedule': [0.4, 0.3, 0.2, 0.1],
+                                    'wallet': ''},
+                'liquidity': {'percentage': 15,
+                              'amount': 1500000000000000,
+                              'lockYears': 10,
+                              'wallet': ''},
+                'agentIncentives': {'percentage': 15,
+                                    'amount': 1500000000000000,
+                                    'wallet': ''},
+                'assistanceFund': {'percentage': 5,
+                                   'amount': 500000000000000,
+                                   'wallet': ''}},
+ 'marketplace': {'tradingEnabled': False,
+                 'launchEnabled': False,
+                 'maintenanceReason': 'Pre-launch: mainnet contracts pending '
+                                      'deployment',
+                 'notes': ['Trading and launch are disabled until mainnet '
+                           'contracts are deployed and smoke-tested.',
+                           'Enable after deployment validation completes and '
+                           'liquidity pools are seeded.']},
+ 'wallets': {'agentFactoryEscrow': '34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU',
              'assistanceFund': None,
              'operations': None,
-             'creatorVesting': None},
- 'legacyDeployments': [{'label': 'March 17 R7 redeploy (box reference hotfix '
-                                 'iteration)',
-                        'agentFactoryAppId': 757288371,
-                        'cortexAssetId': 757288754,
-                        'status': 'deprecated',
-                        'note': 'Superseded by the follow-up deployment that '
-                                'patched create-time dynamic box reference '
-                                'failures.'},
-                       {'label': 'March 17 corrected factory (pre-R7 redeploy)',
-                        'agentFactoryAppId': 757172168,
-                        'cortexAssetId': 757172171,
-                        'status': 'deprecated',
-                        'note': 'Retired after deploying a fresh factory bound '
-                                'to the currently available deployer key.'},
-                       {'label': 'March 13 launchpad deployment',
-                        'agentFactoryAppId': 757089323,
-                        'cortexAssetId': 757092088,
-                        'status': 'deprecated',
-                        'note': 'Retained for auditability only. Do not target '
-                                'this deployment from active clients.'}]}
+             'creatorVesting': None,
+             'liquidityPool': None},
+ 'dex': {'tinyman': {'poolId': None,
+                     'pair': 'CORTEX/ALGO',
+                     'status': 'pending'},
+         'pact': {'poolId': None, 'pair': 'CORTEX/ALGO', 'status': 'pending'}},
+ 'airdrop': {'snapshotBlock': None,
+             'merkleRoot': None,
+             'distributionContract': None,
+             'claimDeadline': '2026-07-01T00:00:00Z',
+             'tiers': {'testnetPioneers': {'allocationPct': 5,
+                                           'minWalletAge': None},
+                       'algorandDefiUsers': {'allocationPct': 30,
+                                             'snapshotProtocols': ['tinyman',
+                                                                   'pact',
+                                                                   'folks_finance']},
+                       'nfdHolders': {'allocationPct': 10},
+                       'algorandGovernors': {'allocationPct': 20},
+                       'developerBuilders': {'allocationPct': 10},
+                       'socialCampaign': {'allocationPct': 15},
+                       'communityTasks': {'allocationPct': 10}}},
+ 'legacyDeployments': []}
 
 NAME: Final = PROTOCOL_CONFIG["name"]
 ENVIRONMENT: Final = PROTOCOL_CONFIG["environment"]

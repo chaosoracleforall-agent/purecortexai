@@ -137,3 +137,54 @@ It is intended to preserve work history if the chat ends and support a complete 
 - Governance smoke (live): pass with valid `rejected` branch handling (`proposal_id` advanced to `4`).
 - Infra note:
   - Direct VM status check was blocked at checklist time by IAM regression (`compute.instances.get` denied), so container-level inspection could not be revalidated in this final pass.
+
+### 2026-03-17 - Final handoff (session close)
+
+#### Production IDs (current)
+
+- Network: Algorand Testnet
+- Agent Factory App ID: `757290073`
+- CORTEX ASA ID: `757290097`
+- Factory creator/deployer address: `AOG3LJR4CGLZY5Y27SJ6MFXS34MABFMTWMUGQJP62LGZAM3JAVBCKM6DXQ`
+- Public API base URL: `https://purecortex.ai`
+
+#### Last known successful smoke outputs
+
+- Full live smoke (create/finalize/buy/sell + governance branch):
+  - `agent_asset_id`: `757296769`
+  - `create_agent_txid`: `3TI46E57UCGKLEBFCTGZXARLXNI53T3YOBYAURQAO3YAS2ITNPQQ`
+  - `finalize_agent_config_txid`: `2ABAPDOV653AR3JCQWYESQY6GDFEG4OZFBYLMLLTCCCJZP5H3VCQ`
+  - `buy_txid`: `ZHIYLW5OX2KRHC5XCBF2VIHAMS7FGZ5CGQVO7HXI7SYCPLALHAXQ`
+  - `sell_txid`: `M5PBGHUCT6VKVIUMRZW5ZNL6FBTT7IM5OINAKNBCKJAYOWM3OCCA`
+  - `governance_smoke`: proposal created + reviewed; vote skipped when review rejects (expected branch)
+
+#### Exact verification commands
+
+- Backend tests:
+  - `cd backend && PYTHONPATH=. .venv/bin/python -m pytest`
+- Contracts tests:
+  - `cd contracts && PYTHONPATH=. .venv/bin/python -m pytest`
+- Frontend quality/build:
+  - `cd frontend && npm run lint && npm run build`
+- Full live smoke:
+  - `cd contracts && set -a && source .env && set +a && export PURECORTEX_API_KEY='<key>' && PYTHONPATH=. .venv/bin/python tests/live_testnet_verify.py smoke --wait-timeout 600 --min-trader-algo 1000000`
+- Governance-only smoke:
+  - `cd contracts && export PURECORTEX_API_KEY='<key>' && PYTHONPATH=. .venv/bin/python - <<'PY'`
+  - `from tests.live_testnet_verify import governance_smoke, load_manifest, load_wallets, DEFAULT_WALLET_FILE`
+  - `m=load_manifest(); w=load_wallets(DEFAULT_WALLET_FILE); print(governance_smoke(m['publicApiUrl'], '<key>', w['voter'].address))`
+  - `PY`
+
+#### First 24h monitoring checklist
+
+- Every 15-30 min:
+  - `curl -s https://purecortex.ai/health` returns `status: ok` and dependencies connected.
+- Every 2-4 hours:
+  - VM containers: backend, cloudsql-proxy, signer, redis, nginx remain up/healthy.
+- Governance endpoints:
+  - Verify `/api/agents/senator/propose` returns `201` and `/api/agents/curator/review/{id}` returns `200`.
+- Wallet/funding safety:
+  - Monitor deployer account min-balance headroom to avoid smoke/create failures.
+- Logs:
+  - Watch for repeated backend `500`, DB connection refused, or sustained upstream `502` from nginx.
+- Security follow-up:
+  - Review GitHub Dependabot alert noted at push time (1 high) and schedule patch.

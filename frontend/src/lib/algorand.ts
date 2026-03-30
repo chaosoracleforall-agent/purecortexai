@@ -12,6 +12,7 @@ import {
   SLOPE as SLOPE_MICROALGO,
   STAKING_APP_ID,
   TREASURY_APP_ID,
+  PROTOCOL_NETWORK,
 } from './protocolConfig';
 
 export {
@@ -29,12 +30,17 @@ export {
 export const BASE_PRICE = BigInt(BASE_PRICE_MICROALGO); // micro-ALGO per token unit
 export const SLOPE = BigInt(SLOPE_MICROALGO);
 export const TOKEN_SCALE = 10n ** BigInt(6);
-export const GOVERNANCE_ADDRESS = 'I36JTAQYRFSIRH7G3OTCQ7ZOUA7ARZ7YYZR4SV57QF5UU5P75VT55D2MO4';
 export const CREATION_FEE = CREATION_FEE_MICRO_CORTEX; // 100 CORTEX (6 decimals)
 
-// Testnet endpoints (algonode.cloud supports browser CORS)
-export const ALGOD_URL = 'https://testnet-api.algonode.cloud';
-const INDEXER_URL = 'https://testnet-idx.algonode.cloud';
+const IS_MAINNET = PROTOCOL_NETWORK.toLowerCase() === 'mainnet';
+
+// Network-aware Algod/Indexer endpoints.
+export const ALGOD_URL = IS_MAINNET
+  ? 'https://mainnet-api.algonode.cloud'
+  : 'https://testnet-api.algonode.cloud';
+const INDEXER_URL = IS_MAINNET
+  ? 'https://mainnet-idx.algonode.cloud'
+  : 'https://testnet-idx.algonode.cloud';
 
 export function getAlgodClient(): algosdk.Algodv2 {
   return new algosdk.Algodv2('', ALGOD_URL, '');

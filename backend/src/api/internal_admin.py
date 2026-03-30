@@ -140,20 +140,9 @@ async def internal_admin_health(
     """Readiness probe for the internal admin control plane."""
     _require_internal_admin(request, x_internal_admin_token)
     _set_no_store_headers(response)
-    settings = get_settings()
     return {
         "status": "ok",
         "surface": "internal-admin",
-        "owner_emails": list(settings.admin_allowed_emails),
-        "database_configured": bool(
-            settings.database_url or settings.cloud_sql_connection_name
-        ),
-        "oauth_configured": bool(
-            settings.google_oauth_client_id
-            and settings.google_oauth_client_secret
-            and settings.oauth2_proxy_cookie_secret
-        ),
-        "ip_trust_configured": settings.trust_proxy_headers,
     }
 
 

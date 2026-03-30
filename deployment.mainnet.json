@@ -10,31 +10,31 @@
   "tgeDate": "2026-03-31T00:00:00Z",
   "contracts": {
     "agentFactory": {
-      "appId": 0,
-      "address": "",
-      "status": "pending_deployment"
+      "appId": 3493064595,
+      "address": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU",
+      "status": "active"
     },
     "cortexToken": {
-      "assetId": 0,
+      "assetId": 3493064714,
       "name": "PureCortex",
       "unitName": "CORTEX",
-      "creatorAddress": ""
+      "creatorAddress": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU"
     },
     "governance": {
-      "appId": 0,
-      "status": "pending_deployment"
+      "appId": 3493064034,
+      "status": "active"
     },
     "staking": {
-      "appId": 0,
-      "status": "pending_deployment"
+      "appId": 3493064261,
+      "status": "active"
     },
     "treasury": {
-      "appId": 0,
-      "status": "pending_deployment"
+      "appId": 3493064463,
+      "status": "active"
     },
     "creatorVesting": {
-      "appId": 0,
-      "status": "pending_deployment"
+      "appId": 3493064628,
+      "status": "active"
     }
   },
   "tokenomics": {
@@ -63,7 +63,12 @@
     "futureEmissions": {
       "percentage": 24,
       "amount": 2400000000000000,
-      "halvingSchedule": [0.40, 0.30, 0.20, 0.10],
+      "halvingSchedule": [
+        0.4,
+        0.3,
+        0.2,
+        0.1
+      ],
       "wallet": ""
     },
     "liquidity": {
@@ -93,11 +98,11 @@
     ]
   },
   "wallets": {
-    "agentFactoryEscrow": "",
-    "assistanceFund": "",
-    "operations": "",
-    "creatorVesting": "",
-    "liquidityPool": ""
+    "agentFactoryEscrow": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU",
+    "assistanceFund": null,
+    "operations": null,
+    "creatorVesting": null,
+    "liquidityPool": null
   },
   "dex": {
     "tinyman": {
@@ -117,13 +122,33 @@
     "distributionContract": null,
     "claimDeadline": "2026-07-01T00:00:00Z",
     "tiers": {
-      "testnetPioneers": { "allocationPct": 5, "minWalletAge": null },
-      "algorandDefiUsers": { "allocationPct": 30, "snapshotProtocols": ["tinyman", "pact", "folks_finance"] },
-      "nfdHolders": { "allocationPct": 10 },
-      "algorandGovernors": { "allocationPct": 20 },
-      "developerBuilders": { "allocationPct": 10 },
-      "socialCampaign": { "allocationPct": 15 },
-      "communityTasks": { "allocationPct": 10 }
+      "testnetPioneers": {
+        "allocationPct": 5,
+        "minWalletAge": null
+      },
+      "algorandDefiUsers": {
+        "allocationPct": 30,
+        "snapshotProtocols": [
+          "tinyman",
+          "pact",
+          "folks_finance"
+        ]
+      },
+      "nfdHolders": {
+        "allocationPct": 10
+      },
+      "algorandGovernors": {
+        "allocationPct": 20
+      },
+      "developerBuilders": {
+        "allocationPct": 10
+      },
+      "socialCampaign": {
+        "allocationPct": 15
+      },
+      "communityTasks": {
+        "allocationPct": 10
+      }
     }
   },
   "legacyDeployments": []

@@ -6,11 +6,15 @@ Seeds initial CORTEX/ALGO liquidity on Tinyman and Pact after mainnet
 deployment. Uses the 15% liquidity allocation from the token distribution.
 
 Usage:
-    python scripts/setup_liquidity.py --deployer-mnemonic "..." \
+    # Preferred: mnemonic from env var
+    PURECORTEX_DEPLOYER_MNEMONIC="..." python scripts/setup_liquidity.py \
         --cortex-asset-id 12345 \
         --cortex-amount 750000000000000 \
-        --algo-amount 10000000000 \
-        [--dry-run]
+        --algo-amount 10000000000
+
+    # Alternative: from file or Secret Manager
+    python scripts/setup_liquidity.py --mnemonic-file ~/.purecortex/deployer.key ...
+    python scripts/setup_liquidity.py --mnemonic-secret MAINNET_PURECORTEX_DEPLOYER_MNEMONIC ...
 
 The 15% liquidity allocation (1.5 quadrillion CORTEX) is split:
     - 60% -> Tinyman CORTEX/ALGO pool
@@ -24,6 +28,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -42,6 +48,55 @@ TINYMAN_SPLIT = 0.60
 PACT_SPLIT = 0.40
 
 
+def _load_mnemonic(
+    *,
+    mnemonic_file: str | None = None,
+    mnemonic_secret: str | None = None,
+) -> str:
+    """Load deployer mnemonic securely. See deploy_mainnet.py for full docs."""
+    env_val = os.environ.get("PURECORTEX_DEPLOYER_MNEMONIC", "").strip()
+    if env_val:
+        return env_val
+
+    if mnemonic_file:
+        p = Path(mnemonic_file).expanduser()
+        if not p.exists():
+            print(f"ERROR: Mnemonic file not found: {p}", file=sys.stderr)
+            sys.exit(1)
+        mode = p.stat().st_mode & 0o777
+        if mode & 0o077:
+            print(
+                f"ERROR: Mnemonic file {p} has insecure permissions {oct(mode)}. "
+                f"Run: chmod 600 {p}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        return p.read_text().strip()
+
+    if mnemonic_secret:
+        try:
+            result = subprocess.check_output(
+                [
+                    "gcloud", "secrets", "versions", "access", "latest",
+                    f"--secret={mnemonic_secret}",
+                    f"--project={os.environ.get('PURECORTEX_GCP_PROJECT', 'purecortexai')}",
+                ],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+            return result.strip()
+        except subprocess.CalledProcessError:
+            print(f"ERROR: Could not read secret {mnemonic_secret}", file=sys.stderr)
+            sys.exit(1)
+
+    print(
+        "ERROR: No deployer mnemonic provided.\n"
+        "  Set PURECORTEX_DEPLOYER_MNEMONIC env var, or use --mnemonic-file, or --mnemonic-secret.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
 def get_deployer(mnemonic_phrase: str) -> tuple[str, str]:
     private_key = mnemonic.to_private_key(mnemonic_phrase)
     address = account.address_from_private_key(private_key)
@@ -50,7 +105,8 @@ def get_deployer(mnemonic_phrase: str) -> tuple[str, str]:
 
 def main():
     parser = argparse.ArgumentParser(description="Setup CORTEX/ALGO DEX liquidity")
-    parser.add_argument("--deployer-mnemonic", required=True)
+    parser.add_argument("--mnemonic-file", help="Path to deployer mnemonic file (mode 600)")
+    parser.add_argument("--mnemonic-secret", help="GCP Secret Manager secret name")
     parser.add_argument("--cortex-asset-id", type=int, required=True)
     parser.add_argument("--cortex-amount", type=int, required=True,
                         help="Total CORTEX (in micro-units) to add as liquidity")
@@ -64,7 +120,13 @@ def main():
         print("ERROR: Mainnet liquidity setup requires --confirm flag.")
         sys.exit(1)
 
-    private_key, address = get_deployer(args.deployer_mnemonic)
+    mnemonic_phrase = _load_mnemonic(
+        mnemonic_file=args.mnemonic_file,
+        mnemonic_secret=args.mnemonic_secret,
+    )
+    private_key, address = get_deployer(mnemonic_phrase)
+    mnemonic_phrase = "0" * len(mnemonic_phrase)
+    del mnemonic_phrase
     client = algod.AlgodClient("", MAINNET_ALGOD_URL)
 
     tinyman_cortex = int(args.cortex_amount * TINYMAN_SPLIT)

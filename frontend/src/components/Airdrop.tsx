@@ -3,6 +3,8 @@
 import { useWallet } from '@txnlab/use-wallet-react';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import Image from 'next/image';
 import {
   Gift,
   Shield,
@@ -134,6 +136,8 @@ export default function Airdrop() {
   const { activeAccount, wallets } = useWallet();
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
   const [registered, setRegistered] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
   const [expandedTier, setExpandedTier] = useState<string | null>(null);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -154,11 +158,27 @@ export default function Airdrop() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleRegister = useCallback(() => {
-    if (activeAccount) {
+  const handleRegister = useCallback(async () => {
+    if (!activeAccount || registering) return;
+    setRegistering(true);
+    setRegisterError(null);
+    try {
+      const response = await fetch('/api/airdrop/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet_address: activeAccount.address }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail || 'Failed to register wallet');
+      }
       setRegistered(true);
+    } catch (error) {
+      setRegisterError(error instanceof Error ? error.message : 'Failed to register wallet');
+    } finally {
+      setRegistering(false);
     }
-  }, [activeAccount]);
+  }, [activeAccount, registering]);
 
   async function handleConnect(walletId: string) {
     const wallet = wallets?.find((w) => w.id === walletId);
@@ -272,11 +292,17 @@ export default function Airdrop() {
           ) : (
             <button
               onClick={handleRegister}
+              disabled={registering}
               className="w-full flex items-center justify-center gap-3 bg-[#007AFF] hover:bg-[#0062CC] text-white px-6 py-4 rounded-2xl font-black uppercase tracking-tighter text-sm transition-all shadow-lg shadow-[#007AFF]/20 active:scale-[0.98]"
             >
               <Gift className="w-5 h-5" />
-              Register for Genesis Airdrop
+              {registering ? 'Registering...' : 'Register for Genesis Airdrop'}
             </button>
+          )}
+          {registerError && (
+            <p className="text-center text-[10px] text-red-400 mt-3 font-semibold">
+              {registerError}
+            </p>
           )}
           <p className="text-center text-[9px] text-gray-600 mt-3 font-mono uppercase tracking-widest">
             Registration does not guarantee allocation. Eligibility verified at snapshot.
@@ -422,7 +448,7 @@ export default function Airdrop() {
           <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-[#007AFF] transition-colors" />
         </a>
 
-        <a
+        <Link
           href="/docs/api"
           className="flex items-center gap-4 bg-[#1A1A1A] border border-white/5 rounded-2xl p-5 hover:border-[#007AFF]/30 transition-all group"
         >
@@ -434,7 +460,7 @@ export default function Airdrop() {
             <p className="text-xs text-gray-500">Qualify for the developer builder tier</p>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#007AFF] transition-colors" />
-        </a>
+        </Link>
       </motion.div>
 
       {/* Wallet Connect Modal */}
@@ -471,7 +497,14 @@ export default function Airdrop() {
                     >
                       <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
                         {iconUrl ? (
-                          <img src={iconUrl} alt={wallet.metadata?.name || wallet.id} className="w-7 h-7 object-contain" />
+                          <Image
+                            src={iconUrl}
+                            alt={wallet.metadata?.name || wallet.id}
+                            width={28}
+                            height={28}
+                            unoptimized
+                            className="w-7 h-7 object-contain"
+                          />
                         ) : (
                           <Wallet className="w-5 h-5 text-gray-400" />
                         )}

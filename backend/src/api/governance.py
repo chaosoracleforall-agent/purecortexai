@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from src.services.cache import get_cache_service, cache_with_ttl, TTL_GOVERNANCE
 from src.services.algorand import GOVERNANCE_APP_ID, get_algorand_service
 from src.services.governance_voting import (
+    SIGNED_VOTE_MAX_AGE,
     calculate_live_tally,
     calculate_voter_power,
     normalize_proposal,
@@ -49,6 +50,7 @@ ARTICLES_PATH = os.path.join(_CONSTITUTION_DIR, "ARTICLES.md")
 PROPOSAL_PREFIX = "governance:proposal"
 PROPOSAL_COUNTER_KEY = "governance:proposal_counter"
 PROPOSAL_INDEX_KEY = "governance:proposal_ids"
+SIGNED_VOTE_NONCE_PREFIX = "governance:signed_vote_nonce"
 
 # Proposal TTL — 90 days (seconds)
 PROPOSAL_TTL = 90 * 24 * 3600
@@ -258,6 +260,30 @@ async def _redis_smembers(key: str) -> set:
     except Exception as exc:
         logger.warning("Redis SMEMBERS failed for %s: %s", key, exc)
         return set()
+
+
+async def _claim_signed_vote_nonce(*, proposal_id: int, voter: str, nonce: str) -> bool:
+    """
+    Claim a signed-vote nonce exactly once to block replay attacks.
+    Returns False when nonce is already used.
+    """
+    cache = get_cache_service()
+    if not cache._redis:
+        raise HTTPException(
+            status_code=503,
+            detail="Redis unavailable — signed vote replay protection offline.",
+        )
+    key = f"{SIGNED_VOTE_NONCE_PREFIX}:{proposal_id}:{voter}:{nonce}"
+    ttl_seconds = int(SIGNED_VOTE_MAX_AGE.total_seconds()) + 60
+    try:
+        claimed = await cache._redis.set(key, "1", ex=ttl_seconds, nx=True)
+    except Exception as exc:
+        logger.error("Redis nonce claim failed for %s: %s", key, exc)
+        raise HTTPException(
+            status_code=503,
+            detail="Redis unavailable — signed vote replay protection offline.",
+        ) from exc
+    return bool(claimed)
 
 
 async def _get_proposal(proposal_id: int) -> Optional[Dict[str, Any]]:
@@ -692,6 +718,13 @@ async def vote_on_proposal_signed(proposal_id: int, body: SignedVoteRequest):
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if not await _claim_signed_vote_nonce(
+        proposal_id=proposal_id,
+        voter=body.voter,
+        nonce=body.nonce,
+    ):
+        raise HTTPException(status_code=409, detail="Vote nonce has already been used.")
 
     proposal, power_summary = await _record_vote(
         proposal_id,

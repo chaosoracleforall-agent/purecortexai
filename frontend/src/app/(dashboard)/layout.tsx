@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </a>
             </div>
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-500 uppercase font-mono">
-              <ShieldCheck className="w-3.5 h-3.5" /> Testnet Active
+              <ShieldCheck className="w-3.5 h-3.5" /> Mainnet Active
             </div>
             <div className="hidden sm:block">
               <WalletButton />
@@ -170,7 +170,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </a>
               </div>
               <div className="mt-3 flex items-center gap-1.5 px-4 py-2 text-[10px] font-bold text-emerald-500 uppercase font-mono">
-                <ShieldCheck className="w-3.5 h-3.5" /> Testnet Active
+                <ShieldCheck className="w-3.5 h-3.5" /> Mainnet Active
               </div>
             </motion.div>
           </>
@@ -192,7 +192,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3 sm:gap-4">
             <Link href="/docs/terms" className="hover:text-white transition-colors">Terms</Link>
             <Link href="/docs/privacy" className="hover:text-white transition-colors">Privacy</Link>
-            <span className="hidden sm:block">PURECORTEX v0.7.0</span>
+            <span className="hidden sm:block">PURECORTEX v1.0.0</span>
           </div>
         </div>
       </footer>
