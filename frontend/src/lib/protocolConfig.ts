@@ -38,6 +38,10 @@ export const protocolConfig = {
     "creatorVesting": {
       "appId": 3501164479,
       "status": "active"
+    },
+    "airdropClaim": {
+      "appId": 3502246857,
+      "status": "active"
     }
   },
   "tokenomics": {
@@ -121,7 +125,7 @@ export const protocolConfig = {
   "airdrop": {
     "snapshotBlock": 1775059909,
     "merkleRoot": "94a51571c1a21541256768d83e6a7082f9ccfa81807f8c4a7733b59e86db52c2",
-    "distributionContract": 3502147578,
+    "distributionContract": 3502246857,
     "claimDeadline": "2026-07-01T00:00:00Z",
     "tiers": {
       "testnetPioneers": {
@@ -192,7 +196,3 @@ export const OPERATIONS_ADDRESS = protocolConfig.wallets.operations;
 export const CREATOR_VESTING_ADDRESS = protocolConfig.wallets.creatorVesting;
 
 export const LEGACY_DEPLOYMENTS = protocolConfig.legacyDeployments;
-
-export const EXPLORER_BASE_URL = protocolConfig.network === 'mainnet'
-  ? 'https://explorer.perawallet.app'
-  : 'https://testnet.explorer.perawallet.app';
