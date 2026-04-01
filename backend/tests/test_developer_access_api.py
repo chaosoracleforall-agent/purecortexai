@@ -60,7 +60,17 @@ def test_internal_admin_surface_requires_internal_token(monkeypatch):
     app = load_app(monkeypatch)
 
     with TestClient(app) as client:
+        # Without the oauth2-proxy header, middleware rejects at gate (BE-003)
         response = client.get("/internal/admin/health")
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Admin authentication required"
+
+        # With the proxy header but no internal token configured, the
+        # endpoint itself rejects with 503.
+        response = client.get(
+            "/internal/admin/health",
+            headers={"x-purecortex-auth-email": "admin@purecortex.ai"},
+        )
         assert response.status_code == 503
         assert response.json()["detail"] == "Internal admin token not configured"
 
@@ -73,7 +83,10 @@ def test_internal_admin_health_sets_no_store_headers(monkeypatch):
     with TestClient(app) as client:
         response = client.get(
             "/internal/admin/health",
-            headers={"X-Internal-Admin-Token": "pytest-internal-token"},
+            headers={
+                "X-Internal-Admin-Token": "pytest-internal-token",
+                "x-purecortex-auth-email": "admin@purecortex.ai",
+            },
         )
         assert response.status_code == 200
         assert response.json() == {"status": "ok", "surface": "internal-admin"}

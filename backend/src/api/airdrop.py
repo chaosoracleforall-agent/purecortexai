@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -24,6 +25,11 @@ SNAPSHOT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "snapshots
 
 
 def _load_snapshot() -> dict[str, Any] | None:
+    """Load and verify the most recent airdrop snapshot file.
+
+    Verifies SHA-256 integrity against the companion .sha256 file to
+    detect tampering (BE-001).
+    """
     global _snapshot_cache
     if _snapshot_cache is not None:
         return _snapshot_cache
@@ -35,9 +41,33 @@ def _load_snapshot() -> dict[str, Any] | None:
     if not snapshot_files:
         return None
 
+    snapshot_path = snapshot_files[0]
     try:
-        _snapshot_cache = json.loads(snapshot_files[0].read_text())
-        logger.info("Loaded airdrop snapshot: %s", snapshot_files[0].name)
+        raw = snapshot_path.read_text()
+
+        # Verify integrity hash if companion file exists
+        hash_path = snapshot_path.with_suffix(".sha256")
+        if hash_path.exists():
+            expected_hash = hash_path.read_text().strip()
+            actual_hash = hashlib.sha256(raw.encode()).hexdigest()
+            if actual_hash != expected_hash:
+                logger.critical(
+                    "Airdrop snapshot INTEGRITY CHECK FAILED: %s "
+                    "(expected %s, got %s). Refusing to load.",
+                    snapshot_path.name,
+                    expected_hash[:16],
+                    actual_hash[:16],
+                )
+                return None
+            logger.info("Snapshot integrity verified: %s", snapshot_path.name)
+        else:
+            logger.warning(
+                "No .sha256 companion file for %s — loading without integrity check",
+                snapshot_path.name,
+            )
+
+        _snapshot_cache = json.loads(raw)
+        logger.info("Loaded airdrop snapshot: %s", snapshot_path.name)
         return _snapshot_cache
     except Exception as exc:
         logger.error("Failed to load airdrop snapshot: %s", exc)

@@ -511,8 +511,14 @@ def run_snapshot(
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     output_path = OUTPUT_DIR / f"airdrop_snapshot_{network}_{int(time.time())}.json"
-    output_path.write_text(json.dumps(result, indent=2))
+    snapshot_json = json.dumps(result, indent=2)
+    output_path.write_text(snapshot_json)
+    # Write a companion SHA-256 integrity hash for the backend to verify (BE-001)
+    snapshot_hash = hashlib.sha256(snapshot_json.encode()).hexdigest()
+    hash_path = output_path.with_suffix(".sha256")
+    hash_path.write_text(snapshot_hash)
     print(f"\nSnapshot written to {output_path}")
+    print(f"Integrity hash: {hash_path} ({snapshot_hash[:16]}...)")
     print(f"Merkle root: {merkle_root.hex()}")
     print(f"Total eligible: {len(eligibility)} wallets")
     print(f"Total allocated: {sum(w.total_allocation for w in eligibility.values()):,} CORTEX (micro)")

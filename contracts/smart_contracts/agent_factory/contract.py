@@ -188,6 +188,9 @@ class AgentFactory(ARC4Contract):
             total=UInt64(10_000_000_000_000_000),
             decimals=UInt64(6),
             manager=Global.current_application_address,
+            reserve=Global.current_application_address,
+            freeze=Global.zero_address,
+            clawback=Global.zero_address,
             url="https://purecortex.ai",
             fee=0,
         ).submit()
@@ -284,6 +287,17 @@ class AgentFactory(ARC4Contract):
             self.pending_graduation_threshold,
         )
         self.agent_supplies[asset.id] = self.pending_supply
+        self._clear_pending_agent()
+
+    @abimethod()
+    def clear_pending_agent(self) -> None:
+        """
+        Clear a stuck pending agent state.
+        Only callable by the application creator. Prevents permanent DoS
+        on agent creation if a caller never finalizes their pending agent.
+        """
+        assert Txn.sender == Global.creator_address, "Unauthorized: clear_pending_agent"
+        assert self.pending_asset_id != UInt64(0), "No pending agent to clear"
         self._clear_pending_agent()
 
     @abimethod(readonly=True)

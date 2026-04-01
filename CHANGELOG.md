@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.1 - 2026-04-01
+
+### Security Fixes — Smart Contracts
+- **SEV-001 (HIGH):** Fixed governance flash-vote attack — added 7-day `VOTE_LOCK_PERIOD` preventing CORTEX reclaim until cooldown after voting ends. Vote lock period is snapshotted per-proposal (immutable).
+- **SEV-002 (MEDIUM):** Fixed `AirdropClaim.reclaim_unclaimed` — now sets `total_claimed = total_allocated` before inner transfer, preventing repeated calls from draining excess balance.
+- **SEV-003 (MEDIUM):** Added `total_claimed + amount <= total_allocated` ceiling check in `AirdropClaim.claim` to enforce the invariant on-chain regardless of Merkle tree correctness.
+- **SEV-004 (MEDIUM):** Added `clear_pending_agent` creator-only method to `AgentFactory` to prevent permanent DoS on agent creation from abandoned pending agents.
+- **SEV-005 (LOW):** Explicitly set `freeze=Global.zero_address` and `clawback=Global.zero_address` in `bootstrap_protocol` CORTEX ASA creation for defense-in-depth.
+- **SEV-008 (LOW):** Added `cortex_transfer.sender == Txn.sender` check in `VeCortexStaking.fund_reward_pool` for consistency with other transfer-accepting methods.
+
+### Security Fixes — Backend
+- **BE-001 (HIGH):** Airdrop snapshot files are now verified via SHA-256 companion hash on load. Snapshot script generates `.sha256` integrity file. Tampered snapshots are rejected with a CRITICAL log.
+- **BE-002 (HIGH):** Governance proposals are now write-through persisted to PostgreSQL. Redis remains fast-path cache; proposals survive Redis restarts. Counter re-seeds from PostgreSQL max ID to prevent ID collisions.
+- **BE-003 (HIGH):** Removed `/internal/admin` from `PUBLIC_PREFIXES`. Admin endpoints now require `x-purecortex-auth-email` header (set by oauth2-proxy) to pass the API key middleware gate.
+
+### Added
+- `GovernanceProposal` SQLAlchemy model + Alembic migration `20260401_0003`.
+- Updated admin endpoint tests to cover the new middleware gate.
+
 ## 0.9.0 - 2026-04-01
 
 ### Added — Social Agent Community Engagement

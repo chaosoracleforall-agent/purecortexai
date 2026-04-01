@@ -57,6 +57,7 @@ class GovernanceContract(ARC4Contract):
         self.DISCUSSION_PERIOD = UInt64(8640)  # 48 hours (48 * 60 * 3)
         self.VOTING_PERIOD = UInt64(21600)  # 5 days (5 * 24 * 60 * 3)
         self.TIMELOCK_PERIOD = UInt64(30240)  # 7 days (7 * 24 * 60 * 3)
+        self.VOTE_LOCK_PERIOD = UInt64(30240)  # 7 days after voting ends (anti-flash-vote)
 
         # Quorum and majority thresholds (basis points)
         self.QUORUM_BPS = UInt64(2500)  # 25% of total veCORTEX must participate
@@ -126,6 +127,7 @@ class GovernanceContract(ARC4Contract):
             + op.itob(self.TIMELOCK_PERIOD)
             + op.itob(self.QUORUM_BPS)
             + op.itob(self.SUPERMAJORITY_BPS)
+            + op.itob(self.VOTE_LOCK_PERIOD)
         )
 
         return proposal_id
@@ -368,13 +370,18 @@ class GovernanceContract(ARC4Contract):
     @abimethod()
     def reclaim_vote(self, proposal_id: UInt64) -> None:
         """
-        Reclaim escrowed CORTEX voting weight once a proposal is terminal.
+        Reclaim escrowed CORTEX voting weight once a proposal is terminal
+        AND the vote lock period has elapsed.
 
         Terminal statuses:
           2 = passed
           3 = rejected
           4 = executed
           5 = cancelled
+
+        The vote lock period (default 7 days after voting ends) prevents
+        flash-vote attacks where an attacker borrows CORTEX from a DEX,
+        votes, and immediately reclaims to sell.
         """
         assert self.cortex_asset_id != UInt64(0), "Contract not initialized"
         assert op.Box.get(Bytes(b"p") + op.itob(proposal_id))[1], "Proposal not found"
@@ -382,6 +389,17 @@ class GovernanceContract(ARC4Contract):
         proposal_data = self.proposals[proposal_id]
         status = op.btoi(op.extract(proposal_data, 64, 8))
         assert status >= UInt64(2), "Proposal is still active"
+
+        # Enforce vote lock period: CORTEX cannot be reclaimed until
+        # vote_lock_period rounds after the voting phase ended.
+        assert op.Box.get(Bytes(b"g") + op.itob(proposal_id))[1], "Proposal params missing"
+        params = self.proposal_params[proposal_id]
+        discussion_period = op.btoi(op.extract(params, 0, 8))
+        voting_period = op.btoi(op.extract(params, 8, 8))
+        vote_lock_period = op.btoi(op.extract(params, 40, 8))
+        created_round = op.btoi(op.extract(proposal_data, 32, 8))
+        unlock_round = created_round + discussion_period + voting_period + vote_lock_period
+        assert Global.round >= unlock_round, "Vote lock period not elapsed"
 
         vote_key = op.itob(proposal_id) + Txn.sender.bytes
         vote_box_key = Bytes(b"v") + vote_key

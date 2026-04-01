@@ -264,6 +264,7 @@ class VeCortexStaking(ARC4Contract):
         Typically called by the protocol to distribute the 24% emission allocation.
         """
         assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert cortex_transfer.sender == Txn.sender, "Transfer sender must match caller"
         assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
         assert (
             cortex_transfer.asset_receiver == Global.current_application_address

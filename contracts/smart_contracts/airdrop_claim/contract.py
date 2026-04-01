@@ -145,6 +145,9 @@ class AirdropClaim(ARC4Contract):
         # Verify the Merkle proof
         assert _verify_merkle_proof(leaf, proof, self.merkle_root), "Invalid Merkle proof"
 
+        # Enforce ceiling: total_claimed can never exceed total_allocated
+        assert self.total_claimed + amount <= self.total_allocated, "Exceeds total allocation"
+
         # Mark as claimed (box storage - user pays MBR)
         self.claims[sender_key] = Bytes(b"\x01")
 
@@ -174,6 +177,9 @@ class AirdropClaim(ARC4Contract):
 
         unclaimed = self.total_allocated - self.total_claimed
         assert unclaimed > UInt64(0), "No unclaimed tokens"
+
+        # Mark all remaining as claimed to prevent repeated calls
+        self.total_claimed = self.total_allocated
 
         itxn.AssetTransfer(
             xfer_asset=Asset(self.cortex_token),
