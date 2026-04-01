@@ -279,7 +279,8 @@ export default function Airdrop() {
 
       const atc = new algosdk.AtomicTransactionComposer();
 
-      const walletSigner: algosdk.TransactionSigner = async (txnGroup, indexesToSign) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const walletSigner = async (txnGroup: any[], indexesToSign: number[]) => {
         const wallet = wallets?.find(w => w.activeAccount?.address === activeAccount.address);
         if (!wallet) throw new Error('Wallet not found');
         const encoded = txnGroup.map(t => t.toByte());
