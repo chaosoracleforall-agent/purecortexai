@@ -288,14 +288,11 @@ export default function Airdrop() {
           fee: 2000, // Cover app call + inner transfer
           flatFee: true,
         },
-        signer: async (txnGroup: algosdk.Transaction[], indexesToSign: number[]) => {
+        signer: async (txnGroup: Uint8Array[], indexesToSign: number[]) => {
           // Use the wallet to sign
           const wallet = wallets?.find(w => w.activeAccount?.address === activeAccount.address);
           if (!wallet) throw new Error('Wallet not found');
-          const signed = await wallet.signTransactions(
-            txnGroup.map(t => t.toByte()),
-            indexesToSign,
-          );
+          const signed = await wallet.signTransactions(txnGroup, indexesToSign);
           return signed.filter((s): s is Uint8Array => s !== null);
         },
         // Box reference for claim tracking
