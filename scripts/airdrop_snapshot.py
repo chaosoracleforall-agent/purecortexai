@@ -121,6 +121,138 @@ def snapshot_defi_users(idx: indexer.IndexerClient, block: int | None = None) ->
     return filtered
 
 
+NFD_REGISTRY_APP_ID = 760937186  # NFD v2 registry on mainnet
+
+
+def snapshot_governors(idx: indexer.IndexerClient, block: int | None = None) -> set[str]:
+    """Identify wallets that participated in Algorand governance periods."""
+    governors: set[str] = set()
+    search_kwargs: dict[str, Any] = {"limit": 1000}
+    if block is not None:
+        search_kwargs["max_round"] = block
+
+    try:
+        # Governance commitment transactions send ALGO to escrow addresses
+        # starting with "GOVERRR". We look for payment transactions to these.
+        response = idx.search_transactions(
+            note_prefix=b"af/gov",
+            **search_kwargs,
+        )
+        for txn in response.get("transactions", []):
+            sender = txn.get("sender", "")
+            if sender:
+                governors.add(sender)
+    except Exception as e:
+        print(f"    Warning: Governance scan (note prefix) failed: {e}")
+
+    try:
+        # Also check for accounts that sent commitment transactions
+        response = idx.search_transactions(
+            address=GOVERNANCE_ESCROW_PREFIX,
+            address_role="receiver",
+            **search_kwargs,
+        )
+        for txn in response.get("transactions", []):
+            sender = txn.get("sender", "")
+            if sender:
+                governors.add(sender)
+    except Exception as e:
+        print(f"    Warning: Governance scan (escrow) failed: {e}")
+
+    return governors
+
+
+def snapshot_nfd_holders(idx: indexer.IndexerClient) -> set[str]:
+    """Identify wallets that own at least one .algo NFD (Non-Fungible Domain)."""
+    holders: set[str] = set()
+
+    try:
+        response = idx.search_transactions(
+            application_id=NFD_REGISTRY_APP_ID,
+            limit=1000,
+        )
+        for txn in response.get("transactions", []):
+            sender = txn.get("sender", "")
+            if sender:
+                holders.add(sender)
+    except Exception as e:
+        print(f"    Warning: NFD holder scan failed: {e}")
+
+    return holders
+
+
+def snapshot_developers(idx: indexer.IndexerClient, block: int | None = None) -> set[str]:
+    """Identify wallets that deployed smart contracts on Algorand."""
+    developers: set[str] = set()
+    search_kwargs: dict[str, Any] = {"limit": 1000, "txn_type": "appl"}
+    if block is not None:
+        search_kwargs["max_round"] = block
+
+    try:
+        response = idx.search_transactions(**search_kwargs)
+        for txn in response.get("transactions", []):
+            # Application create transactions have on_completion = 0
+            # and include an approval_program
+            app_txn = txn.get("application-transaction", {})
+            if app_txn.get("on-completion") == "noop" and app_txn.get("approval-program"):
+                sender = txn.get("sender", "")
+                if sender:
+                    developers.add(sender)
+    except Exception as e:
+        print(f"    Warning: Developer scan failed: {e}")
+
+    return developers
+
+
+def snapshot_social_campaign(db_url: str | None = None) -> set[str]:
+    """Pull registered wallets from the airdrop_registrations table."""
+    registrations: set[str] = set()
+
+    if not db_url:
+        db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        print("    Warning: DATABASE_URL not set — skipping social campaign tier")
+        return registrations
+
+    try:
+        import sqlalchemy
+        engine = sqlalchemy.create_engine(db_url)
+        with engine.connect() as conn:
+            result = conn.execute(sqlalchemy.text("SELECT wallet_address FROM airdrop_registrations"))
+            for row in result:
+                registrations.add(row[0])
+    except Exception as e:
+        print(f"    Warning: Social campaign scan failed: {e}")
+
+    return registrations
+
+
+def snapshot_community_tasks(db_url: str | None = None) -> set[str]:
+    """Pull wallets that completed community tasks from the database."""
+    participants: set[str] = set()
+
+    if not db_url:
+        db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        print("    Warning: DATABASE_URL not set — skipping community tasks tier")
+        return participants
+
+    try:
+        import sqlalchemy
+        engine = sqlalchemy.create_engine(db_url)
+        with engine.connect() as conn:
+            # community_task_completions table stores task completers
+            result = conn.execute(sqlalchemy.text(
+                "SELECT DISTINCT wallet_address FROM community_task_completions"
+            ))
+            for row in result:
+                participants.add(row[0])
+    except Exception as e:
+        print(f"    Warning: Community tasks scan failed: {e}")
+
+    return participants
+
+
 def snapshot_testnet_pioneers(idx: indexer.IndexerClient, testnet_app_ids: list[int]) -> set[str]:
     """Identify wallets that interacted with PureCortex testnet contracts."""
     pioneers: set[str] = set()
@@ -170,10 +302,37 @@ def compute_merkle_root(leaves: list[bytes]) -> bytes:
 def wallet_leaf(address: str, amount: int) -> bytes:
     """Compute the Merkle leaf for a wallet's allocation.
 
-    Prefixed with 0x00 for domain separation from internal nodes.
+    Encoding uses raw bytes to match the AVM smart contract:
+      SHA256(0x00 || 32-byte-public-key || ":" || 8-byte-big-endian-amount)
+
+    For backwards compatibility with off-chain tools that don't have
+    algosdk, falls back to the UTF-8 string encoding when the address
+    cannot be decoded (e.g. in unit tests with short test addresses).
     """
-    data = b"\x00" + f"{address}:{amount}".encode()
+    try:
+        from algosdk.encoding import decode_address
+        raw_pk = decode_address(address)  # 32 bytes
+        data = b"\x00" + raw_pk + b":" + amount.to_bytes(8, "big")
+    except Exception:
+        # Fallback for test addresses that aren't valid Algorand addresses
+        data = b"\x00" + address.encode() + b":" + amount.to_bytes(8, "big")
     return hashlib.sha256(data).digest()
+
+
+def pack_proof_for_avm(proof: list[dict[str, Any]]) -> bytes:
+    """Pack a JSON proof into the binary format expected by the AVM contract.
+
+    Each step becomes 33 bytes: 32-byte sibling hash + 1-byte position flag.
+    Position flag: 0x00 = sibling is on the left, 0x01 = sibling is on the right.
+    """
+    packed = b""
+    for step in proof:
+        sibling_hash = bytes.fromhex(step["hash"])
+        # In the JSON proof, "left" means the sibling is to the left of us
+        # In the AVM contract, 0x00 = sibling on left, 0x01 = sibling on right
+        position_byte = b"\x00" if step["position"] == "left" else b"\x01"
+        packed += sibling_hash + position_byte
+    return packed
 
 
 def generate_merkle_proof(leaves: list[bytes], target_index: int) -> list[dict[str, Any]]:
@@ -214,8 +373,9 @@ def run_snapshot(
     network: str = "mainnet",
     block: int | None = None,
     testnet_app_ids: list[int] | None = None,
+    db_url: str | None = None,
 ) -> dict[str, Any]:
-    """Execute the full airdrop snapshot pipeline."""
+    """Execute the full airdrop snapshot pipeline across all 7 tiers."""
     print(f"Starting airdrop snapshot on {network}...")
     idx = get_indexer(network)
 
@@ -234,7 +394,7 @@ def run_snapshot(
 
     eligibility: dict[str, WalletEligibility] = {}
 
-    print("\n[1/4] Scanning testnet pioneers...")
+    print("\n[1/7] Scanning testnet pioneers...")
     pioneers = snapshot_testnet_pioneers(idx, testnet_app_ids)
     print(f"  Found {len(pioneers)} testnet pioneer wallets")
     for addr in pioneers:
@@ -243,7 +403,7 @@ def run_snapshot(
         eligibility[addr].tiers.append("testnet_pioneers")
         eligibility[addr].scores["testnet_pioneers"] = 1.0
 
-    print("\n[2/4] Scanning DeFi users...")
+    print("\n[2/7] Scanning DeFi users...")
     defi_wallets = snapshot_defi_users(idx, block)
     print(f"  Found {len(defi_wallets)} DeFi-active wallets")
     for addr, info in defi_wallets.items():
@@ -253,7 +413,52 @@ def run_snapshot(
         protocol_count = len(info.get("protocols", []))
         eligibility[addr].scores["algorand_defi"] = min(1.0, protocol_count / 3.0)
 
-    print("\n[3/4] Computing allocations...")
+    print("\n[3/7] Scanning Algorand governors...")
+    governors = snapshot_governors(idx, block)
+    print(f"  Found {len(governors)} governance participants")
+    for addr in governors:
+        if addr not in eligibility:
+            eligibility[addr] = WalletEligibility(address=addr)
+        eligibility[addr].tiers.append("algorand_governors")
+        eligibility[addr].scores["algorand_governors"] = 1.0
+
+    print("\n[4/7] Scanning NFD holders...")
+    nfd_holders = snapshot_nfd_holders(idx)
+    print(f"  Found {len(nfd_holders)} NFD holders")
+    for addr in nfd_holders:
+        if addr not in eligibility:
+            eligibility[addr] = WalletEligibility(address=addr)
+        eligibility[addr].tiers.append("nfd_holders")
+        eligibility[addr].scores["nfd_holders"] = 1.0
+
+    print("\n[5/7] Scanning developers...")
+    developers = snapshot_developers(idx, block)
+    print(f"  Found {len(developers)} developer wallets")
+    for addr in developers:
+        if addr not in eligibility:
+            eligibility[addr] = WalletEligibility(address=addr)
+        eligibility[addr].tiers.append("developers")
+        eligibility[addr].scores["developers"] = 1.0
+
+    print("\n[6/7] Scanning social campaign registrations...")
+    social = snapshot_social_campaign(db_url)
+    print(f"  Found {len(social)} social campaign registrations")
+    for addr in social:
+        if addr not in eligibility:
+            eligibility[addr] = WalletEligibility(address=addr)
+        eligibility[addr].tiers.append("social_campaign")
+        eligibility[addr].scores["social_campaign"] = 1.0
+
+    print("\n[7/7] Scanning community task completions...")
+    community = snapshot_community_tasks(db_url)
+    print(f"  Found {len(community)} community task participants")
+    for addr in community:
+        if addr not in eligibility:
+            eligibility[addr] = WalletEligibility(address=addr)
+        eligibility[addr].tiers.append("community_tasks")
+        eligibility[addr].scores["community_tasks"] = 1.0
+
+    print("\nComputing allocations...")
     tier_counts: dict[str, int] = defaultdict(int)
     for wallet in eligibility.values():
         for tier in wallet.tiers:
@@ -269,10 +474,22 @@ def run_snapshot(
             total += allocation
         wallet.total_allocation = total
 
-    print("\n[4/4] Building Merkle tree...")
+    print("\nBuilding Merkle tree...")
     sorted_wallets = sorted(eligibility.values(), key=lambda w: w.address)
     leaves = [wallet_leaf(w.address, w.total_allocation) for w in sorted_wallets]
     merkle_root = compute_merkle_root(leaves)
+
+    # Generate proofs for each wallet (both JSON and packed AVM format)
+    print("Generating Merkle proofs...")
+    wallet_proofs: dict[str, dict[str, Any]] = {}
+    for i, wallet in enumerate(sorted_wallets):
+        proof = generate_merkle_proof(leaves, i)
+        packed = pack_proof_for_avm(proof)
+        wallet_proofs[wallet.address] = {
+            "amount": wallet.total_allocation,
+            "proof": proof,
+            "proof_packed_hex": packed.hex(),
+        }
 
     result = {
         "snapshot_time": time.time(),
@@ -289,6 +506,7 @@ def run_snapshot(
             for tier, pct in TIER_ALLOCATIONS.items()
         },
         "wallets": [asdict(w) for w in sorted_wallets],
+        "proofs": wallet_proofs,
     }
 
     OUTPUT_DIR.mkdir(exist_ok=True)

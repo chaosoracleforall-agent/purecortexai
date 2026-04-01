@@ -19,7 +19,13 @@ import {
   ExternalLink,
   Sparkles,
 } from 'lucide-react';
-import { TGE_DATE_ISO } from '@/lib/protocolConfig';
+import {
+  TGE_DATE_ISO,
+  AIRDROP_CONTRACT_ID,
+  AIRDROP_CLAIM_DEADLINE,
+  CORTEX_ASSET_ID,
+  PUBLIC_API_URL,
+} from '@/lib/protocolConfig';
 
 interface AirdropTier {
   id: string;
@@ -142,6 +148,21 @@ export default function Airdrop() {
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
 
+  // Claim flow state
+  const [eligibility, setEligibility] = useState<{
+    eligible: boolean;
+    allocation: number;
+    tiers: string[];
+  } | null>(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  const [claimed, setClaimed] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [claimTxId, setClaimTxId] = useState<string | null>(null);
+
+  const claimsOpen = new Date(AIRDROP_CLAIM_DEADLINE).getTime() > Date.now()
+    && new Date('2026-04-21T00:00:00Z').getTime() <= Date.now();
+
   useEffect(() => {
     const launchDate = new Date(TGE_DATE_ISO).getTime();
     const update = () => {
@@ -193,6 +214,108 @@ export default function Airdrop() {
       setConnecting(null);
     }
   }
+
+  // Check eligibility when wallet connects
+  const checkEligibility = useCallback(async () => {
+    if (!activeAccount) return;
+    setCheckingEligibility(true);
+    setClaimError(null);
+    try {
+      const res = await fetch(`${PUBLIC_API_URL}/api/airdrop/eligibility/${activeAccount.address}`);
+      if (!res.ok) {
+        if (res.status === 503) {
+          setEligibility(null);
+          return;
+        }
+        throw new Error('Failed to check eligibility');
+      }
+      const data = await res.json();
+      setEligibility({
+        eligible: data.eligible,
+        allocation: data.allocation || 0,
+        tiers: data.tiers || [],
+      });
+    } catch {
+      setEligibility(null);
+    } finally {
+      setCheckingEligibility(false);
+    }
+  }, [activeAccount]);
+
+  useEffect(() => {
+    if (activeAccount && claimsOpen) {
+      checkEligibility();
+    }
+  }, [activeAccount, claimsOpen, checkEligibility]);
+
+  const handleClaim = useCallback(async () => {
+    if (!activeAccount || !AIRDROP_CONTRACT_ID || claiming) return;
+    setClaiming(true);
+    setClaimError(null);
+    try {
+      // 1. Fetch proof from backend
+      const proofRes = await fetch(`${PUBLIC_API_URL}/api/airdrop/proof/${activeAccount.address}`);
+      if (!proofRes.ok) throw new Error('No airdrop allocation found for this address');
+      const proofData = await proofRes.json();
+
+      // 2. Build the claim transaction using algosdk
+      const algosdk = await import('algosdk');
+      const algodClient = new algosdk.Algodv2('', 'https://mainnet-api.4160.nodely.dev', '');
+      const suggestedParams = await algodClient.getTransactionParams().do();
+
+      // Encode ABI call: claim(uint64, byte[])
+      const packedProof = new Uint8Array(
+        (proofData.proof_packed_hex.match(/.{1,2}/g) || []).map((b: string) => parseInt(b, 16))
+      );
+
+      const abiMethod = new algosdk.ABIMethod({
+        name: 'claim',
+        args: [
+          { type: 'uint64', name: 'amount' },
+          { type: 'byte[]', name: 'proof' },
+        ],
+        returns: { type: 'uint64' },
+      });
+
+      const atc = new algosdk.AtomicTransactionComposer();
+      atc.addMethodCall({
+        appID: AIRDROP_CONTRACT_ID,
+        method: abiMethod,
+        methodArgs: [proofData.amount, packedProof],
+        sender: activeAccount.address,
+        suggestedParams: {
+          ...suggestedParams,
+          fee: 2000, // Cover app call + inner transfer
+          flatFee: true,
+        },
+        signer: async (txnGroup: algosdk.Transaction[], indexesToSign: number[]) => {
+          // Use the wallet to sign
+          const wallet = wallets?.find(w => w.activeAccount?.address === activeAccount.address);
+          if (!wallet) throw new Error('Wallet not found');
+          const signed = await wallet.signTransactions(
+            txnGroup.map(t => t.toByte()),
+            indexesToSign,
+          );
+          return signed.filter((s): s is Uint8Array => s !== null);
+        },
+        // Box reference for claim tracking
+        boxes: [{
+          appIndex: AIRDROP_CONTRACT_ID,
+          name: algosdk.decodeAddress(activeAccount.address).publicKey,
+        }],
+        // Asset reference for CORTEX transfer
+        appForeignAssets: [CORTEX_ASSET_ID],
+      });
+
+      const result = await atc.execute(algodClient, 4);
+      setClaimTxId(result.txIDs[0]);
+      setClaimed(true);
+    } catch (error) {
+      setClaimError(error instanceof Error ? error.message : 'Claim failed');
+    } finally {
+      setClaiming(false);
+    }
+  }, [activeAccount, claiming, wallets]);
 
   return (
     <div className="space-y-8 sm:space-y-12 max-w-5xl mx-auto">
@@ -309,6 +432,91 @@ export default function Airdrop() {
           </p>
         </div>
       </motion.div>
+
+      {/* Claim Section — visible after claims open */}
+      {claimsOpen && activeAccount && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.17 }}
+          className="bg-[#1A1A1A] border border-white/5 rounded-3xl p-6 sm:p-8 space-y-5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <Gift className="w-5 h-5 text-emerald-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black tracking-tighter uppercase italic">Claim Your $CORTEX</h2>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Non-custodial on-chain claim</p>
+            </div>
+          </div>
+
+          {checkingEligibility ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-gray-400 animate-pulse">Checking eligibility...</p>
+            </div>
+          ) : eligibility?.eligible ? (
+            <div className="space-y-4">
+              <div className="bg-black/30 border border-emerald-500/10 rounded-2xl p-4 space-y-2">
+                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">You are eligible</p>
+                <p className="text-2xl font-black tracking-tighter">{formatCortex(eligibility.allocation)} <span className="text-sm text-gray-500">CORTEX</span></p>
+                {eligibility.tiers.length > 0 && (
+                  <p className="text-[10px] text-gray-500">Qualified tiers: {eligibility.tiers.join(', ')}</p>
+                )}
+              </div>
+
+              {claimed ? (
+                <div className="flex items-center justify-center gap-3 bg-emerald-500/10 border border-emerald-500/20 px-6 py-4 rounded-2xl">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  <div className="text-center">
+                    <span className="text-sm font-black uppercase tracking-wider text-emerald-500 block">Claimed Successfully</span>
+                    {claimTxId && (
+                      <a
+                        href={`https://explorer.perawallet.app/tx/${claimTxId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-[#007AFF] font-mono hover:underline mt-1 inline-flex items-center gap-1"
+                      >
+                        View transaction <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ) : !AIRDROP_CONTRACT_ID ? (
+                <div className="flex items-center justify-center gap-3 bg-amber-500/10 border border-amber-500/20 px-6 py-4 rounded-2xl">
+                  <Clock className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-bold text-amber-500">Claim contract deployment pending</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleClaim}
+                  disabled={claiming}
+                  className="w-full flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-tighter text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-60"
+                >
+                  <Gift className="w-5 h-5" />
+                  {claiming ? 'Claiming...' : `Claim ${formatCortex(eligibility.allocation)} CORTEX`}
+                </button>
+              )}
+              {claimError && (
+                <p className="text-center text-[10px] text-red-400 font-semibold">{claimError}</p>
+              )}
+              <p className="text-center text-[9px] text-gray-600 font-mono uppercase tracking-widest">
+                You pay the transaction fee. Tokens are sent directly to your wallet via smart contract.
+              </p>
+            </div>
+          ) : eligibility && !eligibility.eligible ? (
+            <div className="bg-black/30 border border-white/5 rounded-2xl p-4 text-center">
+              <p className="text-sm text-gray-400">This wallet is not eligible for the airdrop.</p>
+              <p className="text-[10px] text-gray-600 mt-1">Check eligibility criteria below or try a different wallet.</p>
+            </div>
+          ) : (
+            <div className="bg-black/30 border border-white/5 rounded-2xl p-4 text-center">
+              <p className="text-sm text-gray-400">Snapshot data not yet available.</p>
+              <p className="text-[10px] text-gray-600 mt-1">Eligibility checker goes live April 15.</p>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Airdrop Tiers */}
       <motion.div

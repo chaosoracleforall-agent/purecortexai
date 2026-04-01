@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { PureCortexLogo } from '@/components/Logo';
-import { CORTEX_ASSET_ID, FACTORY_APP_ID, REPO_URL, TGE_DATE_ISO } from '@/lib/protocolConfig';
+import { CORTEX_ASSET_ID, FACTORY_APP_ID, PROTOCOL_NETWORK, REPO_URL, TGE_DATE_ISO } from '@/lib/protocolConfig';
 import { motion } from 'framer-motion';
-import { Shield, Cpu, Zap, ArrowRight } from 'lucide-react';
+import { Shield, Cpu, Zap, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
   const [timeLeft, setTimeStep] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+  const [isLaunched, setIsLaunched] = useState(false);
 
   useEffect(() => {
     const launchDate = new Date(TGE_DATE_ISO).getTime();
@@ -17,6 +18,7 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
       const now = Date.now();
       const distance = Math.max(0, launchDate - now);
 
+      setIsLaunched(now >= launchDate);
       setTimeStep({
         days: Math.floor(distance / (1000 * 60 * 60 * 24)),
         hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -105,45 +107,75 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
           <div className="relative space-y-8 sm:space-y-12">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                <div className="space-y-1 min-w-0">
-                  <h2 className="text-[10px] font-black text-[#007AFF] uppercase tracking-[0.2em] sm:tracking-[0.3em]">Mainnet Milestone</h2>
+                  <h2 className="text-[10px] font-black text-[#007AFF] uppercase tracking-[0.2em] sm:tracking-[0.3em]">
+                    {isLaunched ? 'Mainnet Live' : 'Mainnet Milestone'}
+                  </h2>
                   <p className="text-lg sm:text-2xl font-bold italic">MARCH 31, 2026</p>
-                  <p className="text-xs sm:text-sm text-gray-500 uppercase tracking-[0.18em]">Target launch checkpoint</p>
+                  <p className="text-xs sm:text-sm text-gray-500 uppercase tracking-[0.18em]">
+                    {isLaunched ? 'Genesis launch date' : 'Target launch checkpoint'}
+                  </p>
                </div>
-               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 rounded-xl sm:rounded-2xl flex items-center justify-center border border-white/5 flex-shrink-0">
-                  <Cpu className="w-5 h-5 sm:w-6 sm:h-6 text-[#007AFF]" />
+               <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center border flex-shrink-0 ${isLaunched ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/5 border-white/5'}`}>
+                  {isLaunched
+                    ? <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
+                    : <Cpu className="w-5 h-5 sm:w-6 sm:h-6 text-[#007AFF]" />
+                  }
                </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-               {[
-                 { label: 'Days', val: timeLeft?.days ?? 0 },
-                 { label: 'Hrs', val: timeLeft?.hours ?? 0 },
-                 { label: 'Min', val: timeLeft?.minutes ?? 0 },
-                 { label: 'Sec', val: timeLeft?.seconds ?? 0 }
-               ].map((t, i) => (
-                 <div key={i} className="rounded-2xl bg-black/20 border border-white/5 py-3 sm:py-4 text-center space-y-1 sm:space-y-2 min-w-0">
+            {isLaunched ? (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {[
+                  { label: 'Factory', val: String(FACTORY_APP_ID) },
+                  { label: '$CORTEX ASA', val: String(CORTEX_ASSET_ID) },
+                  { label: 'Network', val: PROTOCOL_NETWORK === 'mainnet' ? 'MainNet' : 'TestNet' },
+                  { label: 'Status', val: 'Active' },
+                ].map((s, i) => (
+                  <div key={i} className="rounded-2xl bg-black/20 border border-white/5 py-3 sm:py-4 px-3 text-center space-y-1 sm:space-y-2 min-w-0">
+                    <div className="text-sm sm:text-lg font-black tracking-tighter tabular-nums leading-none truncate">
+                      {s.val}
+                    </div>
+                    <div className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-[0.25em]">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                {[
+                  { label: 'Days', val: timeLeft?.days ?? 0 },
+                  { label: 'Hrs', val: timeLeft?.hours ?? 0 },
+                  { label: 'Min', val: timeLeft?.minutes ?? 0 },
+                  { label: 'Sec', val: timeLeft?.seconds ?? 0 }
+                ].map((t, i) => (
+                  <div key={i} className="rounded-2xl bg-black/20 border border-white/5 py-3 sm:py-4 text-center space-y-1 sm:space-y-2 min-w-0">
                     <div className="text-2xl sm:text-4xl lg:text-[2.75rem] font-black tracking-tighter tabular-nums leading-none">
                       {timeLeft ? String(t.val).padStart(2, '0') : '--'}
                     </div>
                     <div className="text-[8px] sm:text-[9px] font-black text-gray-500 uppercase tracking-[0.25em]">{t.label}</div>
-                 </div>
-               ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="pt-6 sm:pt-8 border-t border-white/5 space-y-4 sm:space-y-6">
                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                   <span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                    <Zap className="w-3 h-3 text-yellow-500" /> Mainnet Launch Readiness
+                    {isLaunched
+                      ? <><CheckCircle2 className="w-3 h-3 text-emerald-500" /> Protocol Status</>
+                      : <><Zap className="w-3 h-3 text-yellow-500" /> Mainnet Launch Readiness</>
+                    }
                   </span>
-                  <span className="text-[9px] sm:text-[10px] font-black text-emerald-500 uppercase tracking-widest animate-pulse">Tracking</span>
+                  <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest animate-pulse ${isLaunched ? 'text-emerald-400' : 'text-emerald-500'}`}>
+                    {isLaunched ? 'Live' : 'Tracking'}
+                  </span>
                </div>
                <div className="space-y-2">
                   <div className="flex justify-between text-[9px] sm:text-[10px] font-bold text-gray-400">
                     <span>PROTOCOL STABILITY</span>
-                    <span>99.9%</span>
+                    <span>{isLaunched ? '100%' : '99.9%'}</span>
                   </div>
                   <div className="w-full h-1.5 bg-black rounded-full overflow-hidden">
-                    <div className="w-[99.9%] h-full bg-[#007AFF]" />
+                    <div className={`${isLaunched ? 'w-full bg-emerald-500' : 'w-[99.9%] bg-[#007AFF]'} h-full`} />
                   </div>
                </div>
             </div>

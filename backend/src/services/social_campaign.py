@@ -287,3 +287,142 @@ def score_target_tweet(text: str, target: dict[str, Any], created_at: Any = None
         return 0, ["weak_fit"]
 
     return score, reasons[:5]
+
+
+# ---------------------------------------------------------------------------
+#  Search-based community discovery
+# ---------------------------------------------------------------------------
+
+SEARCH_QUERIES: list[str] = [
+    "#Algorand AI -is:retweet",
+    "#AlgoFam -is:retweet",
+    "Algorand DeFi -is:retweet",
+    "AI agents blockchain Algorand -is:retweet",
+    "Algorand governance -is:retweet",
+]
+
+# Keywords that indicate discussion-style content suitable for quote tweeting
+# (as opposed to simple announcements better suited for plain retweets).
+_DISCUSSION_KEYWORDS = {
+    "?",
+    "thoughts",
+    "opinion",
+    "debate",
+    "compare",
+    "why",
+    "how",
+    "interesting",
+    "thread",
+    "deep dive",
+    "unpopular opinion",
+    "hot take",
+    "breakdown",
+    "explained",
+    "tutorial",
+    "guide",
+    "build",
+    "building",
+    "shipped",
+    "launched",
+    "announcing",
+}
+
+
+def get_search_queries() -> list[str]:
+    """Return search queries for discovering Algorand community content."""
+    return list(SEARCH_QUERIES)
+
+
+def score_engagement_candidate(
+    text: str,
+    author_handle: str,
+    public_metrics: dict[str, Any] | None = None,
+    created_at: Any = None,
+) -> tuple[int, list[str], str]:
+    """Score a discovered tweet for engagement (retweet/like/quote tweet).
+
+    Returns ``(score, reasons, recommended_action)`` where
+    *recommended_action* is one of ``"retweet"``, ``"quote_tweet"``,
+    ``"like"``, or ``"none"``.
+    """
+    normalized = (text or "").lower()
+    reasons: list[str] = []
+
+    if not normalized:
+        return 0, reasons, "none"
+
+    # --- safety filters (same as score_target_tweet) ---
+    published_at = _coerce_datetime(created_at)
+    if published_at and datetime.now(timezone.utc) - published_at > MAX_CANDIDATE_AGE:
+        return 0, ["stale_post"], "none"
+
+    if any(sensitive in normalized for sensitive in SENSITIVE_TOPIC_KEYWORDS):
+        return 0, ["sensitive_topic"], "none"
+
+    if any(unsafe in normalized for unsafe in UNSAFE_REPLY_KEYWORDS):
+        return 0, ["unsafe_topic"], "none"
+
+    if any(low_signal in normalized for low_signal in LOW_SIGNAL_KEYWORDS):
+        return 0, ["low_signal"], "none"
+
+    score = 0
+
+    # --- ecosystem relevance ---
+    if any(keyword in normalized for keyword in GLOBAL_KEYWORDS):
+        score += 2
+        reasons.append("ecosystem_relevance")
+
+    # --- topic matching (across ALL topics, not target-specific) ---
+    matched_topics = 0
+    for topic, keywords in TOPIC_KEYWORDS.items():
+        if keywords and any(keyword in normalized for keyword in keywords):
+            matched_topics += 1
+            score += 2
+            reasons.append(f"topic:{topic}")
+            if matched_topics >= 3:
+                break  # cap to prevent runaway scoring
+
+    # --- conversation hook ---
+    if "?" in (text or ""):
+        score += 1
+        reasons.append("conversation_hook")
+
+    # --- AI/agent adjacency ---
+    if any(token in normalized for token in ("ai", "agent", "agents", "automation", "autonomous")):
+        score += 2
+        reasons.append("agent_adjacency")
+
+    # --- engagement signals from existing metrics ---
+    metrics = public_metrics or {}
+    if metrics.get("like_count", 0) >= 10:
+        score += 1
+        reasons.append("high_likes")
+    if metrics.get("retweet_count", 0) >= 5:
+        score += 1
+        reasons.append("high_retweets")
+    if metrics.get("reply_count", 0) >= 3:
+        score += 1
+        reasons.append("active_discussion")
+
+    # --- multi-topic overlap bonus ---
+    if matched_topics >= 2:
+        score += 1
+        reasons.append("multi_topic_overlap")
+
+    # --- weak fit filter ---
+    if matched_topics == 0 and score < 4:
+        return 0, ["weak_fit"], "none"
+
+    # --- determine recommended action ---
+    is_discussion = any(kw in normalized for kw in _DISCUSSION_KEYWORDS)
+
+    if score >= 8 and is_discussion:
+        action = "quote_tweet"
+    elif score >= 7:
+        action = "retweet"
+    elif score >= 5:
+        action = "like"
+    else:
+        action = "none"
+
+    return score, reasons[:6], action

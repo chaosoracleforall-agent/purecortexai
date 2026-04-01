@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.9.0 - 2026-04-01
+
+### Added — Social Agent Community Engagement
+- **Retweet**: Social agent can now retweet relevant Algorand ecosystem content (5/day limit, score >= 7).
+- **Quote Tweet**: Tri-brain-powered commentary on ecosystem tweets (3/day limit, score >= 8).
+- **Like**: Lightweight engagement signal on quality community posts (10/day limit, score >= 5).
+- **Mention Monitoring**: Detects @purecortexai mentions and auto-replies to high-scoring ones (5/day limit).
+- **Search Discovery**: Searches for Algorand community conversations using hashtags/keywords (#Algorand, #AlgoFam, AI agents, etc.).
+- New scoring function `score_engagement_candidate()` in `social_campaign.py` for retweet/like/quote decisions.
+- All features independently toggleable via env vars: `SOCIAL_CAMPAIGN_AUTO_RETWEET`, `SOCIAL_CAMPAIGN_AUTO_LIKE`, `SOCIAL_CAMPAIGN_AUTO_QUOTE_TWEET`, `SOCIAL_CAMPAIGN_AUTO_MENTION_REPLY`, `SOCIAL_CAMPAIGN_SEARCH_DISCOVERY`.
+- Engagement history persisted in Redis with deduplication to prevent double-actions.
+- Registered `QUOTE_TWEET`, `RETWEET`, `LIKE` actions in sandboxing permission tier.
+
+### Added — Non-Custodial Airdrop Claim Contract
+- New `AirdropClaim` smart contract (`contracts/smart_contracts/airdrop_claim/contract.py`): users claim CORTEX by submitting Merkle proofs on-chain. Fully non-custodial — user pays all fees.
+- On-chain Merkle proof verification using SHA256 with domain separation (0x00 leaf, 0x01 internal).
+- Box storage for double-claim prevention. Claim deadline enforcement. Creator-only `reclaim_unclaimed()` after deadline.
+- Updated `wallet_leaf()` encoding in `airdrop_snapshot.py` to use raw bytes matching AVM contract.
+- Added `pack_proof_for_avm()` for binary proof format (33-byte packed steps).
+
+### Added — Complete Airdrop Snapshot Tiers
+- Implemented all 7 tiers in `airdrop_snapshot.py`: testnet pioneers, DeFi users, governors, NFD holders, developers, social campaign, community tasks.
+- Previously only 2 of 7 tiers were implemented; now all tiers produce eligibility data.
+- Snapshot output now includes per-wallet Merkle proofs (JSON + packed hex for AVM).
+
+### Added — Airdrop Backend Endpoints
+- `GET /api/airdrop/eligibility/{address}` — check wallet eligibility, allocation, and qualified tiers.
+- `GET /api/airdrop/proof/{address}` — return Merkle proof for on-chain claim submission.
+- Endpoints load from the most recent snapshot file in `/snapshots/`.
+
+### Added — Frontend Claim Flow
+- New claim section in Airdrop page: eligibility check, allocation display, and on-chain claim button.
+- Uses `AtomicTransactionComposer` to build ABI method calls to the AirdropClaim contract.
+- User signs with their connected wallet (Pera/Defly/Lute/etc.) — fully non-custodial.
+- Shows transaction explorer link after successful claim.
+- Gracefully handles: contract not yet deployed, claims not yet open, ineligible wallets.
+
 ## 0.8.3 - 2026-03-30
 
 ### Fixed
