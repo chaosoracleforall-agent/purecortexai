@@ -51,5 +51,8 @@ frontend/test-results/
 .npm-cache/
 frontend/.npm-cache/
 
+# Airdrop snapshots (generated, contain wallet data)
+snapshots/
+
 # Cursor
 .cursorrules

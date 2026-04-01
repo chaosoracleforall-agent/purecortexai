@@ -119,8 +119,8 @@ export const protocolConfig = {
     }
   },
   "airdrop": {
-    "snapshotBlock": null,
-    "merkleRoot": null,
+    "snapshotBlock": 1775059909,
+    "merkleRoot": "94a51571c1a21541256768d83e6a7082f9ccfa81807f8c4a7733b59e86db52c2",
     "distributionContract": null,
     "claimDeadline": "2026-07-01T00:00:00Z",
     "tiers": {
@@ -176,9 +176,6 @@ export const CORTEX_UNIT_NAME = protocolConfig.contracts.cortexToken.unitName;
 export const GOVERNANCE_APP_ID = protocolConfig.contracts.governance.appId;
 export const STAKING_APP_ID = protocolConfig.contracts.staking.appId;
 export const TREASURY_APP_ID = protocolConfig.contracts.treasury.appId;
-
-export const AIRDROP_CONTRACT_ID = protocolConfig.airdrop.distributionContract;
-export const AIRDROP_CLAIM_DEADLINE = protocolConfig.airdrop.claimDeadline;
 
 export const TOTAL_SUPPLY = protocolConfig.tokenomics.totalSupply;
 export const TOKEN_DECIMALS = protocolConfig.tokenomics.decimals;
