@@ -181,6 +181,9 @@ export const GOVERNANCE_APP_ID = protocolConfig.contracts.governance.appId;
 export const STAKING_APP_ID = protocolConfig.contracts.staking.appId;
 export const TREASURY_APP_ID = protocolConfig.contracts.treasury.appId;
 
+export const AIRDROP_CONTRACT_ID = protocolConfig.airdrop.distributionContract;
+export const AIRDROP_CLAIM_DEADLINE = protocolConfig.airdrop.claimDeadline;
+
 export const TOTAL_SUPPLY = protocolConfig.tokenomics.totalSupply;
 export const TOKEN_DECIMALS = protocolConfig.tokenomics.decimals;
 export const BASE_PRICE = protocolConfig.tokenomics.basePrice;
