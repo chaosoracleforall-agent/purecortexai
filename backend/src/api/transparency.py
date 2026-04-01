@@ -167,7 +167,7 @@ def _compute_circulating(burned: int, vesting: VestingInfo) -> int:
 
 
 def _wallet_label(address: Optional[str], label: str) -> str:
-    return address or f"{label} not assigned on testnet yet"
+    return address or f"{label} not assigned yet"
 
 
 # ──────────────────────────────────────────────

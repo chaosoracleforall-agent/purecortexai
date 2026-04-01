@@ -2,7 +2,7 @@
 Governance API for PURECORTEX.
 
 Serves the PURECORTEX Constitution (Preamble + Articles) and provides
-the canonical backend-governed proposal, review, and voting flow for testnet.
+the canonical backend-governed proposal, review, and voting flow.
 Proposal storage lives in Redis while vote weight is derived from the live
 staking/delegation contract state.
 """
@@ -760,7 +760,13 @@ async def vote_on_proposal_signed(proposal_id: int, body: SignedVoteRequest):
 # ──────────────────────────────────────────────
 # On-chain governance reads
 # ──────────────────────────────────────────────
-ALGOD_URL = "https://testnet-api.algonode.cloud"
+from src.services.protocol_config import NETWORK as _GOVERNANCE_NETWORK
+
+ALGOD_URL = (
+    "https://mainnet-api.algonode.cloud"
+    if _GOVERNANCE_NETWORK == "mainnet"
+    else "https://testnet-api.algonode.cloud"
+)
 
 STATUS_NAMES = {0: "Discussion", 1: "Voting", 2: "Passed", 3: "Rejected", 4: "Executed", 5: "Cancelled"}
 TYPE_NAMES_ONCHAIN = {0: "Parameter Change", 1: "Treasury Action", 2: "Protocol Upgrade", 3: "Emergency Action"}
