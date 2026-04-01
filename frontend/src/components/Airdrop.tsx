@@ -139,7 +139,7 @@ function formatCortex(amount: number): string {
 }
 
 export default function Airdrop() {
-  const { activeAccount, wallets } = useWallet();
+  const { activeAccount, wallets, transactionSigner } = useWallet();
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
   const [registered, setRegistered] = useState(false);
   const [registering, setRegistering] = useState(false);
@@ -279,14 +279,7 @@ export default function Airdrop() {
 
       const atc = new algosdk.AtomicTransactionComposer();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const walletSigner = async (txnGroup: any[], indexesToSign: number[]) => {
-        const wallet = wallets?.find(w => w.activeAccount?.address === activeAccount.address);
-        if (!wallet) throw new Error('Wallet not found');
-        const encoded = txnGroup.map(t => t.toByte());
-        const signed = await wallet.signTransactions(encoded, indexesToSign);
-        return signed.filter((s): s is Uint8Array => s !== null);
-      };
+      if (!transactionSigner) throw new Error('Wallet signer not available');
 
       atc.addMethodCall({
         appID: AIRDROP_CONTRACT_ID,
@@ -298,7 +291,7 @@ export default function Airdrop() {
           fee: 2000,
           flatFee: true,
         },
-        signer: walletSigner,
+        signer: transactionSigner,
         boxes: [{
           appIndex: AIRDROP_CONTRACT_ID,
           name: algosdk.decodeAddress(activeAccount.address).publicKey,
