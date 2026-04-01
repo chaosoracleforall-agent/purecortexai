@@ -12,7 +12,7 @@ Environment overrides:
   PURECORTEX_GCP_PROJECT   Default: purecortexai
   PURECORTEX_GCP_ZONE      Default: us-central1-a
   PURECORTEX_GCP_INSTANCE  Default: purecortex-master
-  PURECORTEX_VM_DIR        Default: /home/davidgarcia/PureCortex
+  PURECORTEX_VM_DIR        Default: \$HOME/PureCortex
 EOF
 }
 
@@ -33,7 +33,7 @@ fi
 PROJECT="${PURECORTEX_GCP_PROJECT:-purecortexai}"
 ZONE="${PURECORTEX_GCP_ZONE:-us-central1-a}"
 INSTANCE="${PURECORTEX_GCP_INSTANCE:-purecortex-master}"
-VM_DIR="${PURECORTEX_VM_DIR:-/home/davidgarcia/PureCortex}"
+VM_DIR="${PURECORTEX_VM_DIR:-\$HOME/PureCortex}"
 
 REMOTE_ARGS=""
 for arg in "$@"; do

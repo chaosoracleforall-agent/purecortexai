@@ -24,9 +24,9 @@ On the VM:
 - Either `docker compose` or `docker-compose` installed.
 - Git installed.
 - `gcloud` installed and available to the VM host so deploy-time secret sync can read Secret Manager.
-- Repo checked out at `/home/davidgarcia/PureCortex`.
+- Repo checked out at `/home/$USER/PureCortex`.
 - Root `.env` populated from `.env.example`.
-- Signer secret files staged under `/home/davidgarcia/PureCortex/.signer-secrets/` with filenames matching the secret names expected by the signer.
+- Signer secret files staged under `/home/$USER/PureCortex/.signer-secrets/` with filenames matching the secret names expected by the signer.
 - Let's Encrypt certificates mounted at `/etc/letsencrypt`.
 
 On the workstation:
@@ -72,7 +72,7 @@ bash scripts/deploy_remote_vm.sh --pull --tail-logs
 SSH to the VM with the managed GCP path, then run:
 
 ```bash
-cd /home/davidgarcia/PureCortex
+cd /home/$USER/PureCortex
 bash scripts/deploy_vm.sh --pull
 ```
 
