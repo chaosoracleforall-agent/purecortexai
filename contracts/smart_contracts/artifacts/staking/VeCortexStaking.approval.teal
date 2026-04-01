@@ -813,6 +813,13 @@ fund_reward_pool:
     ==
     assert // Unauthorized
     // smart_contracts/staking/contract.py:267
+    // assert cortex_transfer.sender == Txn.sender, "Transfer sender must match caller"
+    dup
+    gtxns Sender
+    txn Sender
+    ==
+    assert // Transfer sender must match caller
+    // smart_contracts/staking/contract.py:268
     // assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
     dup
     gtxns XferAsset
@@ -822,18 +829,18 @@ fund_reward_pool:
     assert // check self.cortex_token exists
     ==
     assert // Wrong token
-    // smart_contracts/staking/contract.py:269
+    // smart_contracts/staking/contract.py:270
     // cortex_transfer.asset_receiver == Global.current_application_address
     dup
     gtxns AssetReceiver
     global CurrentApplicationAddress
     ==
-    // smart_contracts/staking/contract.py:268-270
+    // smart_contracts/staking/contract.py:269-271
     // assert (
     //     cortex_transfer.asset_receiver == Global.current_application_address
     // ), "Must send to contract"
     assert // Must send to contract
-    // smart_contracts/staking/contract.py:271
+    // smart_contracts/staking/contract.py:272
     // self.reward_pool = self.reward_pool + cortex_transfer.asset_amount
     intc_0 // 0
     bytec 4 // "reward_pool"
@@ -853,7 +860,7 @@ fund_reward_pool:
 
 // smart_contracts.staking.contract.VeCortexStaking.distribute_reward[routing]() -> void:
 distribute_reward:
-    // smart_contracts/staking/contract.py:273
+    // smart_contracts/staking/contract.py:274
     // @abimethod()
     txna ApplicationArgs 1
     dup
@@ -868,24 +875,24 @@ distribute_reward:
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/staking/contract.py:279
+    // smart_contracts/staking/contract.py:280
     // assert Txn.sender == Global.creator_address, "Unauthorized"
     txn Sender
     global CreatorAddress
     ==
     assert // Unauthorized
-    // smart_contracts/staking/contract.py:280
+    // smart_contracts/staking/contract.py:281
     // assert self.cortex_token != UInt64(0), "Not initialized"
     intc_0 // 0
     bytec_0 // "cortex_token"
     app_global_get_ex
     assert // check self.cortex_token exists
     assert // Not initialized
-    // smart_contracts/staking/contract.py:281
+    // smart_contracts/staking/contract.py:282
     // assert amount > UInt64(0), "Amount must be positive"
     dup
     assert // Amount must be positive
-    // smart_contracts/staking/contract.py:282
+    // smart_contracts/staking/contract.py:283
     // assert amount <= self.reward_pool, "Exceeds reward pool"
     intc_0 // 0
     bytec 4 // "reward_pool"
@@ -894,7 +901,7 @@ distribute_reward:
     dup2
     <=
     assert // Exceeds reward pool
-    // smart_contracts/staking/contract.py:283
+    // smart_contracts/staking/contract.py:284
     // assert op.Box.get(b"s" + staker.bytes)[1], "Staker not found"
     bytec_1 // 0x73
     dig 3
@@ -902,7 +909,7 @@ distribute_reward:
     box_len
     bury 1
     assert // Staker not found
-    // smart_contracts/staking/contract.py:285-286
+    // smart_contracts/staking/contract.py:286-287
     // # Deduct before interaction (checks-effects-interactions).
     // self.reward_pool = self.reward_pool - amount
     dig 1
@@ -910,7 +917,7 @@ distribute_reward:
     bytec 4 // "reward_pool"
     swap
     app_global_put
-    // smart_contracts/staking/contract.py:288-293
+    // smart_contracts/staking/contract.py:289-294
     // itxn.AssetTransfer(
     //     xfer_asset=Asset(self.cortex_token),
     //     asset_receiver=staker,
@@ -918,7 +925,7 @@ distribute_reward:
     //     fee=0,
     // ).submit()
     itxn_begin
-    // smart_contracts/staking/contract.py:289
+    // smart_contracts/staking/contract.py:290
     // xfer_asset=Asset(self.cortex_token),
     intc_0 // 0
     bytec_0 // "cortex_token"
@@ -927,15 +934,15 @@ distribute_reward:
     itxn_field XferAsset
     itxn_field AssetAmount
     itxn_field AssetReceiver
-    // smart_contracts/staking/contract.py:288
+    // smart_contracts/staking/contract.py:289
     // itxn.AssetTransfer(
     intc_3 // axfer
     itxn_field TypeEnum
-    // smart_contracts/staking/contract.py:292
+    // smart_contracts/staking/contract.py:293
     // fee=0,
     intc_0 // 0
     itxn_field Fee
-    // smart_contracts/staking/contract.py:288-293
+    // smart_contracts/staking/contract.py:289-294
     // itxn.AssetTransfer(
     //     xfer_asset=Asset(self.cortex_token),
     //     asset_receiver=staker,
@@ -943,7 +950,7 @@ distribute_reward:
     //     fee=0,
     // ).submit()
     itxn_submit
-    // smart_contracts/staking/contract.py:273
+    // smart_contracts/staking/contract.py:274
     // @abimethod()
     intc_1 // 1
     return
@@ -951,7 +958,7 @@ distribute_reward:
 
 // smart_contracts.staking.contract.VeCortexStaking.update_lock_parameters[routing]() -> void:
 update_lock_parameters:
-    // smart_contracts/staking/contract.py:299
+    // smart_contracts/staking/contract.py:300
     // @abimethod()
     txna ApplicationArgs 1
     dup
@@ -974,50 +981,50 @@ update_lock_parameters:
     ==
     assert // invalid number of bytes for arc4.uint64
     btoi
-    // smart_contracts/staking/contract.py:307
+    // smart_contracts/staking/contract.py:308
     // assert Txn.sender == Global.creator_address, "Unauthorized"
     txn Sender
     global CreatorAddress
     ==
     assert // Unauthorized
-    // smart_contracts/staking/contract.py:308
+    // smart_contracts/staking/contract.py:309
     // assert min_days >= UInt64(1), "Minimum 1 day"
     dig 2
     assert // Minimum 1 day
-    // smart_contracts/staking/contract.py:309
+    // smart_contracts/staking/contract.py:310
     // assert max_days >= min_days, "Max must exceed min"
     dig 1
     dig 3
     >=
     assert // Max must exceed min
-    // smart_contracts/staking/contract.py:310
+    // smart_contracts/staking/contract.py:311
     // assert max_boost >= UInt64(1000), "Boost must be at least 1x"
     dup
     intc 4 // 1000
     >=
     assert // Boost must be at least 1x
-    // smart_contracts/staking/contract.py:311
+    // smart_contracts/staking/contract.py:312
     // assert max_boost <= UInt64(10000), "Boost cannot exceed 10x"
     dup
     pushint 10000
     <=
     assert // Boost cannot exceed 10x
-    // smart_contracts/staking/contract.py:312
+    // smart_contracts/staking/contract.py:313
     // self.MIN_LOCK_DAYS = min_days
     bytec 8 // "MIN_LOCK_DAYS"
     uncover 3
     app_global_put
-    // smart_contracts/staking/contract.py:313
+    // smart_contracts/staking/contract.py:314
     // self.MAX_LOCK_DAYS = max_days
     bytec 9 // "MAX_LOCK_DAYS"
     uncover 2
     app_global_put
-    // smart_contracts/staking/contract.py:314
+    // smart_contracts/staking/contract.py:315
     // self.MAX_BOOST = max_boost
     bytec 6 // "MAX_BOOST"
     swap
     app_global_put
-    // smart_contracts/staking/contract.py:299
+    // smart_contracts/staking/contract.py:300
     // @abimethod()
     intc_1 // 1
     return

@@ -49,6 +49,12 @@ TIER_ALLOCATIONS = {
 MIN_ALGO_BALANCE = 10_000_000
 MIN_WALLET_AGE_ROUNDS = 1_000_000
 
+# Hardcoded qualifying wallets — always included as testnet_pioneers
+# regardless of on-chain activity. Used for end-to-end claim testing.
+HARDCODED_QUALIFYING_WALLETS = [
+    "SOJXXJA43JYXRDTBHXVLS6KDBERTT77QAWRBKQOCGPEOS6ESGLDWGU474Y",  # creator / deployer
+]
+
 
 @dataclass
 class WalletEligibility:
@@ -402,6 +408,15 @@ def run_snapshot(
             eligibility[addr] = WalletEligibility(address=addr)
         eligibility[addr].tiers.append("testnet_pioneers")
         eligibility[addr].scores["testnet_pioneers"] = 1.0
+
+    # Inject hardcoded qualifying wallets (for E2E claim testing)
+    for addr in HARDCODED_QUALIFYING_WALLETS:
+        if addr not in eligibility:
+            eligibility[addr] = WalletEligibility(address=addr)
+        if "testnet_pioneers" not in eligibility[addr].tiers:
+            eligibility[addr].tiers.append("testnet_pioneers")
+            eligibility[addr].scores["testnet_pioneers"] = 1.0
+            print(f"  + Injected hardcoded wallet: {addr[:12]}...")
 
     print("\n[2/7] Scanning DeFi users...")
     defi_wallets = snapshot_defi_users(idx, block)

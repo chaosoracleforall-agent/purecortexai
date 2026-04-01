@@ -1,0 +1,687 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 0 1 32 8
+    bytecblock "total_claimed" "claim_deadline" "total_allocated" "initialized" "cortex_token" "merkle_root" 0x01 0x151f7c75 0x00
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/airdrop_claim/contract.py:77
+    // self.cortex_token = UInt64(0)
+    bytec 4 // "cortex_token"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:78
+    // self.merkle_root = Bytes()
+    bytec 5 // "merkle_root"
+    pushbytes 0x
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:79
+    // self.claim_deadline = UInt64(0)
+    bytec_1 // "claim_deadline"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:80
+    // self.total_allocated = UInt64(0)
+    bytec_2 // "total_allocated"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:81
+    // self.total_claimed = UInt64(0)
+    bytec_0 // "total_claimed"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:82
+    // self.initialized = UInt64(0)
+    bytec_3 // "initialized"
+    intc_0 // 0
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/airdrop_claim/contract.py:58
+    // class AirdropClaim(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@14
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    assert
+    pushbytess 0x22a09b82 0xfa6a9086 0xc66d52da 0x635d1999 0x0be686cf // method "initialize(uint64,byte[],uint64,uint64)void", method "claim(uint64,byte[])uint64", method "reclaim_unclaimed(address)uint64", method "get_claim_status(address)byte[]", method "get_airdrop_info()byte[]"
+    txna ApplicationArgs 0
+    match initialize claim reclaim_unclaimed get_claim_status get_airdrop_info
+    err
+
+main___algopy_default_create@14:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// smart_contracts.airdrop_claim.contract.AirdropClaim.initialize[routing]() -> void:
+initialize:
+    // smart_contracts/airdrop_claim/contract.py:86
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_3 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 2
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    pushint 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    txna ApplicationArgs 3
+    dup
+    len
+    intc_3 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    txna ApplicationArgs 4
+    dup
+    len
+    intc_3 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    // smart_contracts/airdrop_claim/contract.py:95
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/airdrop_claim/contract.py:96
+    // assert self.initialized == UInt64(0), "Already initialized"
+    intc_0 // 0
+    bytec_3 // "initialized"
+    app_global_get_ex
+    assert // check self.initialized exists
+    !
+    assert // Already initialized
+    // smart_contracts/airdrop_claim/contract.py:97
+    // assert merkle_root.length == UInt64(32), "Merkle root must be 32 bytes"
+    dig 2
+    len
+    intc_2 // 32
+    ==
+    assert // Merkle root must be 32 bytes
+    // smart_contracts/airdrop_claim/contract.py:98
+    // assert claim_deadline > Global.latest_timestamp, "Deadline must be in the future"
+    dig 1
+    global LatestTimestamp
+    >
+    assert // Deadline must be in the future
+    // smart_contracts/airdrop_claim/contract.py:99
+    // assert total_allocation > UInt64(0), "Allocation must be positive"
+    dup
+    assert // Allocation must be positive
+    // smart_contracts/airdrop_claim/contract.py:101
+    // self.cortex_token = cortex_asset.id
+    bytec 4 // "cortex_token"
+    dig 4
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:102
+    // self.merkle_root = merkle_root
+    bytec 5 // "merkle_root"
+    uncover 3
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:103
+    // self.claim_deadline = claim_deadline
+    bytec_1 // "claim_deadline"
+    uncover 2
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:104
+    // self.total_allocated = total_allocation
+    bytec_2 // "total_allocated"
+    swap
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:105
+    // self.initialized = UInt64(1)
+    bytec_3 // "initialized"
+    intc_1 // 1
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:107-113
+    // # Opt the contract into the CORTEX ASA
+    // itxn.AssetTransfer(
+    //     xfer_asset=cortex_asset,
+    //     asset_receiver=Global.current_application_address,
+    //     asset_amount=UInt64(0),
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/airdrop_claim/contract.py:110
+    // asset_receiver=Global.current_application_address,
+    global CurrentApplicationAddress
+    // smart_contracts/airdrop_claim/contract.py:111
+    // asset_amount=UInt64(0),
+    intc_0 // 0
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    // smart_contracts/airdrop_claim/contract.py:107-108
+    // # Opt the contract into the CORTEX ASA
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/airdrop_claim/contract.py:112
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/airdrop_claim/contract.py:107-113
+    // # Opt the contract into the CORTEX ASA
+    // itxn.AssetTransfer(
+    //     xfer_asset=cortex_asset,
+    //     asset_receiver=Global.current_application_address,
+    //     asset_amount=UInt64(0),
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/airdrop_claim/contract.py:86
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.airdrop_claim.contract.AirdropClaim.claim[routing]() -> void:
+claim:
+    // smart_contracts/airdrop_claim/contract.py:115
+    // @abimethod()
+    txna ApplicationArgs 1
+    dupn 2
+    len
+    intc_3 // 8
+    ==
+    assert // invalid number of bytes for arc4.uint64
+    btoi
+    dup
+    txna ApplicationArgs 2
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    pushint 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    dup
+    uncover 2
+    // smart_contracts/airdrop_claim/contract.py:130
+    // assert self.initialized == UInt64(1), "Not initialized"
+    intc_0 // 0
+    bytec_3 // "initialized"
+    app_global_get_ex
+    assert // check self.initialized exists
+    intc_1 // 1
+    ==
+    assert // Not initialized
+    // smart_contracts/airdrop_claim/contract.py:131
+    // assert Global.latest_timestamp <= self.claim_deadline, "Claim period expired"
+    global LatestTimestamp
+    intc_0 // 0
+    bytec_1 // "claim_deadline"
+    app_global_get_ex
+    assert // check self.claim_deadline exists
+    <=
+    assert // Claim period expired
+    // smart_contracts/airdrop_claim/contract.py:132
+    // assert amount > UInt64(0), "Amount must be positive"
+    dup
+    assert // Amount must be positive
+    // smart_contracts/airdrop_claim/contract.py:134-135
+    // # Check not already claimed
+    // sender_key = Txn.sender.bytes
+    txn Sender
+    // smart_contracts/airdrop_claim/contract.py:136
+    // assert sender_key not in self.claims, "Already claimed"
+    pushbytes 0x63
+    dig 1
+    concat
+    dup
+    cover 4
+    box_len
+    bury 1
+    !
+    assert // Already claimed
+    // smart_contracts/airdrop_claim/contract.py:138-141
+    // # Compute leaf: SHA256(0x00 || "address:amount")
+    // # The address is the 58-char Algorand base32 address string
+    // # We use the raw 32-byte public key for determinism
+    // leaf_data = Bytes(b"\x00") + sender_key + Bytes(b":") + op.itob(amount)
+    bytec 8 // 0x00
+    swap
+    concat
+    pushbytes 0x3a
+    concat
+    swap
+    itob
+    concat
+    // smart_contracts/airdrop_claim/contract.py:142
+    // leaf = op.sha256(leaf_data)
+    sha256
+    // smart_contracts/airdrop_claim/contract.py:144-145
+    // # Verify the Merkle proof
+    // assert _verify_merkle_proof(leaf, proof, self.merkle_root), "Invalid Merkle proof"
+    intc_0 // 0
+    bytec 5 // "merkle_root"
+    app_global_get_ex
+    swap
+    cover 3
+    assert // check self.merkle_root exists
+    // smart_contracts/airdrop_claim/contract.py:33
+    // proof_len = proof.length
+    swap
+    len
+    // smart_contracts/airdrop_claim/contract.py:34-35
+    // # Each step is 33 bytes (32 hash + 1 position)
+    // assert proof_len % UInt64(33) == UInt64(0), "Invalid proof length"
+    dup
+    pushint 33
+    %
+    !
+    assert // Invalid proof length
+    // smart_contracts/airdrop_claim/contract.py:38
+    // step_count = proof_len // UInt64(33)
+    pushint 33
+    /
+    swap
+    // smart_contracts/airdrop_claim/contract.py:39
+    // idx = UInt64(0)
+    intc_0 // 0
+    swap
+
+claim_while_top@2:
+    // smart_contracts/airdrop_claim/contract.py:41
+    // while idx < step_count:
+    dig 1
+    dig 3
+    <
+    bz claim_after_while@7
+    // smart_contracts/airdrop_claim/contract.py:42
+    // offset = idx * UInt64(33)
+    dig 1
+    pushint 33
+    *
+    // smart_contracts/airdrop_claim/contract.py:43
+    // sibling = op.extract(proof, offset, 32)
+    dig 6
+    dup
+    cover 2
+    dig 1
+    intc_2 // 32
+    extract3
+    cover 2
+    // smart_contracts/airdrop_claim/contract.py:44
+    // position = op.extract(proof, offset + UInt64(32), 1)
+    intc_2 // 32
+    +
+    intc_1 // 1
+    extract3
+    // smart_contracts/airdrop_claim/contract.py:46
+    // if position == Bytes(b"\x00"):
+    bytec 8 // 0x00
+    ==
+    bz claim_else_body@5
+    // smart_contracts/airdrop_claim/contract.py:47-48
+    // # Sibling is on the left
+    // combined = Bytes(b"\x01") + sibling + cursor
+    bytec 6 // 0x01
+    swap
+    concat
+    dig 1
+    concat
+
+claim_after_if_else@6:
+    // smart_contracts/airdrop_claim/contract.py:52
+    // cursor = op.sha256(combined)
+    sha256
+    bury 1
+    // smart_contracts/airdrop_claim/contract.py:53
+    // idx += UInt64(1)
+    dig 1
+    intc_1 // 1
+    +
+    bury 2
+    b claim_while_top@2
+
+claim_else_body@5:
+    // smart_contracts/airdrop_claim/contract.py:50-51
+    // # Sibling is on the right
+    // combined = Bytes(b"\x01") + cursor + sibling
+    bytec 6 // 0x01
+    dig 2
+    concat
+    swap
+    concat
+    b claim_after_if_else@6
+
+claim_after_while@7:
+    // smart_contracts/airdrop_claim/contract.py:55
+    // return cursor == merkle_root
+    dup
+    dig 4
+    ==
+    // smart_contracts/airdrop_claim/contract.py:144-145
+    // # Verify the Merkle proof
+    // assert _verify_merkle_proof(leaf, proof, self.merkle_root), "Invalid Merkle proof"
+    assert // Invalid Merkle proof
+    // smart_contracts/airdrop_claim/contract.py:147-148
+    // # Enforce ceiling: total_claimed can never exceed total_allocated
+    // assert self.total_claimed + amount <= self.total_allocated, "Exceeds total allocation"
+    intc_0 // 0
+    bytec_0 // "total_claimed"
+    app_global_get_ex
+    assert // check self.total_claimed exists
+    dig 7
+    dup
+    cover 2
+    +
+    intc_0 // 0
+    bytec_2 // "total_allocated"
+    app_global_get_ex
+    assert // check self.total_allocated exists
+    dig 1
+    >=
+    assert // Exceeds total allocation
+    // smart_contracts/airdrop_claim/contract.py:150-151
+    // # Mark as claimed (box storage - user pays MBR)
+    // self.claims[sender_key] = Bytes(b"\x01")
+    dig 6
+    dup
+    box_del
+    pop
+    bytec 6 // 0x01
+    box_put
+    // smart_contracts/airdrop_claim/contract.py:153-154
+    // # Update totals
+    // self.total_claimed = self.total_claimed + amount
+    bytec_0 // "total_claimed"
+    swap
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:156-162
+    // # Transfer CORTEX to the caller
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=Txn.sender,
+    //     asset_amount=amount,
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/airdrop_claim/contract.py:158
+    // xfer_asset=Asset(self.cortex_token),
+    intc_0 // 0
+    bytec 4 // "cortex_token"
+    app_global_get_ex
+    assert // check self.cortex_token exists
+    // smart_contracts/airdrop_claim/contract.py:159
+    // asset_receiver=Txn.sender,
+    txn Sender
+    uncover 2
+    itxn_field AssetAmount
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    // smart_contracts/airdrop_claim/contract.py:156-157
+    // # Transfer CORTEX to the caller
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/airdrop_claim/contract.py:161
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/airdrop_claim/contract.py:156-162
+    // # Transfer CORTEX to the caller
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=Txn.sender,
+    //     asset_amount=amount,
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/airdrop_claim/contract.py:115
+    // @abimethod()
+    bytec 7 // 0x151f7c75
+    dig 8
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.airdrop_claim.contract.AirdropClaim.reclaim_unclaimed[routing]() -> void:
+reclaim_unclaimed:
+    // smart_contracts/airdrop_claim/contract.py:166
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/airdrop_claim/contract.py:173
+    // assert Txn.sender == Global.creator_address, "Unauthorized"
+    txn Sender
+    global CreatorAddress
+    ==
+    assert // Unauthorized
+    // smart_contracts/airdrop_claim/contract.py:174
+    // assert self.initialized == UInt64(1), "Not initialized"
+    intc_0 // 0
+    bytec_3 // "initialized"
+    app_global_get_ex
+    assert // check self.initialized exists
+    intc_1 // 1
+    ==
+    assert // Not initialized
+    // smart_contracts/airdrop_claim/contract.py:175
+    // assert Global.latest_timestamp > self.claim_deadline, "Claim period not yet expired"
+    global LatestTimestamp
+    intc_0 // 0
+    bytec_1 // "claim_deadline"
+    app_global_get_ex
+    assert // check self.claim_deadline exists
+    >
+    assert // Claim period not yet expired
+    // smart_contracts/airdrop_claim/contract.py:177
+    // unclaimed = self.total_allocated - self.total_claimed
+    intc_0 // 0
+    bytec_2 // "total_allocated"
+    app_global_get_ex
+    assert // check self.total_allocated exists
+    intc_0 // 0
+    bytec_0 // "total_claimed"
+    app_global_get_ex
+    assert // check self.total_claimed exists
+    dig 1
+    swap
+    -
+    // smart_contracts/airdrop_claim/contract.py:178
+    // assert unclaimed > UInt64(0), "No unclaimed tokens"
+    dup
+    assert // No unclaimed tokens
+    // smart_contracts/airdrop_claim/contract.py:180-181
+    // # Mark all remaining as claimed to prevent repeated calls
+    // self.total_claimed = self.total_allocated
+    bytec_0 // "total_claimed"
+    uncover 2
+    app_global_put
+    // smart_contracts/airdrop_claim/contract.py:183-188
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=receiver,
+    //     asset_amount=unclaimed,
+    //     fee=0,
+    // ).submit()
+    itxn_begin
+    // smart_contracts/airdrop_claim/contract.py:184
+    // xfer_asset=Asset(self.cortex_token),
+    intc_0 // 0
+    bytec 4 // "cortex_token"
+    app_global_get_ex
+    assert // check self.cortex_token exists
+    dig 1
+    itxn_field AssetAmount
+    uncover 2
+    itxn_field AssetReceiver
+    itxn_field XferAsset
+    // smart_contracts/airdrop_claim/contract.py:183
+    // itxn.AssetTransfer(
+    pushint 4 // axfer
+    itxn_field TypeEnum
+    // smart_contracts/airdrop_claim/contract.py:187
+    // fee=0,
+    intc_0 // 0
+    itxn_field Fee
+    // smart_contracts/airdrop_claim/contract.py:183-188
+    // itxn.AssetTransfer(
+    //     xfer_asset=Asset(self.cortex_token),
+    //     asset_receiver=receiver,
+    //     asset_amount=unclaimed,
+    //     fee=0,
+    // ).submit()
+    itxn_submit
+    // smart_contracts/airdrop_claim/contract.py:166
+    // @abimethod()
+    itob
+    bytec 7 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.airdrop_claim.contract.AirdropClaim.get_claim_status[routing]() -> void:
+get_claim_status:
+    // smart_contracts/airdrop_claim/contract.py:192
+    // @abimethod(readonly=True)
+    txna ApplicationArgs 1
+    dup
+    len
+    intc_2 // 32
+    ==
+    assert // invalid number of bytes for arc4.static_array<arc4.uint8, 32>
+    // smart_contracts/airdrop_claim/contract.py:198
+    // claimed = Bytes(b"\x01") if address.bytes in self.claims else Bytes(b"\x00")
+    pushbytes 0x63
+    swap
+    concat
+    box_len
+    bury 1
+    bytec 8 // 0x00
+    bytec 6 // 0x01
+    uncover 2
+    select
+    // smart_contracts/airdrop_claim/contract.py:199
+    // remaining = self.total_allocated - self.total_claimed
+    intc_0 // 0
+    bytec_2 // "total_allocated"
+    app_global_get_ex
+    assert // check self.total_allocated exists
+    intc_0 // 0
+    bytec_0 // "total_claimed"
+    app_global_get_ex
+    assert // check self.total_claimed exists
+    -
+    // smart_contracts/airdrop_claim/contract.py:200
+    // return claimed + op.itob(self.claim_deadline) + op.itob(remaining)
+    intc_0 // 0
+    bytec_1 // "claim_deadline"
+    app_global_get_ex
+    assert // check self.claim_deadline exists
+    itob
+    uncover 2
+    swap
+    concat
+    swap
+    itob
+    concat
+    // smart_contracts/airdrop_claim/contract.py:192
+    // @abimethod(readonly=True)
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec 7 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.airdrop_claim.contract.AirdropClaim.get_airdrop_info[routing]() -> void:
+get_airdrop_info:
+    // smart_contracts/airdrop_claim/contract.py:206
+    // op.itob(self.total_allocated)
+    intc_0 // 0
+    bytec_2 // "total_allocated"
+    app_global_get_ex
+    assert // check self.total_allocated exists
+    itob
+    // smart_contracts/airdrop_claim/contract.py:207
+    // + op.itob(self.total_claimed)
+    intc_0 // 0
+    bytec_0 // "total_claimed"
+    app_global_get_ex
+    assert // check self.total_claimed exists
+    itob
+    // smart_contracts/airdrop_claim/contract.py:206-207
+    // op.itob(self.total_allocated)
+    // + op.itob(self.total_claimed)
+    concat
+    // smart_contracts/airdrop_claim/contract.py:208
+    // + op.itob(self.claim_deadline)
+    intc_0 // 0
+    bytec_1 // "claim_deadline"
+    app_global_get_ex
+    assert // check self.claim_deadline exists
+    itob
+    // smart_contracts/airdrop_claim/contract.py:206-208
+    // op.itob(self.total_allocated)
+    // + op.itob(self.total_claimed)
+    // + op.itob(self.claim_deadline)
+    concat
+    // smart_contracts/airdrop_claim/contract.py:209
+    // + self.merkle_root
+    intc_0 // 0
+    bytec 5 // "merkle_root"
+    app_global_get_ex
+    assert // check self.merkle_root exists
+    // smart_contracts/airdrop_claim/contract.py:206-209
+    // op.itob(self.total_allocated)
+    // + op.itob(self.total_claimed)
+    // + op.itob(self.claim_deadline)
+    // + self.merkle_root
+    concat
+    // smart_contracts/airdrop_claim/contract.py:202
+    // @abimethod(readonly=True)
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec 7 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return

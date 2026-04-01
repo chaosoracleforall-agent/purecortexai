@@ -1,6 +1,5 @@
 from algopy import (
     ARC4Contract,
-    Box,
     BoxMap,
     UInt64,
     Asset,
@@ -31,7 +30,7 @@ def _verify_merkle_proof(
       - leaf nodes: SHA256(0x00 || data)  (computed by caller)
       - internal nodes: SHA256(0x01 || left || right)
     """
-    proof_len = op.len(proof)
+    proof_len = proof.length
     # Each step is 33 bytes (32 hash + 1 position)
     assert proof_len % UInt64(33) == UInt64(0), "Invalid proof length"
 
@@ -95,7 +94,7 @@ class AirdropClaim(ARC4Contract):
         """Set up the airdrop claim contract. Creator-only, once."""
         assert Txn.sender == Global.creator_address, "Unauthorized"
         assert self.initialized == UInt64(0), "Already initialized"
-        assert op.len(merkle_root) == UInt64(32), "Merkle root must be 32 bytes"
+        assert merkle_root.length == UInt64(32), "Merkle root must be 32 bytes"
         assert claim_deadline > Global.latest_timestamp, "Deadline must be in the future"
         assert total_allocation > UInt64(0), "Allocation must be positive"
 
