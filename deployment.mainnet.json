@@ -10,30 +10,30 @@
   "tgeDate": "2026-03-31T00:00:00Z",
   "contracts": {
     "agentFactory": {
-      "appId": 3493064595,
-      "address": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU",
+      "appId": 3501164435,
+      "address": "WJ44A3NA4ZNKHFKSAI4G2Z5AJTFPZGANXF5EHPPHPZHYAOXR25A22LU2IQ",
       "status": "active"
     },
     "cortexToken": {
-      "assetId": 3493064714,
+      "assetId": 3501164627,
       "name": "PureCortex",
       "unitName": "CORTEX",
-      "creatorAddress": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU"
+      "creatorAddress": "WJ44A3NA4ZNKHFKSAI4G2Z5AJTFPZGANXF5EHPPHPZHYAOXR25A22LU2IQ"
     },
     "governance": {
-      "appId": 3493064034,
+      "appId": 3501164276,
       "status": "active"
     },
     "staking": {
-      "appId": 3493064261,
+      "appId": 3501164346,
       "status": "active"
     },
     "treasury": {
-      "appId": 3493064463,
+      "appId": 3501164386,
       "status": "active"
     },
     "creatorVesting": {
-      "appId": 3493064628,
+      "appId": 3501164479,
       "status": "active"
     }
   },
@@ -53,12 +53,12 @@
       "amount": 1000000000000000,
       "vestingTgePct": 10,
       "vestingDays": 180,
-      "wallet": ""
+      "wallet": "SOJXXJA43JYXRDTBHXVLS6KDBERTT77QAWRBKQOCGPEOS6ESGLDWGU474Y"
     },
     "genesisDistribution": {
       "percentage": 31,
       "amount": 3100000000000000,
-      "wallet": ""
+      "wallet": "A4KRU2NOBMONKMTG4XZJAZRBU3LO6PIYPUBL2IFHOGNYCVRORZVNTX46UA"
     },
     "futureEmissions": {
       "percentage": 24,
@@ -69,40 +69,39 @@
         0.2,
         0.1
       ],
-      "wallet": ""
+      "wallet": "W5ONM6QB5MNJFIWSPUZDCFYYDSMJUIFFMD7CZZYO7TGURLPNRW36SV6VCA"
     },
     "liquidity": {
       "percentage": 15,
       "amount": 1500000000000000,
       "lockYears": 10,
-      "wallet": ""
+      "wallet": "LGW2PDZURDLAU2XENZEQDR4PUHSTJ6YKATRR6D4PSKEEH55X6IAOILCSMI"
     },
     "agentIncentives": {
       "percentage": 15,
       "amount": 1500000000000000,
-      "wallet": ""
+      "wallet": "34JHCXPGM7HKN6YCKEEP3324CEXMCZ4SHQCFD3EQCTB3RN4UUCRYJO7QMQ"
     },
     "assistanceFund": {
       "percentage": 5,
       "amount": 500000000000000,
-      "wallet": ""
+      "wallet": "6HC22ISVTPSR6MHGRCXKEZFZI3YXEEBEHKCIC7RW77CF4RP2JHFMXZ3S2Y"
     }
   },
   "marketplace": {
-    "tradingEnabled": false,
-    "launchEnabled": false,
-    "maintenanceReason": "Pre-launch: mainnet contracts pending deployment",
+    "tradingEnabled": true,
+    "launchEnabled": true,
+    "maintenanceReason": "",
     "notes": [
-      "Trading and launch are disabled until mainnet contracts are deployed and smoke-tested.",
-      "Enable after deployment validation completes and liquidity pools are seeded."
+      "MainNet launched 2026-03-31. Trading and agent creation enabled."
     ]
   },
   "wallets": {
-    "agentFactoryEscrow": "34SJEEP5EXNVAUHDC73IXM64VPLA2ISNEHDFRPEZWQJMPHRUL3CHCXF3MU",
-    "assistanceFund": null,
-    "operations": null,
-    "creatorVesting": null,
-    "liquidityPool": null
+    "agentFactoryEscrow": "WJ44A3NA4ZNKHFKSAI4G2Z5AJTFPZGANXF5EHPPHPZHYAOXR25A22LU2IQ",
+    "assistanceFund": "6HC22ISVTPSR6MHGRCXKEZFZI3YXEEBEHKCIC7RW77CF4RP2JHFMXZ3S2Y",
+    "operations": "UBE3YW3K5QGAACAT7CD3ZXPEQIRPIXKYCE726KMKCG4PIVIBBG72EOW66E",
+    "creatorVesting": "MZF2WXA6E2ZLEQOYWIPPMVHOPYNY4OHDCEN3S6KNWWEEH726X3ZXP6TMBQ",
+    "liquidityPool": "CM4FNHTBOUEFH44IFHLQBZKV5WLYVGCDREB5JUEKHRKKS5T6MHJCTMNZYU"
   },
   "dex": {
     "tinyman": {
