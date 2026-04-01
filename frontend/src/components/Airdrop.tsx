@@ -278,6 +278,15 @@ export default function Airdrop() {
       });
 
       const atc = new algosdk.AtomicTransactionComposer();
+
+      const walletSigner: algosdk.TransactionSigner = async (txnGroup, indexesToSign) => {
+        const wallet = wallets?.find(w => w.activeAccount?.address === activeAccount.address);
+        if (!wallet) throw new Error('Wallet not found');
+        const encoded = txnGroup.map(t => t.toByte());
+        const signed = await wallet.signTransactions(encoded, indexesToSign);
+        return signed.filter((s): s is Uint8Array => s !== null);
+      };
+
       atc.addMethodCall({
         appID: AIRDROP_CONTRACT_ID,
         method: abiMethod,
@@ -285,22 +294,14 @@ export default function Airdrop() {
         sender: activeAccount.address,
         suggestedParams: {
           ...suggestedParams,
-          fee: 2000, // Cover app call + inner transfer
+          fee: 2000,
           flatFee: true,
         },
-        signer: async (txnGroup: Uint8Array[], indexesToSign: number[]) => {
-          // Use the wallet to sign
-          const wallet = wallets?.find(w => w.activeAccount?.address === activeAccount.address);
-          if (!wallet) throw new Error('Wallet not found');
-          const signed = await wallet.signTransactions(txnGroup, indexesToSign);
-          return signed.filter((s): s is Uint8Array => s !== null);
-        },
-        // Box reference for claim tracking
+        signer: walletSigner,
         boxes: [{
           appIndex: AIRDROP_CONTRACT_ID,
           name: algosdk.decodeAddress(activeAccount.address).publicKey,
         }],
-        // Asset reference for CORTEX transfer
         appForeignAssets: [CORTEX_ASSET_ID],
       });
 
