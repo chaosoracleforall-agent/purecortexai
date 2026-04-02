@@ -135,9 +135,9 @@ class AirdropClaim(ARC4Contract):
         sender_key = Txn.sender.bytes
         assert sender_key not in self.claims, "Already claimed"
 
-        # Compute leaf: SHA256(0x00 || "address:amount")
-        # The address is the 58-char Algorand base32 address string
-        # We use the raw 32-byte public key for determinism
+        # Compute leaf: SHA256(0x00 || 32-byte-pubkey || ":" || 8-byte-amount-BE)
+        # Domain separation: 0x00 prefix distinguishes leaves from internal nodes (0x01).
+        # Must match airdrop_snapshot.py wallet_leaf() encoding exactly.
         leaf_data = Bytes(b"\x00") + sender_key + Bytes(b":") + op.itob(amount)
         leaf = op.sha256(leaf_data)
 
