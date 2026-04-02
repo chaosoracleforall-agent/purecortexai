@@ -1416,7 +1416,7 @@ class SocialAgent(BaseAgent):
         tge_iso = os.getenv("PURECORTEX_TGE_DATE", "2026-03-31T00:00:00Z")
         try:
             from datetime import datetime, timezone
-            from backend.src.services.launch_campaign import get_missed_prompts
+            from src.services.launch_campaign import get_missed_prompts
 
             tge = datetime.fromisoformat(tge_iso.replace("Z", "+00:00"))
             days_until = (tge - datetime.now(timezone.utc)).days
