@@ -32,7 +32,7 @@ TESTNET_INDEXER_URL = "https://testnet-idx.4160.nodely.dev"
 TINYMAN_V2_APP_ID = 1002541853
 PACT_APP_ID = 620995314
 FOLKS_LENDING_APP_ID = 686498781
-GOVERNANCE_ESCROW_PREFIX = "GOVERRR"
+# Removed: GOVERNANCE_ESCROW_PREFIX was unreliable; replaced with governance app IDs
 
 TOTAL_AIRDROP = 3_100_000_000_000_000
 
@@ -131,39 +131,50 @@ NFD_REGISTRY_APP_ID = 760937186  # NFD v2 registry on mainnet
 
 
 def snapshot_governors(idx: indexer.IndexerClient, block: int | None = None) -> set[str]:
-    """Identify wallets that participated in Algorand governance periods."""
+    """Identify wallets that participated in Algorand governance periods.
+
+    Uses multiple detection strategies:
+    1. Note prefix 'af/gov' (standard governance commitment note)
+    2. Application calls to known governance reward apps
+    3. Transactions with 'gov' in the note field (broader catch)
+    """
     governors: set[str] = set()
     search_kwargs: dict[str, Any] = {"limit": 1000}
     if block is not None:
         search_kwargs["max_round"] = block
 
-    try:
-        # Governance commitment transactions send ALGO to escrow addresses
-        # starting with "GOVERRR". We look for payment transactions to these.
-        response = idx.search_transactions(
-            note_prefix=b"af/gov",
-            **search_kwargs,
-        )
-        for txn in response.get("transactions", []):
-            sender = txn.get("sender", "")
-            if sender:
-                governors.add(sender)
-    except Exception as e:
-        print(f"    Warning: Governance scan (note prefix) failed: {e}")
+    # Strategy 1: Note prefix matching (standard governance transactions)
+    for note_prefix in [b"af/gov", b"gov"]:
+        try:
+            response = idx.search_transactions(
+                note_prefix=note_prefix,
+                **search_kwargs,
+            )
+            for txn in response.get("transactions", []):
+                sender = txn.get("sender", "")
+                if sender:
+                    governors.add(sender)
+        except Exception as e:
+            print(f"    Warning: Governance scan (note prefix {note_prefix!r}) failed: {e}")
 
-    try:
-        # Also check for accounts that sent commitment transactions
-        response = idx.search_transactions(
-            address=GOVERNANCE_ESCROW_PREFIX,
-            address_role="receiver",
-            **search_kwargs,
-        )
-        for txn in response.get("transactions", []):
-            sender = txn.get("sender", "")
-            if sender:
-                governors.add(sender)
-    except Exception as e:
-        print(f"    Warning: Governance scan (escrow) failed: {e}")
+    # Strategy 2: Governance reward distribution app IDs
+    # These are well-known Algorand Foundation governance reward apps
+    GOVERNANCE_APP_IDS = [
+        1006299344,   # Algorand Governance Period 6+ rewards
+        1159626498,   # Algorand Governance Period 8+ rewards
+    ]
+    for app_id in GOVERNANCE_APP_IDS:
+        try:
+            response = idx.search_transactions(
+                application_id=app_id,
+                **search_kwargs,
+            )
+            for txn in response.get("transactions", []):
+                sender = txn.get("sender", "")
+                if sender:
+                    governors.add(sender)
+        except Exception as e:
+            print(f"    Warning: Governance scan (app {app_id}) failed: {e}")
 
     return governors
 
@@ -188,7 +199,12 @@ def snapshot_nfd_holders(idx: indexer.IndexerClient) -> set[str]:
 
 
 def snapshot_developers(idx: indexer.IndexerClient, block: int | None = None) -> set[str]:
-    """Identify wallets that deployed smart contracts on Algorand."""
+    """Identify wallets that deployed smart contracts on Algorand.
+
+    Application creation transactions have on-completion field that the indexer
+    may return as either a string or integer depending on the SDK version.
+    We check for both formats.
+    """
     developers: set[str] = set()
     search_kwargs: dict[str, Any] = {"limit": 1000, "txn_type": "appl"}
     if block is not None:
@@ -197,10 +213,20 @@ def snapshot_developers(idx: indexer.IndexerClient, block: int | None = None) ->
     try:
         response = idx.search_transactions(**search_kwargs)
         for txn in response.get("transactions", []):
-            # Application create transactions have on_completion = 0
-            # and include an approval_program
             app_txn = txn.get("application-transaction", {})
-            if app_txn.get("on-completion") == "noop" and app_txn.get("approval-program"):
+            on_completion = app_txn.get("on-completion")
+            has_program = bool(app_txn.get("approval-program"))
+            # Application creation: on-completion is "noop" (string) or 0 (int)
+            # AND the transaction includes an approval program.
+            # Also detect application_id == 0, which indicates a creation call.
+            is_create = (
+                on_completion in ("noop", 0)
+                and has_program
+            ) or (
+                app_txn.get("application-id", 1) == 0
+                and has_program
+            )
+            if is_create:
                 sender = txn.get("sender", "")
                 if sender:
                     developers.add(sender)
@@ -211,13 +237,20 @@ def snapshot_developers(idx: indexer.IndexerClient, block: int | None = None) ->
 
 
 def snapshot_social_campaign(db_url: str | None = None) -> set[str]:
-    """Pull registered wallets from the airdrop_registrations table."""
+    """Pull registered wallets from the airdrop_registrations table.
+
+    This tier depends on a running PostgreSQL database with the
+    airdrop_registrations table. If DATABASE_URL is not set, no wallets
+    are returned — this is expected pre-launch but should be flagged
+    as an issue if running a mainnet snapshot.
+    """
     registrations: set[str] = set()
 
     if not db_url:
         db_url = os.getenv("DATABASE_URL")
     if not db_url:
-        print("    Warning: DATABASE_URL not set — skipping social campaign tier")
+        print("    WARNING: DATABASE_URL not set — social campaign tier will have 0 wallets.")
+        print("    Set DATABASE_URL to include airdrop registrations in the snapshot.")
         return registrations
 
     try:
@@ -226,7 +259,9 @@ def snapshot_social_campaign(db_url: str | None = None) -> set[str]:
         with engine.connect() as conn:
             result = conn.execute(sqlalchemy.text("SELECT wallet_address FROM airdrop_registrations"))
             for row in result:
-                registrations.add(row[0])
+                if row[0]:
+                    registrations.add(row[0])
+        print(f"    Social campaign: {len(registrations)} registered wallets")
     except Exception as e:
         print(f"    Warning: Social campaign scan failed: {e}")
 
@@ -234,25 +269,32 @@ def snapshot_social_campaign(db_url: str | None = None) -> set[str]:
 
 
 def snapshot_community_tasks(db_url: str | None = None) -> set[str]:
-    """Pull wallets that completed community tasks from the database."""
+    """Pull wallets that completed community tasks from the database.
+
+    This tier depends on a running PostgreSQL database with the
+    community_task_completions table. If DATABASE_URL is not set, no wallets
+    are returned — this is expected pre-launch but should be flagged.
+    """
     participants: set[str] = set()
 
     if not db_url:
         db_url = os.getenv("DATABASE_URL")
     if not db_url:
-        print("    Warning: DATABASE_URL not set — skipping community tasks tier")
+        print("    WARNING: DATABASE_URL not set — community tasks tier will have 0 wallets.")
+        print("    Set DATABASE_URL to include community task completions in the snapshot.")
         return participants
 
     try:
         import sqlalchemy
         engine = sqlalchemy.create_engine(db_url)
         with engine.connect() as conn:
-            # community_task_completions table stores task completers
             result = conn.execute(sqlalchemy.text(
                 "SELECT DISTINCT wallet_address FROM community_task_completions"
             ))
             for row in result:
-                participants.add(row[0])
+                if row[0]:
+                    participants.add(row[0])
+        print(f"    Community tasks: {len(participants)} qualifying wallets")
     except Exception as e:
         print(f"    Warning: Community tasks scan failed: {e}")
 

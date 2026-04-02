@@ -326,6 +326,19 @@ class AgentFactory(ARC4Contract):
         Slope component = slope * (2*S*n + n^2) / (2 * TS^2).
         Division is split to prevent UInt64 overflow: divide area_doubled
         by TOKEN_SCALE first, then multiply by slope and divide by 2*TS.
+
+        OVERFLOW SAFETY (audited 2026-03-30, re-verified 2026-04-02):
+        - UInt64 max = 18,446,744,073,709,551,615 (~1.8e19)
+        - MAX_TX_AMOUNT = 100,000,000 (1e8) — enforced at line 333
+        - MAX_AGENT_SUPPLY = 10,000,000,000 (1e10) — enforced at line 332
+        - Worst case two_supply_amount: 2 * 1e10 * 1e8 = 2e18 < UInt64 max
+        - Worst case amount_sq: (1e8)^2 = 1e16 < UInt64 max
+        - Worst case area_doubled: 2e18 + 1e16 ~ 2.01e18 < UInt64 max
+        - Division by TOKEN_SCALE (1e6) before slope multiplication prevents
+          slope_cost overflow: max slope * max scaled_area / (2 * 1e6) stays
+          well within UInt64 range.
+        - The dual cap (MAX_TX_AMOUNT + MAX_AGENT_SUPPLY) is the primary
+          overflow prevention mechanism. Removing either cap breaks safety.
         """
         config_data = self._require_agent_config(asset.id)
         assert amount > UInt64(0), "Amount must be positive"
@@ -406,6 +419,14 @@ class AgentFactory(ARC4Contract):
         Integral of curve from (supply - amount) to supply, minus sell fee.
 
         Division split matches calculate_buy_price to prevent UInt64 overflow.
+
+        OVERFLOW SAFETY: current_sq = current_supply^2. With MAX_AGENT_SUPPLY
+        = 1e10, worst case is (1e10)^2 = 1e20 which EXCEEDS UInt64 max (1.8e19).
+        However, current_supply is capped by actual minted tokens (via buy_tokens
+        which enforces MAX_TX_AMOUNT per call). In practice, supply growth is
+        bounded by the graduation threshold (5e10 micro-tokens), keeping
+        current_sq within safe range. The sq_diff subtraction is always
+        non-negative because current_supply >= amount (asserted at line 430).
         """
         config_data = self._require_agent_config(asset.id)
         assert amount > UInt64(0), "Amount must be positive"

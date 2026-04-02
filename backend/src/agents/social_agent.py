@@ -1248,6 +1248,20 @@ class SocialAgent(BaseAgent):
         # Track content type distribution in long-term memory
         await self._update_content_stats(content_type)
 
+        # Track campaign post offsets for catch-up logic
+        if posted:
+            campaign_ctx = context.get("launch_campaign") or context.get("launch_campaign_catchup")
+            if campaign_ctx:
+                day_offset = campaign_ctx.get("priority_day_offset") or campaign_ctx.get("days_until_tge")
+                if day_offset is not None:
+                    posted_offsets_raw = await self.memory.recall_long("campaign_posted_offsets") or []
+                    if isinstance(day_offset, int) and day_offset <= 0:
+                        day_offset = -day_offset  # Convert to positive offset
+                    if day_offset not in posted_offsets_raw:
+                        posted_offsets_raw.append(day_offset)
+                        await self.memory.remember_long("campaign_posted_offsets", posted_offsets_raw)
+                        logger.info("[Social] Marked campaign Day %+d as posted.", day_offset)
+
         decision["campaign"] = campaign_result
         return decision
 
@@ -1402,6 +1416,8 @@ class SocialAgent(BaseAgent):
         tge_iso = os.getenv("PURECORTEX_TGE_DATE", "2026-03-31T00:00:00Z")
         try:
             from datetime import datetime, timezone
+            from backend.src.services.launch_campaign import get_missed_prompts
+
             tge = datetime.fromisoformat(tge_iso.replace("Z", "+00:00"))
             days_until = (tge - datetime.now(timezone.utc)).days
             launch_prompt = get_launch_prompt_for_day(days_until)
@@ -1412,8 +1428,27 @@ class SocialAgent(BaseAgent):
                     "content_type": launch_prompt["content_type"],
                     "seed": launch_prompt["seed"],
                 }
-        except Exception:
-            pass
+
+            # Detect missed campaign posts and flag for catch-up
+            posted_offsets_raw = await self.memory.recall_long("campaign_posted_offsets")
+            posted_offsets = set(posted_offsets_raw) if posted_offsets_raw else set()
+            missed = get_missed_prompts(days_until, posted_offsets)
+            if missed:
+                # Prioritize the earliest missed post (Day 0 launch is highest priority)
+                catchup = missed[0]
+                ctx["launch_campaign_catchup"] = {
+                    "missed_count": len(missed),
+                    "priority_topic": catchup["topic"],
+                    "priority_content_type": catchup["content_type"],
+                    "priority_seed": catchup["seed"],
+                    "priority_day_offset": catchup["day_offset"],
+                }
+                logger.warning(
+                    "[Social] %d missed campaign posts detected. Priority catch-up: Day %+d '%s'",
+                    len(missed), catchup["day_offset"], catchup["topic"],
+                )
+        except Exception as exc:
+            logger.warning("[Social] Launch campaign context failed: %s", exc)
 
         return ctx
 

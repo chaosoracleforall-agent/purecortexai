@@ -1,6 +1,7 @@
 from src.services.launch_campaign import (
     get_launch_prompt_for_day,
     get_all_launch_prompts,
+    get_missed_prompts,
     LAUNCH_COUNTDOWN_PROMPTS,
 )
 
@@ -14,7 +15,31 @@ def test_get_launch_prompt_for_day_returns_correct_prompt():
 
 def test_get_launch_prompt_for_day_returns_none_for_invalid_day():
     assert get_launch_prompt_for_day(99) is None
-    assert get_launch_prompt_for_day(-5) is None
+
+
+def test_get_launch_prompt_for_day_catchup_returns_latest():
+    """Post-TGE days beyond defined content should catch-up to latest available."""
+    prompt = get_launch_prompt_for_day(-5)
+    assert prompt is not None
+    assert prompt["day_offset"] == 5  # Returns Day +5 content
+
+
+def test_get_missed_prompts_returns_unposted():
+    missed = get_missed_prompts(-3, posted_offsets={0})
+    assert len(missed) >= 1
+    assert all(p["day_offset"] != 0 for p in missed)  # Day 0 was posted
+    assert any(p["day_offset"] == 1 for p in missed)   # Day 1 still missed
+
+
+def test_get_missed_prompts_returns_empty_before_tge():
+    missed = get_missed_prompts(5)
+    assert missed == []
+
+
+def test_get_missed_prompts_all_posted():
+    all_offsets = {p["day_offset"] for p in LAUNCH_COUNTDOWN_PROMPTS if p["day_offset"] >= 0}
+    missed = get_missed_prompts(-10, posted_offsets=all_offsets)
+    assert missed == []
 
 
 def test_get_launch_prompt_for_tge_day():

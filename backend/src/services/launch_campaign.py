@@ -128,6 +128,69 @@ LAUNCH_COUNTDOWN_PROMPTS: list[dict[str, Any]] = [
             "Transparent data, no inflated vanity numbers."
         ),
     },
+    {
+        "day_offset": 2,
+        "content_type": "protocol_update",
+        "topic": "CORTEX liquidity is live on Tinyman and Pact",
+        "seed": (
+            "Announce dual-DEX liquidity: CORTEX/ALGO pools live on @Tinymanorg (60%) "
+            "and @paboracle Pact (40%). 15% of total supply seeded as liquidity. "
+            "Share pool addresses. Link to both DEXs. Transparent launch — no hidden "
+            "pre-mine, no insider allocations."
+        ),
+    },
+    {
+        "day_offset": 3,
+        "content_type": "tokenomics_education",
+        "topic": "How the Assistance Fund buyback-burn works",
+        "seed": (
+            "Explain the 90/10 revenue model now live on mainnet. 90% of ALL protocol "
+            "fees flow to the Assistance Fund for continuous CORTEX buyback-and-burn. "
+            "This is constitutionally protected — cannot be changed without supermajority. "
+            "Share the Sovereign Treasury contract address for on-chain verification."
+        ),
+    },
+    {
+        "day_offset": 4,
+        "content_type": "governance_highlight",
+        "topic": "Governance is open: first proposals live",
+        "seed": (
+            "Announce governance is active. Proposal 0: Ratify the Constitution on-chain. "
+            "Explain how to participate: stake CORTEX → get veCORTEX → vote. "
+            "Senator Agent drafts proposals, community decides. Link to governance page."
+        ),
+    },
+    {
+        "day_offset": 5,
+        "content_type": "community_engagement",
+        "topic": "Airdrop claims countdown",
+        "seed": (
+            "Remind community: airdrop claims open April 21. 950 wallets eligible across "
+            "3 active tiers so far. Registration still open for social campaign tier. "
+            "Check eligibility at purecortex.ai/airdrop. 90-day claim window."
+        ),
+    },
+    {
+        "day_offset": 6,
+        "content_type": "agent_ecosystem",
+        "topic": "Create your first AI agent on PURECORTEX",
+        "seed": (
+            "Tutorial thread: how to create an AI agent on PURECORTEX. "
+            "Each agent gets its own bonding curve token. Agents operate autonomously "
+            "with tri-brain consensus. Walk through the marketplace creation flow. "
+            "End with: 'Your agent, your economy.'"
+        ),
+    },
+    {
+        "day_offset": 7,
+        "content_type": "metrics_report",
+        "topic": "Week 1 protocol health report",
+        "seed": (
+            "Share Week 1 on-chain metrics: total agents created, CORTEX burned via "
+            "Assistance Fund, governance participation rate, staking TVL, DEX volume. "
+            "Transparent weekly cadence — the Senator Agent will publish these ongoing."
+        ),
+    },
 ]
 
 
@@ -152,11 +215,52 @@ PARTNERSHIP_ANNOUNCEMENT_TEMPLATES: list[dict[str, Any]] = [
 
 
 def get_launch_prompt_for_day(days_until_tge: int) -> dict[str, Any] | None:
-    """Return the campaign prompt for the given day offset from TGE."""
+    """Return the campaign prompt for the given day offset from TGE.
+
+    If an exact match is not found and we are post-TGE (days_until_tge < 0),
+    returns the highest-offset prompt that hasn't been surpassed yet — this
+    enables catch-up when previous days' content was missed.
+    """
+    target_offset = -days_until_tge
+
+    # Exact match first
     for prompt in LAUNCH_COUNTDOWN_PROMPTS:
-        if prompt["day_offset"] == -days_until_tge:
+        if prompt["day_offset"] == target_offset:
             return prompt
+
+    # Catch-up: if post-TGE and no exact match, find the latest undelivered prompt
+    if target_offset > 0:
+        candidates = [
+            p for p in LAUNCH_COUNTDOWN_PROMPTS
+            if 0 <= p["day_offset"] <= target_offset
+        ]
+        if candidates:
+            return max(candidates, key=lambda p: p["day_offset"])
+
     return None
+
+
+def get_missed_prompts(days_until_tge: int, posted_offsets: set[int] | None = None) -> list[dict[str, Any]]:
+    """Return launch prompts that should have been posted but were missed.
+
+    Args:
+        days_until_tge: Current days until TGE (negative = post-TGE).
+        posted_offsets: Set of day_offset values already posted (from memory).
+                        If None, returns all post-TGE prompts up to today.
+    """
+    if days_until_tge >= 0:
+        return []
+
+    current_offset = -days_until_tge
+    posted = posted_offsets or set()
+
+    return sorted(
+        [
+            p for p in LAUNCH_COUNTDOWN_PROMPTS
+            if 0 <= p["day_offset"] <= current_offset and p["day_offset"] not in posted
+        ],
+        key=lambda p: p["day_offset"],
+    )
 
 
 def get_all_launch_prompts() -> list[dict[str, Any]]:
