@@ -109,14 +109,20 @@
   },
   "dex": {
     "tinyman": {
-      "poolId": null,
+      "poolAddress": "HMLZPDAKN2XO4F47KR656U3SMTMGKLSLS5HO6NHFT2JGFGT7JP6UCK66XE",
+      "poolTokenAsaId": 3502697927,
       "pair": "CORTEX/ALGO",
-      "status": "pending"
+      "algoAmount": 6600000000,
+      "cortexAmount": 900000000000000,
+      "status": "active"
     },
     "pact": {
-      "poolId": null,
+      "poolAppId": 3502703728,
+      "poolTokenAsaId": 3502703733,
       "pair": "CORTEX/ALGO",
-      "status": "pending"
+      "algoAmount": 4400000000,
+      "cortexAmount": 600000000000000,
+      "status": "active"
     }
   },
   "airdrop": {
