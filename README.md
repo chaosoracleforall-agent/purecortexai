@@ -3,30 +3,53 @@
 [![Admin E2E Mocked](https://github.com/chaosoracleforall-agent/purecortexai/actions/workflows/admin-e2e-mocked.yml/badge.svg)](https://github.com/chaosoracleforall-agent/purecortexai/actions/workflows/admin-e2e-mocked.yml)
 [![Admin E2E Live](https://github.com/chaosoracleforall-agent/purecortexai/actions/workflows/admin-e2e-live.yml/badge.svg)](https://github.com/chaosoracleforall-agent/purecortexai/actions/workflows/admin-e2e-live.yml)
 
-PURECORTEX is a sovereign AI agent launchpad and operating surface on Algorand Testnet. The current stack combines Algorand smart contracts, a FastAPI backend, a Next.js frontend, Redis-backed auth/session services, and a tri-brain orchestration layer for agent chat, governance, and marketplace flows.
+PURECORTEX is a sovereign AI agent launchpad and operating surface on **Algorand MainNet**. The stack combines Algorand smart contracts (Puya/algopy), a FastAPI backend, a Next.js 16 frontend, Redis-backed auth/session services, and a tri-brain orchestration layer (Claude Opus 4.6 + Gemini 2.5 Pro + GPT-5) for agent chat, governance, and marketplace flows.
 
 ## Current Status
 - **App:** [https://purecortex.ai](https://purecortex.ai)
 - **Health:** [https://purecortex.ai/health](https://purecortex.ai/health)
-- **Network:** Algorand Testnet
-- **Repository:** [chaosoracleforall-agent/purecortexai](https://github.com/chaosoracleforall-agent/purecortexai)
-- **Factory App ID:** `757172168`
-- **CORTEX Asset ID:** `757172171`
+- **Network:** Algorand MainNet (TGE: March 31, 2026)
+- **Token:** $CORTEX (ASA `3501164627`) — 10 quadrillion supply, 6 decimals
+- **Version:** 0.9.3
+- **Social:** [@purecortexai](https://x.com/purecortexai) on X
+
+### MainNet Contracts
+
+| Contract | App ID | Purpose |
+|----------|--------|---------|
+| AgentFactory | `3501164435` | Bonding curve token factory, agent creation, buy/sell, graduation |
+| Governance | `3501164276` | Proposal lifecycle, discussion, voting, timelock, execution |
+| VeCortexStaking | `3501164346` | Lock CORTEX, earn veCORTEX, delegate to Lawmakers |
+| SovereignTreasury | `3501164386` | Revenue split: 90% buyback-burn, 10% operations |
+| CreatorVesting | `3501164479` | 10% TGE release, 90% linear daily vest over 180 days |
+| AirdropClaim | `3502246857` | Merkle-proof airdrop claims with deadline enforcement |
+
+### DEX Liquidity
+
+| DEX | CORTEX | ALGO |
+|-----|--------|------|
+| Tinyman V2 (60%) | 900B | 6,600 |
+| Pact (40%) | 600B | 4,400 |
+
+### Treasury
+- **Operations multisig:** `PBOHX6V6PEV4BBPJVZ77BUS2LHQ2YRT4T7WRFQRZFHZI3ZEADXVMZGSFZE` (2-of-3)
+- **Revenue model:** 90% buyback-burn via Assistance Fund, 10% operations
 
 ## Tri-Brain Orchestration
-PURECORTEX uses OpenClaw to run parallel model inference across:
-- **Claude Opus 4.6**
-- **Gemini 2.5 Pro**
-- **GPT-5** with `gpt-4.1` fallback support configured through environment variables
+Parallel model inference across:
+- **Claude Opus 4.6** — primary reasoning
+- **Gemini 2.5 Pro** — secondary validation
+- **GPT-5** with `gpt-4.1` fallback
 
-High-risk actions use **2-of-3 majority consensus**. Lower-risk conversational flows can degrade to soft consensus when a single valid model response is sufficient.
+High-risk actions use **2-of-3 majority consensus** (fail-closed). Lower-risk conversational flows can degrade to soft consensus. Input sanitization with 8KB cap, control character stripping, and prompt injection detection.
 
-## What Is Live In This Repo
-- **Smart contracts:** AgentFactory, governance, staking, and treasury contracts for Algorand Testnet.
-- **Backend:** FastAPI APIs for transparency, governance, agent registry/chat, health, admin bootstrap, and chat session minting.
-- **Frontend:** Marketplace, governance, transparency, docs, and chat UX at `purecortex.ai`.
-- **Security/auth:** `X-API-Key` protected REST flows, short-lived WebSocket chat sessions, and fail-closed auth behavior on Redis outage.
-- **Testing:** Backend pytest coverage, contract tests, Playwright E2E coverage, and a documented testnet smoke harness.
+## What Is Live
+- **Smart contracts:** 6 contracts deployed on Algorand MainNet with bonding curves, governance, staking, treasury, vesting, and airdrop claims.
+- **Backend:** FastAPI APIs for transparency, governance, agent registry/chat, health, admin bootstrap, developer access, and airdrop eligibility.
+- **Frontend:** Marketplace, governance, transparency, airdrop, docs, and chat UX at `purecortex.ai`.
+- **AI Agents:** Senator (governance analyst), Curator (constitutional compliance), Social (X/Twitter community engagement) — all running autonomously.
+- **Security/auth:** `X-API-Key` protected REST flows, short-lived WebSocket chat sessions, fail-closed auth, isolated signer daemon (no network, read-only FS), reCAPTCHA Enterprise on developer access.
+- **Testing:** 115+ tests (51 contracts + 56 backend + 8 E2E + 12 campaign).
 
 ## Local Development
 1. Copy `.env.example` to `.env` and fill in required keys.
@@ -53,17 +76,35 @@ Live admin smoke options:
 - Use `dev-session` for the default live run, or choose `header` when you want stricter trusted-header coverage for the admin surface.
 
 ## Deployment
-PURECORTEX currently deploys to the `purecortex-master` GCP VM using the root `docker-compose.yml` stack and `nginx.conf`.
 
-- Workstation deploy: `bash scripts/deploy_remote_vm.sh --pull`
-- On-VM deploy: `bash scripts/deploy_vm.sh --pull`
-- Runbook: [DEPLOYMENT.md](./DEPLOYMENT.md)
+PURECORTEX runs on two isolated GCP VMs in `us-central1-a` (project: `purecortexai`):
+
+| VM | Purpose | Stack |
+|----|---------|-------|
+| `purecortex-mainnet` | **Production** (MainNet) | Docker Compose + `nginx.mainnet.conf` |
+| `purecortex-master` | Testnet / staging | Docker Compose + `nginx.conf` |
+
+Deploy to mainnet:
+```bash
+PURECORTEX_GCP_INSTANCE=purecortex-mainnet bash scripts/deploy_remote_vm.sh --pull
+```
+
+Deploy to testnet:
+```bash
+bash scripts/deploy_remote_vm.sh --pull
+```
+
+Runbook: [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ## Key Docs
-- [DEPLOYMENT.md](./DEPLOYMENT.md)
-- [docs/ENTERPRISE_DEVELOPER_ACCESS_SPEC.md](./docs/ENTERPRISE_DEVELOPER_ACCESS_SPEC.md)
-- [docs/API.md](./docs/API.md)
-- [docs/CLI.md](./docs/CLI.md)
-- [docs/MCP.md](./docs/MCP.md)
-- [SECURITY_AUDIT.md](./SECURITY_AUDIT.md)
-- [VERIFICATION_CERTIFICATE.md](./VERIFICATION_CERTIFICATE.md)
+- [DEPLOYMENT.md](./DEPLOYMENT.md) — Deployment runbook and security flags
+- [MAINNET_LAUNCH_CHECKLIST.md](./MAINNET_LAUNCH_CHECKLIST.md) — TGE checklist
+- [SECURITY_AUDIT.md](./SECURITY_AUDIT.md) — Internal security audit findings
+- [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md) — Comprehensive audit report
+- [docs/OUTREACH.md](./docs/OUTREACH.md) — Audit firm, partnership, and Immunefi outreach
+- [docs/IMMUNEFI_BOUNTY_SPEC.md](./docs/IMMUNEFI_BOUNTY_SPEC.md) — Bug bounty program spec
+- [docs/ENTERPRISE_DEVELOPER_ACCESS_SPEC.md](./docs/ENTERPRISE_DEVELOPER_ACCESS_SPEC.md) — Developer access API
+- [docs/API.md](./docs/API.md) — REST API reference
+- [docs/CLI.md](./docs/CLI.md) — CLI reference
+- [docs/MCP.md](./docs/MCP.md) — MCP server reference
+- [CHANGELOG.md](./CHANGELOG.md) — Version history

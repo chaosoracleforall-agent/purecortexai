@@ -188,3 +188,62 @@ It is intended to preserve work history if the chat ends and support a complete 
   - Watch for repeated backend `500`, DB connection refused, or sustained upstream `502` from nginx.
 - Security follow-up:
   - Review GitHub Dependabot alert noted at push time (1 high) and schedule patch.
+
+### 2026-04-02 — Post-Launch Hardening & Operations (v0.9.2 + v0.9.3)
+
+**Daily assessment completed** covering all 6 areas: app status, airdrop, security, liquidity, social, X agent.
+
+#### Security (v0.9.2)
+- Centralized `_sanitize_user_input()` in orchestrator — 8KB cap, control chars, quote escaping, injection detection
+- Bonding curve overflow safety documented in contract docstrings
+- Nginx CSP updated with mainnet Nodely endpoints
+
+#### Airdrop snapshot fixes (v0.9.2)
+- Governor detection: replaced `GOVERRR` escrow prefix with governance reward app IDs
+- Developer detection: fixed `on-completion` string/int comparison
+- Database tier warnings improved
+- Re-ran snapshot: 951 wallets (442 DeFi + 502 NFD + 6 Pioneers)
+- Note: governor/developer tiers still timeout on Nodely indexer — needs paginated queries
+
+#### Social agent campaign (v0.9.2)
+- Extended campaign to Day +7 (6 new post-TGE prompts)
+- Added catch-up logic for missed posts + Redis offset tracking
+- Fixed import path for `get_missed_prompts`
+
+#### Infrastructure (v0.9.3)
+- Frontend Docker healthcheck: `localhost` → `127.0.0.1` (IPv6 fix, was unhealthy for 25+ streaks)
+- Docker Compose env var warnings silenced
+- VM domain cutover: `purecortex.ai`
+- TLS cert paths updated, signer identity expanded (`liquidityPool`)
+- Bootstrap token passthrough added
+
+#### Operations (v0.9.3)
+- All 6 TEAL artifacts recompiled (puyapy 5.7.1, Python 3.12)
+- GCP IAM verified — 4 least-privilege roles
+- 2-of-3 treasury multisig created (`PBOHX6V6...SFZE`), mnemonics in Secret Manager
+- reCAPTCHA Enterprise enabled, key configured on VM
+- Admin API key bootstrapped
+- Governance Proposal 0 submitted ("Ratify the Constitution")
+- X bio corrected: "Dual-Brain" → "Tri-Brain"
+- Social agent verified live: 508 posts, launch thread posted, catch-up working
+
+#### Documentation (v0.9.3)
+- CHANGELOG.md updated (v0.9.2 + v0.9.3)
+- README.md rewritten for mainnet (contracts table, DEX pools, multisig, status)
+- MAINNET_LAUNCH_CHECKLIST.md fully updated — all pre-TGE and post-TGE items checked off
+- DEPLOYMENT.md updated for dual-VM model
+- SECURITY_AUDIT.md extended with enterprise audit findings (April 2)
+- CLAUDE.md security gates: crypto, infra, app, contract checklists all marked complete
+- CLAUDE.md key management: multisig, IAM, secrets all marked complete
+- SESSION_LOG.md extended with April 2 session
+
+#### All containers healthy on `purecortex-mainnet`:
+```
+purecortex-backend-1     healthy
+purecortex-frontend-1    healthy
+purecortex-signer-1      healthy
+purecortex-redis-1       healthy
+purecortex-nginx-1       running
+purecortex-cloudsql-1    running
+purecortex-oauth2-1      running
+```

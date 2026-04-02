@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.9.3 - 2026-04-02
+
+### Operations — Mainnet Deployment
+- **Full mainnet VM deployment**: Backend, frontend, signer, Redis, nginx, Cloud SQL proxy, and oauth2-proxy all running and healthy on `purecortex-mainnet` VM.
+- **Frontend health check fix**: Changed Docker healthcheck from `localhost:3000` to `127.0.0.1:3000` to avoid IPv6 `::1` resolution on Alpine Linux where Next.js binds only IPv4. Frontend was showing `unhealthy` for 25+ streaks despite serving correctly.
+- **Docker Compose env warnings**: Added default empty values (`:-`) for `PURECORTEX_RECAPTCHA_SITE_KEY` and `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER` to suppress compose warnings on every command.
+- **Bootstrap token passthrough**: Added `PURECORTEX_BOOTSTRAP_TOKEN` to backend environment in `docker-compose.yml`.
+- **VM domain cutover**: Updated `PURECORTEX_PUBLIC_DOMAIN` from `mainnet.purecortex.ai` to `purecortex.ai` in VM `.env`.
+- **Nginx TLS paths**: Updated `nginx.mainnet.conf` cert paths from `mainnet.purecortex.ai` to `purecortex.ai` (post DNS cutover).
+- **Signer identity**: Added `liquidityPool` to `PURECORTEX_SIGNER_ALLOWED_IDENTITIES`.
+
+### Operations — Treasury Multisig
+- **2-of-3 Algorand multisig**: Created 3 treasury wallets (deployer, cold, hardware) and configured 2-of-3 multisig at address `PBOHX6V6PEV4BBPJVZ77BUS2LHQ2YRT4T7WRFQRZFHZI3ZEADXVMZGSFZE`.
+- All mnemonics stored in GCP Secret Manager (`MAINNET_TREASURY_MULTISIG_WALLETS`).
+- `deployment.mainnet.json` updated with multisig as operations wallet.
+- New script `scripts/setup_treasury_multisig.py` for multisig address creation with `--update-manifest` and `--dry-run` support.
+
+### Operations — Governance
+- **Proposal 0 submitted**: "Ratify the PURECORTEX Constitution On-Chain" — ceremonial first governance proposal created via bootstrapped admin API key.
+- Admin API key bootstrapped on mainnet backend.
+
+### Operations — reCAPTCHA Enterprise
+- Enabled `recaptchaenterprise.googleapis.com` API on GCP project `purecortexai`.
+- Created score-based reCAPTCHA key (`6LeYQ6Ms...`) for domains `purecortex.ai` and `mainnet.purecortex.ai`.
+- Configured in VM `.env` — developer access form now protected.
+
+### Operations — Social Agent
+- **X bio corrected**: Changed "Dual-Brain consensus" to "Tri-Brain consensus" via Twitter API v1.1.
+- Social agent confirmed posting: 6-tweet launch thread posted, catch-up logic detecting 4 missed campaign days.
+- Verified @purecortexai account live: 508 posts, 25 following, 8 followers, blue verified checkmark.
+
+### Operations — TEAL Recompilation
+- All 6 contract TEAL artifacts recompiled on VM with puyapy 5.7.1 (Python 3.12): AgentFactory, Governance, VeCortexStaking, SovereignTreasury, CreatorVesting, AirdropClaim.
+
+### Operations — GCP IAM Verified
+- Service account `purecortex-mainnet-vm` confirmed with 4 least-privilege roles: `secretmanager.secretAccessor`, `cloudsql.client`, `logging.logWriter`, `storage.objectViewer`.
+
+### Added
+- `scripts/setup_treasury_multisig.py` — 2-of-3 Algorand multisig creation tool.
+- `docs/OUTREACH.md` — Draft outreach for audit firms (Halborn, Runtime Verification), Algorand Foundation grant/listing, partnerships (Tinyman, Pact, Vestige, NFD), and Immunefi bug bounty publication checklist.
+
 ## 0.9.2 - 2026-04-02
 
 ### Security Hardening

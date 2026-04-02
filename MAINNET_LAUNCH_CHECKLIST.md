@@ -1,16 +1,16 @@
 # Mainnet Launch Checklist — TGE 2026-03-31
 
-**Last updated:** 2026-03-30
-**Branch:** `mainnet-launch-final` (commit `750f44b`)
-**Status:** Code ready. Operational tasks pending.
+**Last updated:** 2026-04-02
+**Branch:** `mainnet-launch-final` (commit `4cce1ae`)
+**Status:** LAUNCHED. MainNet live since March 31, 2026. Post-launch hardening complete.
 
 ---
 
-## Completed Today (2026-03-30)
+## Completed — Pre-TGE (2026-03-30)
 
 - [x] Code Review Gate 7 — all checklist items reviewed and signed off
 - [x] Treasury CEI ordering fix (`execute_burn`, `withdraw_buyback_algo`)
-- [x] Hardcoded testnet API URLs replaced with network-aware config (marketplace would have broken on mainnet)
+- [x] Hardcoded testnet API URLs replaced with network-aware config
 - [x] Hardcoded testnet explorer URLs replaced with `EXPLORER_BASE_URL`
 - [x] 20+ user-facing "testnet" labels removed across frontend
 - [x] WalletButton `handleDisconnect` error handling added
@@ -25,181 +25,95 @@
 
 ---
 
-## Pending — Must Complete Before TGE
+## Completed — TGE Day (2026-03-31)
 
-### 1. Recompile Treasury TEAL Artifacts
-
-The CEI ordering fix changed `sovereign_treasury/contract.py`. The on-chain TEAL must be recompiled.
-
-```bash
-cd contracts
-poetry run python -m smart_contracts build
-```
-
-Verify the new `artifacts/sovereign_treasury/*.teal` files differ from the previous version, then commit.
-
-**Risk if skipped:** Deployed contract bytecode won't match audited source code.
+- [x] All 6 smart contracts deployed to Algorand MainNet
+- [x] CORTEX ASA created (Asset ID: 3501164627)
+- [x] Protocol bootstrapped via `AgentFactory.bootstrap_protocol()`
+- [x] Wallet addresses populated in `deployment.mainnet.json`
+- [x] Trading and launch enabled (`tradingEnabled: true`, `launchEnabled: true`)
+- [x] AirdropClaim contract deployed (App ID: 3502246857)
+- [x] Airdrop snapshot taken (951 wallets, Merkle root generated)
+- [x] DEX liquidity seeded — Tinyman 60% (900B CORTEX + 6,600 ALGO), Pact 40% (600B CORTEX + 4,400 ALGO)
+- [x] Frontend switched to `NetworkId.MAINNET`
+- [x] Protocol configs regenerated (`protocol_config.py`, `protocolConfig.ts`)
 
 ---
 
-### 2. Fund Disposable Trader Wallet
+## Completed — Post-TGE Hardening (2026-04-01 to 2026-04-02)
 
-A funded Algorand wallet is needed for the live testnet smoke test.
+### Security (v0.9.1 + v0.9.2)
+- [x] 9 security audit findings remediated (SEV-001 through BE-003)
+- [x] Orchestrator input sanitization: centralized `_sanitize_user_input()` with 8KB cap, control chars, quote escaping, injection detection
+- [x] Bonding curve overflow safety documented in contract docstrings
+- [x] Nginx CSP updated with mainnet Nodely endpoints
 
-- Create or designate a disposable wallet
-- Fund with testnet ALGO (via dispenser or transfer)
-- Export the mnemonic securely
+### Infrastructure (v0.9.3)
+- [x] Mainnet VM (`purecortex-mainnet`) deployed and operational — all 7 containers healthy
+- [x] Frontend Docker healthcheck fixed (IPv6 → IPv4)
+- [x] Docker Compose env var warnings silenced
+- [x] VM domain cutover: `PURECORTEX_PUBLIC_DOMAIN=purecortex.ai`
+- [x] TLS cert paths updated to `purecortex.ai`
+- [x] `liquidityPool` added to signer allowed identities
+- [x] Bootstrap token passthrough added to Docker Compose
 
----
+### Operations (v0.9.3)
+- [x] All 6 TEAL artifacts recompiled (puyapy 5.7.1 on VM)
+- [x] GCP IAM verified — 4 least-privilege roles on `purecortex-mainnet-vm`
+- [x] 2-of-3 treasury multisig created (`PBOHX6V6PEV4BBPJVZ77BUS2LHQ2YRT4T7WRFQRZFHZI3ZEADXVMZGSFZE`)
+- [x] Multisig mnemonics stored in GCP Secret Manager
+- [x] reCAPTCHA Enterprise enabled on GCP, key configured on VM
+- [x] Admin API key bootstrapped on mainnet backend
+- [x] Governance Proposal 0 submitted ("Ratify the Constitution")
+- [x] X bio corrected: "Dual-Brain" → "Tri-Brain"
+- [x] Social agent operational — launch thread posted (6 tweets), catch-up logic working
 
-### 3. Provision DEPLOYER_MNEMONIC
-
-The deployer mnemonic is required for contract operations and the smoke test.
-
-Options (pick one):
-- Environment variable: `export PURECORTEX_DEPLOYER_MNEMONIC="..."`
-- File: write to a file with `chmod 600`, path in `PURECORTEX_DEPLOYER_MNEMONIC_FILE`
-- GCP Secret Manager: `MAINNET_PURECORTEX_DEPLOYER_MNEMONIC`
-
-**Never pass as a CLI argument.**
-
----
-
-### 4. Run Live Testnet Smoke Test
-
-This is the final gate from the go/no-go packet (R-003).
-
-```bash
-cd contracts
-PURECORTEX_DEPLOYER_MNEMONIC="..." PYTHONPATH=. poetry run pytest tests/live_testnet_verify.py::smoke -v
-```
-
-Validates end-to-end contract behavior before mainnet switch.
-
----
-
-### 5. Populate Wallet Addresses in deployment.mainnet.json
-
-All allocation wallet addresses are currently empty. These must be filled:
-
-| Field | Path in JSON | Purpose |
-|-------|-------------|---------|
-| `allocation.creator.wallet` | Line 59 | Creator vesting recipient |
-| `allocation.genesisDistribution.wallet` | Line 64 | Airdrop distribution source |
-| `allocation.futureEmissions.wallet` | Line 75 | Emissions schedule source |
-| `allocation.liquidity.wallet` | Line 81 | DEX liquidity pool source |
-| `allocation.agentIncentives.wallet` | Line 86 | Agent reward pool |
-| `allocation.assistanceFund.wallet` | Line 91 | Buyback-and-burn fund |
-| `wallets.assistanceFund` | Line 105 | Treasury burn target |
-| `wallets.operations` | Line 106 | 10% revenue ops wallet |
-| `wallets.creatorVesting` | Line 107 | Vesting contract address |
-| `wallets.liquidityPool` | Line 108 | LP token holder |
-
-After populating, regenerate the frontend config:
-
-```bash
-PURECORTEX_NETWORK=mainnet python generate_protocol_config.py
-```
+### Airdrop Snapshot (v0.9.2)
+- [x] Governor detection fixed (replaced `GOVERRR` prefix with governance app IDs)
+- [x] Developer detection fixed (`on-completion` string/int handling)
+- [x] Database tier warnings improved
+- [x] Snapshot re-run: 951 wallets eligible (442 DeFi + 502 NFD + 6 Pioneers)
+- [x] Launch campaign extended to Day +7 with catch-up logic
 
 ---
 
-### 6. Enable Trading and Launch
+## Post-Launch Monitoring — Verified
 
-Currently disabled in `deployment.mainnet.json` (lines 95-97):
-
-```json
-"tradingEnabled": false,
-"launchEnabled": false,
-"maintenanceReason": "Pre-launch: mainnet contracts pending deployment"
-```
-
-Set both to `true` and clear `maintenanceReason` when ready. Then regenerate config.
-
----
-
-### 7. Seed DEX Liquidity Pools
-
-Both Tinyman and Pact pool IDs are `null` in `deployment.mainnet.json`.
-
-```bash
-cd scripts
-PURECORTEX_DEPLOYER_MNEMONIC="..." python setup_liquidity.py --confirm
-```
-
-Note: automated pool creation is a TODO (line 176-183 in the script). Manual pool creation via DEX UIs may be required. Split is 60% Tinyman / 40% Pact.
-
-After pools are created, update `dex.tinyman.poolId` and `dex.pact.poolId` in the manifest.
+- [x] `/health` returns `200` with mainnet network
+- [x] CORTEX ASA visible on Algo Explorer
+- [x] Tinyman pool shows liquidity
+- [x] Pact pool shows liquidity
+- [x] Marketplace trading enabled
+- [x] Governance page shows proposals (2 proposals, 1 voting)
+- [x] Social agent posting to X (@purecortexai, 508 posts)
+- [x] Backend health: `{"status":"ok","version":"0.7.7","dependencies":{"redis":"connected","orchestrator":"initialized","agent_loop":"running"}}`
 
 ---
 
-### 8. Take Airdrop Snapshot
+## Remaining — Post-Launch Roadmap
 
-These fields in `deployment.mainnet.json` are currently `null`:
-- `airdrop.snapshotBlock`
-- `airdrop.merkleRoot`
-- `airdrop.distributionContract`
+### External Security (P1)
+- [ ] Engage external audit firm (Halborn or Runtime Verification) — drafts in `docs/OUTREACH.md`
+- [ ] Publish Immunefi bug bounty program — spec at `docs/IMMUNEFI_BOUNTY_SPEC.md`
+- [ ] Complete penetration testing checklist (12 smart contract + 7 backend + 5 infra tests)
 
-```bash
-python scripts/airdrop_snapshot.py --block <BLOCK_NUMBER> --output snapshot.json
-```
+### Airdrop Tiers (P1)
+- [ ] Governor tier: Nodely indexer times out on broad `search_transactions` — use paginated queries or dedicated governance data source
+- [ ] Developer tier: Same indexer timeout — paginate or use smaller round ranges
+- [ ] Social campaign + community tasks: Populate via database registrations (claims open April 21)
 
-Update the manifest with the resulting merkle root and snapshot block.
+### Partnerships (P2)
+- [ ] Algorand Foundation ecosystem listing — draft in `docs/OUTREACH.md`
+- [ ] Tinyman/Pact token verification
+- [ ] Vestige.fi analytics listing
+- [ ] NFD co-promotion for airdrop tier
+- [ ] ASA Stats / Algoscan explorer metadata
 
----
-
-### 9. Stage Secrets on VM
-
-Copy to the mainnet VM (`gcloud compute ssh chaos-sovereign-host --zone=us-central1-a`):
-
-**`.env` file** (from `.env.example`):
-- `PURECORTEX_NETWORK=mainnet`
-- `CLAUDE_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`
-- Twitter/X API credentials
-- `PURECORTEX_BOOTSTRAP_TOKEN`, `PURECORTEX_SIGNER_SHARED_TOKEN`
-- `PURECORTEX_ADMIN_SECRET`, Google OAuth client ID/secret
-- `PURECORTEX_TGE_DATE=2026-03-31T00:00:00-05:00`
-- `POSTGRES_PASSWORD`
-- reCAPTCHA site key + secret
-
-**`.signer-secrets/` directory** (mode 700):
-- GPG public + secret keys for all 5 identities (agent, senator, curator, social, vm)
-- Encrypted mnemonics for each identity
-
----
-
-### 10. Obtain TLS Certificate on VM
-
-```bash
-sudo certbot certonly --standalone -d purecortex.ai -d www.purecortex.ai
-```
-
-Certificates are mounted by nginx via `nginx.mainnet.conf`.
-
----
-
-### 11. Deploy to VM
-
-```bash
-# From workstation:
-bash scripts/deploy_remote_vm.sh --pull
-
-# Or on the VM directly:
-bash scripts/deploy_vm.sh --pull --tail-logs
-```
-
-This builds Docker images, applies Alembic migrations, and restarts the stack.
-
----
-
-## Post-Launch Monitoring
-
-- [ ] Verify health endpoint: `curl https://purecortex.ai/health`
-- [ ] Verify marketplace loads agents from mainnet indexer
-- [ ] Verify airdrop registration works without API key
-- [ ] Verify governance page shows mainnet contract explorer links
-- [ ] Verify wallet connect/disconnect works with Pera Wallet
-- [ ] Monitor Grafana / Cloud Run logs for errors
-- [ ] Confirm social campaign posts are going out (if enabled)
+### Protocol (P2)
+- [ ] Phase 2 governance: veCORTEX-weighted voting (replaces flash-vote-vulnerable CORTEX voting)
+- [ ] On-chain Constitution ratification (Proposal 0 in voting)
+- [ ] Weekly Senator protocol health reports (agent running, first cycle awaiting)
+- [ ] GitHub repo public release (on hold)
 
 ---
 
@@ -207,8 +121,9 @@ This builds Docker images, applies Alembic migrations, and restarts the stack.
 
 | Item | Severity | Notes |
 |------|----------|-------|
-| Assert message duplicates across contracts | Low | Same strings like "Unauthorized" in multiple methods — debuggable by context |
+| Assert message duplicates across contracts | Low | Same strings in multiple methods — debuggable by context |
 | Governance quorum based on fixed constant | Low | Will need updating as staked supply grows |
-| CreatorVesting not funded on-chain at init | Low | Tokens must be transferred separately after `initialize` |
+| CreatorVesting not funded on-chain at init | Low | Tokens must be transferred separately |
 | GitHub Dependabot: 17 vulns on default branch | Low | Our branch is clean; default branch needs separate fix |
-| External security audit not engaged | High | Recommended post-launch; internal audit completed |
+| Governor/developer airdrop tiers empty | Medium | Indexer query timeouts; affects 30% of airdrop allocation |
+| CSP `unsafe-inline` for scripts | Low | Required for Next.js; mainnet nginx uses `script-src-elem` |
