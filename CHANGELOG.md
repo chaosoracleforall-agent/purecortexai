@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.2 - 2026-04-02
+
+### Security Hardening
+- **Orchestrator input sanitization**: Replaced `html.escape(quote=False)` with centralized `_sanitize_user_input()` method across all three LLM brains (Claude, Gemini, GPT). Now applies 8KB length cap, control character stripping, HTML escaping with quotes, and prompt injection pattern detection with logging.
+- **Bonding curve overflow documentation**: Added detailed overflow safety analysis to `calculate_buy_price` and `calculate_sell_price` docstrings, documenting the dual-cap mechanism (MAX_TX_AMOUNT + MAX_AGENT_SUPPLY) and worst-case UInt64 arithmetic bounds.
+- **Nginx CSP update**: Added mainnet Nodely indexer endpoints (`mainnet-api.4160.nodely.dev`, `mainnet-idx.4160.nodely.dev`) to `connect-src` directive.
+
+### Fixed — Airdrop Snapshot
+- **Governor detection**: Replaced unreliable `GOVERRR` escrow prefix with Algorand governance reward app IDs (1006299344, 1159626498) and broader `gov` note prefix scanning. Previously returned 0 wallets.
+- **Developer detection**: Fixed `on-completion` field comparison to handle both string `"noop"` and integer `0` formats from the Algorand Indexer. Also checks `application-id == 0` as creation indicator. Previously returned 0 wallets.
+- **Database tier warnings**: Social campaign and community tasks tiers now log explicit warnings when `DATABASE_URL` is not set, with guidance on how to fix.
+
+### Added — Post-Launch Campaign Content
+- Extended launch campaign from Day +1 to Day +7 with 6 new content prompts: liquidity announcement, buyback-burn explainer, governance activation, airdrop countdown, agent tutorial, and Week 1 metrics report.
+- **Catch-up logic**: `get_launch_prompt_for_day()` now falls back to the latest undelivered post-TGE prompt when an exact day match isn't found, enabling the social agent to recover from missed posts.
+- **`get_missed_prompts()`**: New function that returns campaign prompts that should have been posted but weren't, based on Redis-tracked offsets.
+- Social agent now tracks posted campaign day offsets in long-term memory and logs warnings when missed posts are detected.
+
+### Tests
+- Updated `test_launch_campaign.py`: 12 tests passing (was 8). Added tests for catch-up behavior, `get_missed_prompts()` edge cases.
+
 ## 0.9.1 - 2026-04-01
 
 ### Security Fixes — Smart Contracts
