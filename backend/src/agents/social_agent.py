@@ -1554,6 +1554,7 @@ class SocialAgent(BaseAgent):
 
             # ---- Quote tweet ----
             recommended = candidate.get("recommended_action", "")
+            acted = False
             if recommended == "quote_tweet" and remaining.get("quote_tweets", 0) > 0:
                 draft = candidate.get("draft") or {}
                 if draft.get("action") == "QUOTE_TWEET" and score >= AUTO_QUOTE_TWEET_SCORE_THRESHOLD:
@@ -1570,13 +1571,14 @@ class SocialAgent(BaseAgent):
                         result.setdefault("quote_tweet_actions", []).append(qt_result)
                         remaining["quote_tweets"] -= 1
                         actions_taken += 1
+                        acted = True
                     except Exception as exc:
                         logger.warning("[Social] Quote tweet failed for %s: %s", tweet_id, exc)
                         result.setdefault("quote_tweet_actions", []).append({"error": str(exc)})
-                    continue
+                        # Fall through to try retweet or like instead
 
-            # ---- Retweet ----
-            if recommended == "retweet" and remaining.get("retweets", 0) > 0:
+            # ---- Retweet (or fallback from failed quote tweet) ----
+            if not acted and remaining.get("retweets", 0) > 0:
                 if score >= AUTO_RETWEET_SCORE_THRESHOLD:
                     try:
                         rt_result = await self.retweet(
@@ -1587,12 +1589,13 @@ class SocialAgent(BaseAgent):
                         result.setdefault("retweet_actions", []).append(rt_result)
                         remaining["retweets"] -= 1
                         actions_taken += 1
+                        acted = True
                     except Exception as exc:
                         logger.warning("[Social] Retweet failed for %s: %s", tweet_id, exc)
-                    continue
+                        # Fall through to like
 
             # ---- Like (catch-all for anything scoring above threshold) ----
-            if remaining.get("likes", 0) > 0 and score >= AUTO_LIKE_SCORE_THRESHOLD:
+            if not acted and remaining.get("likes", 0) > 0 and score >= AUTO_LIKE_SCORE_THRESHOLD:
                 try:
                     like_result = await self.like_tweet(
                         tweet_id=int(tweet_id),
