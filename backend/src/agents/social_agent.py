@@ -1525,7 +1525,8 @@ class SocialAgent(BaseAgent):
                         result.setdefault("reply_actions", []).append(reply_result)
                         remaining["mention_replies"] -= 1
                         actions_taken += 1
-                    except RuntimeError as exc:
+                    except Exception as exc:
+                        logger.warning("[Social] Reply failed for %s: %s", tweet_id, exc)
                         result.setdefault("reply_actions", []).append({"error": str(exc)})
                     continue
 
@@ -1546,7 +1547,8 @@ class SocialAgent(BaseAgent):
                         result.setdefault("reply_actions", []).append(reply_result)
                         remaining["replies"] -= 1
                         actions_taken += 1
-                    except RuntimeError as exc:
+                    except Exception as exc:
+                        logger.warning("[Social] Reply failed for %s: %s", tweet_id, exc)
                         result.setdefault("reply_actions", []).append({"error": str(exc)})
                     continue
 
@@ -1568,7 +1570,8 @@ class SocialAgent(BaseAgent):
                         result.setdefault("quote_tweet_actions", []).append(qt_result)
                         remaining["quote_tweets"] -= 1
                         actions_taken += 1
-                    except RuntimeError as exc:
+                    except Exception as exc:
+                        logger.warning("[Social] Quote tweet failed for %s: %s", tweet_id, exc)
                         result.setdefault("quote_tweet_actions", []).append({"error": str(exc)})
                     continue
 
@@ -1584,8 +1587,8 @@ class SocialAgent(BaseAgent):
                         result.setdefault("retweet_actions", []).append(rt_result)
                         remaining["retweets"] -= 1
                         actions_taken += 1
-                    except RuntimeError:
-                        pass
+                    except Exception as exc:
+                        logger.warning("[Social] Retweet failed for %s: %s", tweet_id, exc)
                     continue
 
             # ---- Like (catch-all for anything scoring above threshold) ----
@@ -1599,8 +1602,8 @@ class SocialAgent(BaseAgent):
                     result.setdefault("like_actions", []).append(like_result)
                     remaining["likes"] -= 1
                     actions_taken += 1
-                except RuntimeError:
-                    pass
+                except Exception as exc:
+                    logger.warning("[Social] Like failed for %s: %s", tweet_id, exc)
 
         return actions_taken
 
