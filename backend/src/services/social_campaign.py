@@ -294,12 +294,50 @@ def score_target_tweet(text: str, target: dict[str, Any], created_at: Any = None
 # ---------------------------------------------------------------------------
 
 SEARCH_QUERIES: list[str] = [
+    # Core queries (always included in rotation)
     "#Algorand AI -is:retweet",
     "#AlgoFam -is:retweet",
     "Algorand DeFi -is:retweet",
+    # Rotating queries (distributed across cycles)
     "AI agents blockchain Algorand -is:retweet",
     "Algorand governance -is:retweet",
+    "Algorand developers building -is:retweet",
+    "CORTEX Algorand -is:retweet",
+    "AI agents on-chain -is:retweet",
+    "#AlgorandAI -is:retweet",
+    "Algorand ecosystem -is:retweet lang:en",
 ]
+
+# Number of core queries that are always included in every cycle
+_CORE_QUERY_COUNT = 3
+
+# Cycle counter for query rotation (module-level state)
+_rotation_counter: int = 0
+
+
+def get_search_queries_for_cycle(max_queries: int = 6) -> list[str]:
+    """Return a rotating subset of search queries for this engagement cycle.
+
+    The first ``_CORE_QUERY_COUNT`` queries are always included.  The
+    remaining queries rotate across cycles so that each cycle uses a
+    different subset, distributing API usage across all queries over time.
+    """
+    global _rotation_counter
+    _rotation_counter += 1
+
+    core = SEARCH_QUERIES[:_CORE_QUERY_COUNT]
+    rotating = SEARCH_QUERIES[_CORE_QUERY_COUNT:]
+    if not rotating:
+        return core[:max_queries]
+
+    slots = max_queries - len(core)
+    offset = (_rotation_counter * 2) % len(rotating)
+    selected = rotating[offset:offset + slots]
+    if len(selected) < slots:
+        selected += rotating[:slots - len(selected)]
+
+    return core + selected
+
 
 # Keywords that indicate discussion-style content suitable for quote tweeting
 # (as opposed to simple announcements better suited for plain retweets).

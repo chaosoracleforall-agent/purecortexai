@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.9.4 - 2026-04-03
+
+### Added — Autonomous Community Engagement System
+- **Independent engagement loop**: New `_engagement_loop()` in `orchestrator_loop.py` runs every 45 minutes, completely decoupled from the 4-hour content posting cycle. The Social Agent now scans, discovers, and interacts with the Algorand community on its own schedule.
+- **`engage()` method**: Top-level engagement entry point on `SocialAgent` that orchestrates all community interaction per cycle — mention monitoring, search discovery, home timeline browsing, conversation follow-up, campaign target scanning, and dynamic target discovery.
+- **Home timeline browsing**: New `browse_home_timeline()` scans the agent's home feed for organic engagement opportunities from followed accounts (runs every 2nd cycle).
+- **Conversation continuity**: New `check_conversation_threads()` tracks conversations the agent has participated in and checks for new replies, enabling natural follow-up. Uses `_draft_conversation_reply()` with conversation context (our previous message) for contextual replies.
+- **Dynamic target discovery**: New `discover_new_targets()` organically expands the campaign target list by promoting high-scoring community accounts (score >= 8) to tracked targets. Cap at 30 targets total.
+- **Multi-action execution**: New `_execute_engagement_actions()` uses per-cycle caps (2 replies, 2 retweets, 5 likes, 1 quote tweet, 1 follow, 2 mention replies) instead of break-on-first-match, dramatically increasing engagement throughput.
+- **Aggregate daily write limit**: `MAX_TOTAL_WRITES_PER_DAY = 15` caps all posts + replies + quote tweets combined across both `act()` and `engage()` to stay within Twitter API limits.
+- **Engagement scheduler**: New `engagement_scheduler.py` module with `EngagementScheduler` class managing operation rotation across cycles to distribute API usage within rate limits.
+- **Expanded search queries**: Extended from 5 to 10 queries covering broader topics (developers, ecosystem, AI agents on-chain). New `get_search_queries_for_cycle()` rotates query subsets across cycles.
+- **New env vars**: `SOCIAL_ENGAGEMENT_INTERVAL`, `SOCIAL_ENGAGEMENT_ENABLED`, `SOCIAL_CYCLE_MAX_*` caps, `SOCIAL_MAX_TOTAL_WRITES_PER_DAY`, `SOCIAL_CAMPAIGN_DYNAMIC_DISCOVERY`, `SOCIAL_MAX_CAMPAIGN_TARGETS`, `SOCIAL_HOME_TIMELINE_ENABLED`, `SOCIAL_CONVERSATION_FOLLOWUP_ENABLED`.
+
+### Changed
+- **`act()` decoupled**: Removed `_autonomous_campaign_cycle()` call from `act()` — posting is now purely content generation. Engagement runs independently via `engage()`.
+- **`discover_community_content()`**: Added `use_rotation` parameter to opt into rotating query subsets from the engagement loop.
+
+### New Files
+- `backend/src/services/engagement_scheduler.py` — Cycle rotation scheduler with per-cycle caps
+- `backend/tests/test_engagement_scheduler.py` — 11 unit tests for scheduler logic
+- `backend/tests/test_social_engagement.py` — 7 unit tests for expanded search queries and rotation
+
+### Tests
+- 78/78 backend tests pass (18 new tests added).
+
 ## 0.9.3 - 2026-04-02
 
 ### Operations — Mainnet Deployment

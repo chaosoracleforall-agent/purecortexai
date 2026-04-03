@@ -30,11 +30,23 @@ from sandboxing import PermissionTier
 from src.services.protocol_config import CORTEX_ASSET_ID, CORTEX_NAME, CORTEX_UNIT_NAME
 from src.services.social_campaign import (
     get_search_queries,
+    get_search_queries_for_cycle,
     get_seed_targets,
     score_engagement_candidate,
     score_target_tweet,
 )
 from src.services.launch_campaign import get_launch_prompt_for_day
+from src.services.engagement_scheduler import (
+    CYCLE_MAX_FOLLOWS,
+    CYCLE_MAX_LIKES,
+    CYCLE_MAX_MENTION_REPLIES,
+    CYCLE_MAX_QUOTE_TWEETS,
+    CYCLE_MAX_REPLIES,
+    CYCLE_MAX_RETWEETS,
+    MAX_CAMPAIGN_TARGETS,
+    MAX_TOTAL_WRITES_PER_DAY,
+    EngagementScheduler,
+)
 
 from .base_agent import BaseAgent
 from .memory import AgentMemory
@@ -85,6 +97,9 @@ AUTO_QUOTE_TWEET_SCORE_THRESHOLD = int(os.getenv("SOCIAL_QUOTE_TWEET_SCORE_THRES
 ENGAGEMENT_HISTORY_KEY = "engagement_history"
 MENTION_CHECKPOINT_KEY = "mention_last_seen_id"
 COMMUNITY_CANDIDATES_KEY = "community_candidates"
+CONVERSATION_CHECKPOINTS_KEY = "conversation_checkpoints"
+THREAD_PARTICIPATION_KEY = "thread_participation"
+HOME_TIMELINE_CANDIDATES_KEY = "home_timeline_candidates"
 
 
 class SocialAgent(BaseAgent):
@@ -135,6 +150,7 @@ class SocialAgent(BaseAgent):
         # Initialize Twitter/X client from environment variables
         self.twitter_client = self._init_twitter()
         self._own_user_id: int | None = None
+        self._engagement_scheduler = EngagementScheduler()
 
     @staticmethod
     def _env_enabled(name: str, default: str = "1") -> bool:
@@ -182,9 +198,22 @@ class SocialAgent(BaseAgent):
                 "like_count": 0,
                 "quote_tweet_count": 0,
                 "mention_reply_count": 0,
+                "total_write_count": 0,
             }
             await self.memory.remember_long(CAMPAIGN_LIMITS_KEY, limits)
+        # Backfill total_write_count for existing limits dicts
+        if "total_write_count" not in limits:
+            limits["total_write_count"] = 0
         return limits
+
+    async def _check_write_budget(self) -> bool:
+        """Return True if there is remaining daily write budget."""
+        limits = await self._load_daily_limits()
+        return int(limits.get("total_write_count", 0)) < MAX_TOTAL_WRITES_PER_DAY
+
+    async def _increment_write_count(self) -> None:
+        """Increment the aggregate daily write counter."""
+        await self._increment_daily_limit("total_write_count")
 
     async def _increment_daily_limit(self, key: str) -> dict[str, Any]:
         limits = await self._load_daily_limits()
@@ -472,6 +501,7 @@ class SocialAgent(BaseAgent):
         *,
         max_results_per_query: int = 10,
         max_candidates: int = 15,
+        use_rotation: bool = False,
     ) -> dict[str, Any]:
         """Search for Algorand community content to engage with."""
         if not self.twitter_client:
@@ -489,7 +519,8 @@ class SocialAgent(BaseAgent):
         own_user_id = await self._get_own_user_id()
         candidates: list[dict[str, Any]] = []
 
-        for query in get_search_queries():
+        queries = get_search_queries_for_cycle() if use_rotation else get_search_queries()
+        for query in queries:
             try:
                 response = self.twitter_client.search_recent_tweets(
                     query=query,
@@ -1230,7 +1261,8 @@ class SocialAgent(BaseAgent):
         elif content:
             posted = await self._post_tweet(content)
 
-        campaign_result = await self._autonomous_campaign_cycle()
+        if posted:
+            await self._increment_write_count()
 
         # 5. Log outcome
         score = 1.0 if posted else 0.5  # 0.5 = generated but not posted (no client)
@@ -1240,7 +1272,6 @@ class SocialAgent(BaseAgent):
             outcome={
                 "posted": posted,
                 "content_type": content_type,
-                "campaign": campaign_result,
             },
             score=score,
         )
@@ -1262,8 +1293,655 @@ class SocialAgent(BaseAgent):
                         await self.memory.remember_long("campaign_posted_offsets", posted_offsets_raw)
                         logger.info("[Social] Marked campaign Day %+d as posted.", day_offset)
 
-        decision["campaign"] = campaign_result
         return decision
+
+    # ------------------------------------------------------------------
+    # Autonomous engagement (independent from posting)
+    # ------------------------------------------------------------------
+
+    async def engage(self) -> Optional[Dict[str, Any]]:
+        """Autonomous community engagement cycle.
+
+        Called by the engagement loop every ~45 minutes, independently from
+        the content-posting loop.  Discovers community content, monitors
+        mentions, browses the home timeline, follows up on conversations,
+        and executes engagement actions (reply, retweet, like, quote, follow).
+        """
+        if not self.twitter_client:
+            return {"enabled": False, "reason": "twitter_client_unavailable"}
+
+        if not self._env_enabled("SOCIAL_ENGAGEMENT_ENABLED", "1"):
+            return {"enabled": False, "reason": "engagement_disabled"}
+
+        scheduler = self._engagement_scheduler
+        cycle = scheduler.advance_cycle()
+        logger.info("[Social] Engagement cycle %d starting.", cycle)
+
+        all_candidates: list[dict[str, Any]] = []
+        result: dict[str, Any] = {
+            "enabled": True,
+            "cycle": cycle,
+            "actions_taken": 0,
+        }
+
+        # ---- 1. Mention monitoring (every cycle) ----
+        if scheduler.should_run("mentions"):
+            try:
+                mentions = await self.check_mentions()
+                mention_candidates = mentions.get("candidates", [])
+                for mc in mention_candidates:
+                    mc["_source"] = "mention"
+                all_candidates.extend(mention_candidates)
+                result["mentions_checked"] = len(mention_candidates)
+            except Exception as exc:
+                logger.error("[Social] Mention check failed in engage(): %s", exc)
+                result["mentions_error"] = str(exc)
+
+        # ---- 2. Search-based community discovery (every cycle, rotating queries) ----
+        if scheduler.should_run("search"):
+            try:
+                community = await self.discover_community_content(
+                    max_results_per_query=int(os.getenv("SOCIAL_SEARCH_MAX_RESULTS", "10")),
+                    use_rotation=True,
+                )
+                community_candidates = community.get("candidates", [])
+                for cc in community_candidates:
+                    cc["_source"] = "search"
+                all_candidates.extend(community_candidates)
+                result["community_candidates"] = len(community_candidates)
+            except Exception as exc:
+                logger.error("[Social] Community discovery failed in engage(): %s", exc)
+                result["community_error"] = str(exc)
+
+        # ---- 3. Home timeline browsing (every 2nd cycle) ----
+        if scheduler.should_run("home_timeline") and self._env_enabled("SOCIAL_HOME_TIMELINE_ENABLED", "1"):
+            try:
+                timeline = await self.browse_home_timeline()
+                timeline_candidates = timeline.get("candidates", [])
+                for tc in timeline_candidates:
+                    tc["_source"] = "timeline"
+                all_candidates.extend(timeline_candidates)
+                result["timeline_candidates"] = len(timeline_candidates)
+            except Exception as exc:
+                logger.error("[Social] Home timeline browse failed: %s", exc)
+                result["timeline_error"] = str(exc)
+
+        # ---- 4. Conversation follow-up (every 3rd cycle) ----
+        if scheduler.should_run("conversation_threads") and self._env_enabled("SOCIAL_CONVERSATION_FOLLOWUP_ENABLED", "1"):
+            try:
+                threads = await self.check_conversation_threads()
+                thread_candidates = threads.get("candidates", [])
+                for tc in thread_candidates:
+                    tc["_source"] = "conversation"
+                all_candidates.extend(thread_candidates)
+                result["conversation_candidates"] = len(thread_candidates)
+            except Exception as exc:
+                logger.error("[Social] Conversation follow-up failed: %s", exc)
+                result["conversation_error"] = str(exc)
+
+        # ---- 5. Campaign target scanning (every 4th cycle) ----
+        if scheduler.should_run("campaign_targets"):
+            try:
+                payload = await self.discover_campaign_candidates(
+                    max_targets=AUTO_CAMPAIGN_MAX_TARGETS,
+                    tweets_per_target=AUTO_CAMPAIGN_TWEETS_PER_TARGET,
+                    max_candidates=AUTO_CAMPAIGN_MAX_CANDIDATES,
+                    include_reply_drafts=True,
+                )
+                target_candidates = payload.get("candidates", [])
+                for tc in target_candidates:
+                    tc["_source"] = "campaign_target"
+                all_candidates.extend(target_candidates)
+                result["target_candidates"] = len(target_candidates)
+
+                # Auto-follow from recommended_follows
+                if self._env_enabled("SOCIAL_CAMPAIGN_AUTO_FOLLOW", "1"):
+                    await self._execute_follows(payload.get("recommended_follows", []), result)
+            except Exception as exc:
+                logger.error("[Social] Campaign target scan failed: %s", exc)
+                result["target_error"] = str(exc)
+
+        # ---- 6. Dynamic target discovery (every 8th cycle) ----
+        if scheduler.should_run("dynamic_discovery") and self._env_enabled("SOCIAL_CAMPAIGN_DYNAMIC_DISCOVERY", "1"):
+            try:
+                new_targets = await self.discover_new_targets(all_candidates)
+                result["new_targets_added"] = len(new_targets)
+            except Exception as exc:
+                logger.error("[Social] Dynamic discovery failed: %s", exc)
+                result["discovery_error"] = str(exc)
+
+        # ---- 7. Execute engagement actions from merged candidates ----
+        # De-duplicate by tweet_id and sort by score descending
+        seen_ids: set[str] = set()
+        unique_candidates: list[dict[str, Any]] = []
+        for c in all_candidates:
+            tid = c.get("tweet_id")
+            if tid and tid not in seen_ids:
+                seen_ids.add(tid)
+                unique_candidates.append(c)
+        unique_candidates.sort(key=lambda c: int(c.get("score", 0)), reverse=True)
+
+        actions = await self._execute_engagement_actions(unique_candidates, result)
+        result["actions_taken"] = actions
+
+        # ---- 8. Log engagement episode ----
+        await self.memory.log_episode(
+            action="ENGAGE",
+            context={
+                "cycle": cycle,
+                "candidates_total": len(unique_candidates),
+                "operations": {
+                    "mentions": scheduler.should_run("mentions"),
+                    "search": scheduler.should_run("search"),
+                    "home_timeline": scheduler.should_run("home_timeline"),
+                    "conversation_threads": scheduler.should_run("conversation_threads"),
+                    "campaign_targets": scheduler.should_run("campaign_targets"),
+                    "dynamic_discovery": scheduler.should_run("dynamic_discovery"),
+                },
+            },
+            outcome=result,
+            score=1.0 if actions >= 3 else (0.7 if actions >= 1 else 0.2),
+        )
+
+        return result
+
+    async def _execute_follows(
+        self,
+        recommended_follows: list[dict[str, Any]],
+        result: dict[str, Any],
+    ) -> None:
+        """Execute auto-follow actions from recommended follows list."""
+        limits = await self._load_daily_limits()
+        if limits.get("follow_count", 0) >= MAX_FOLLOWS_PER_DAY:
+            return
+
+        history = await self._load_campaign_history()
+        followed = {handle.lower() for handle in history.get("followed_handles", [])}
+        follows_this_cycle = 0
+
+        for candidate in recommended_follows:
+            if follows_this_cycle >= CYCLE_MAX_FOLLOWS:
+                break
+            handle = candidate.get("handle")
+            if not handle or handle.lower() in followed:
+                continue
+            if int(candidate.get("priority", 0)) < AUTO_FOLLOW_PRIORITY_THRESHOLD:
+                continue
+            try:
+                follow_result = await self.follow_account(handle=handle, dry_run=False)
+                result.setdefault("follow_actions", []).append(follow_result)
+                follows_this_cycle += 1
+            except RuntimeError as exc:
+                result.setdefault("follow_actions", []).append({"handle": handle, "error": str(exc)})
+            break  # One follow attempt per cycle to be conservative
+
+    async def _execute_engagement_actions(
+        self,
+        candidates: list[dict[str, Any]],
+        result: dict[str, Any],
+    ) -> int:
+        """Execute engagement actions on a scored, de-duplicated candidate list.
+
+        Uses per-cycle caps from EngagementScheduler and respects daily limits.
+        Returns the total number of actions successfully taken.
+        """
+        caps = self._engagement_scheduler.get_cycle_caps()
+        remaining = dict(caps)  # mutable copy
+        actions_taken = 0
+
+        for candidate in candidates:
+            if all(v <= 0 for v in remaining.values()):
+                break  # All caps exhausted
+
+            score = int(candidate.get("score", 0))
+            source = candidate.get("_source", "")
+            tweet_id = candidate.get("tweet_id")
+            if not tweet_id:
+                continue
+
+            # ---- Reply (from mentions or conversations) ----
+            if source in ("mention", "conversation") and remaining.get("mention_replies", 0) > 0:
+                draft = candidate.get("draft") or {}
+                if draft.get("action") == "REPLY" and score >= AUTO_REPLY_SCORE_THRESHOLD:
+                    if not await self._check_write_budget():
+                        break
+                    try:
+                        reply_result = await self.reply_to_tweet(
+                            tweet_id=int(tweet_id),
+                            text=draft["message"],
+                            target_handle=candidate.get("author_handle") or candidate.get("target_handle"),
+                            dry_run=False,
+                        )
+                        await self._increment_write_count()
+                        if source == "mention":
+                            await self._increment_daily_limit("mention_reply_count")
+                            await self._record_engagement_event(
+                                action_type="mention_reply",
+                                tweet_id=int(tweet_id),
+                                author_handle=candidate.get("author_handle"),
+                                text=draft["message"],
+                                response_tweet_id=reply_result.get("response_tweet_id"),
+                            )
+                        result.setdefault("reply_actions", []).append(reply_result)
+                        remaining["mention_replies"] -= 1
+                        actions_taken += 1
+                    except RuntimeError as exc:
+                        result.setdefault("reply_actions", []).append({"error": str(exc)})
+                    continue
+
+            # ---- Reply (from campaign targets) ----
+            if source == "campaign_target" and remaining.get("replies", 0) > 0:
+                draft = candidate.get("draft") or {}
+                if draft.get("action") == "REPLY" and score >= AUTO_REPLY_SCORE_THRESHOLD:
+                    if not await self._check_write_budget():
+                        break
+                    try:
+                        reply_result = await self.reply_to_tweet(
+                            tweet_id=int(tweet_id),
+                            text=draft["message"],
+                            target_handle=candidate.get("target_handle"),
+                            dry_run=False,
+                        )
+                        await self._increment_write_count()
+                        result.setdefault("reply_actions", []).append(reply_result)
+                        remaining["replies"] -= 1
+                        actions_taken += 1
+                    except RuntimeError as exc:
+                        result.setdefault("reply_actions", []).append({"error": str(exc)})
+                    continue
+
+            # ---- Quote tweet ----
+            recommended = candidate.get("recommended_action", "")
+            if recommended == "quote_tweet" and remaining.get("quote_tweets", 0) > 0:
+                draft = candidate.get("draft") or {}
+                if draft.get("action") == "QUOTE_TWEET" and score >= AUTO_QUOTE_TWEET_SCORE_THRESHOLD:
+                    if not await self._check_write_budget():
+                        break
+                    try:
+                        qt_result = await self.quote_tweet(
+                            tweet_id=int(tweet_id),
+                            text=draft["message"],
+                            author_handle=candidate.get("author_handle"),
+                            dry_run=False,
+                        )
+                        await self._increment_write_count()
+                        result.setdefault("quote_tweet_actions", []).append(qt_result)
+                        remaining["quote_tweets"] -= 1
+                        actions_taken += 1
+                    except RuntimeError as exc:
+                        result.setdefault("quote_tweet_actions", []).append({"error": str(exc)})
+                    continue
+
+            # ---- Retweet ----
+            if recommended == "retweet" and remaining.get("retweets", 0) > 0:
+                if score >= AUTO_RETWEET_SCORE_THRESHOLD:
+                    try:
+                        rt_result = await self.retweet(
+                            tweet_id=int(tweet_id),
+                            author_handle=candidate.get("author_handle"),
+                            dry_run=False,
+                        )
+                        result.setdefault("retweet_actions", []).append(rt_result)
+                        remaining["retweets"] -= 1
+                        actions_taken += 1
+                    except RuntimeError:
+                        pass
+                    continue
+
+            # ---- Like (catch-all for anything scoring above threshold) ----
+            if remaining.get("likes", 0) > 0 and score >= AUTO_LIKE_SCORE_THRESHOLD:
+                try:
+                    like_result = await self.like_tweet(
+                        tweet_id=int(tweet_id),
+                        author_handle=candidate.get("author_handle"),
+                        dry_run=False,
+                    )
+                    result.setdefault("like_actions", []).append(like_result)
+                    remaining["likes"] -= 1
+                    actions_taken += 1
+                except RuntimeError:
+                    pass
+
+        return actions_taken
+
+    # ------------------------------------------------------------------
+    # Home timeline browsing
+    # ------------------------------------------------------------------
+
+    async def browse_home_timeline(
+        self,
+        *,
+        max_results: int = 50,
+        max_candidates: int = 10,
+    ) -> dict[str, Any]:
+        """Scan the home timeline for organic engagement opportunities."""
+        if not self.twitter_client:
+            raise RuntimeError("Twitter client is unavailable")
+
+        engagement_history = await self._load_engagement_history()
+        seen_ids: set[str] = set()
+        for key in ("retweeted_ids", "liked_ids", "quoted_ids", "mention_replied_ids"):
+            seen_ids.update(engagement_history.get(key, []))
+
+        campaign_history = await self._load_campaign_history()
+        seen_ids.update(campaign_history.get("replied_tweet_ids", []))
+
+        own_user_id = await self._get_own_user_id()
+        candidates: list[dict[str, Any]] = []
+
+        try:
+            response = self.twitter_client.get_home_timeline(
+                max_results=max(10, min(100, max_results)),
+                tweet_fields=["created_at", "public_metrics", "author_id", "conversation_id"],
+                expansions=["author_id"],
+                user_fields=["username", "name", "public_metrics"],
+                user_auth=True,
+            )
+        except Exception as exc:
+            logger.warning("[Social] Home timeline fetch failed: %s", exc)
+            return {"candidates": [], "error": str(exc)}
+
+        user_lookup: dict[int, dict[str, Any]] = {}
+        if response and hasattr(response, "includes") and response.includes:
+            for user in response.includes.get("users", []):
+                user_lookup[user.id] = {
+                    "username": user.username,
+                    "name": getattr(user, "name", user.username),
+                }
+
+        for tweet in (response.data or []) if response else []:
+            tweet_id = str(tweet.id)
+            if tweet_id in seen_ids:
+                continue
+
+            author_id = getattr(tweet, "author_id", None)
+            if author_id == own_user_id:
+                continue
+
+            author_info = user_lookup.get(author_id, {})
+            author_handle = author_info.get("username", "")
+            text = tweet.text or ""
+            metrics = getattr(tweet, "public_metrics", None) or {}
+
+            score, reasons, recommended_action = score_engagement_candidate(
+                text,
+                author_handle,
+                public_metrics=metrics,
+                created_at=getattr(tweet, "created_at", None),
+            )
+
+            if score < AUTO_LIKE_SCORE_THRESHOLD:
+                continue
+
+            candidates.append({
+                "tweet_id": tweet_id,
+                "author_handle": author_handle,
+                "author_name": author_info.get("name", author_handle),
+                "text": text,
+                "score": score,
+                "reasons": reasons,
+                "recommended_action": recommended_action,
+                "public_metrics": metrics,
+                "created_at": str(getattr(tweet, "created_at", "")),
+                "conversation_id": str(getattr(tweet, "conversation_id", "")),
+            })
+            seen_ids.add(tweet_id)
+
+        candidates.sort(key=lambda c: int(c.get("score", 0)), reverse=True)
+        candidates = candidates[:max_candidates]
+
+        # Draft quote comments for top candidates
+        for candidate in candidates:
+            if candidate.get("recommended_action") == "quote_tweet":
+                candidate["draft"] = await self._draft_quote_comment(candidate)
+
+        payload = {
+            "scanned_at": time.time(),
+            "candidates": candidates,
+        }
+        await self.memory.remember_short(HOME_TIMELINE_CANDIDATES_KEY, payload)
+        return payload
+
+    # ------------------------------------------------------------------
+    # Conversation follow-up
+    # ------------------------------------------------------------------
+
+    async def check_conversation_threads(
+        self,
+        *,
+        max_threads: int = 5,
+        max_results_per_thread: int = 10,
+    ) -> dict[str, Any]:
+        """Check for new replies in conversations we've participated in."""
+        if not self.twitter_client:
+            raise RuntimeError("Twitter client is unavailable")
+
+        # Collect recent response_tweet_ids from our engagement history
+        engagement = await self._load_engagement_history()
+        campaign = await self._load_campaign_history()
+
+        our_tweets: list[dict[str, Any]] = []
+        for event in reversed(engagement.get("events", [])):
+            if event.get("response_tweet_id") and event.get("tweet_id"):
+                our_tweets.append(event)
+                if len(our_tweets) >= max_threads * 2:
+                    break
+        for event in reversed(campaign.get("reply_events", [])):
+            if event.get("response_tweet_id") and event.get("tweet_id"):
+                our_tweets.append(event)
+                if len(our_tweets) >= max_threads * 2:
+                    break
+
+        if not our_tweets:
+            return {"candidates": []}
+
+        # Load conversation checkpoints
+        checkpoints = await self.memory.recall_long(CONVERSATION_CHECKPOINTS_KEY) or {}
+        own_user_id = await self._get_own_user_id()
+
+        candidates: list[dict[str, Any]] = []
+        threads_checked = 0
+        updated_checkpoints: dict[str, str] = dict(checkpoints)
+
+        for event in our_tweets[:max_threads]:
+            response_id = str(event["response_tweet_id"])
+
+            try:
+                # Search for replies to our tweet
+                query = f"conversation_id:{response_id} -from:{own_user_id}"
+                since_id = checkpoints.get(response_id)
+                kwargs: dict[str, Any] = {
+                    "query": query,
+                    "max_results": max(10, min(100, max_results_per_thread)),
+                    "tweet_fields": ["created_at", "public_metrics", "author_id"],
+                    "expansions": ["author_id"],
+                    "user_fields": ["username", "name"],
+                    "user_auth": True,
+                }
+                if since_id:
+                    kwargs["since_id"] = int(since_id)
+
+                response = self.twitter_client.search_recent_tweets(**kwargs)
+            except Exception as exc:
+                logger.warning("[Social] Conversation thread check failed for %s: %s", response_id, exc)
+                continue
+
+            user_lookup: dict[int, dict[str, Any]] = {}
+            if response and hasattr(response, "includes") and response.includes:
+                for user in response.includes.get("users", []):
+                    user_lookup[user.id] = {
+                        "username": user.username,
+                        "name": getattr(user, "name", user.username),
+                    }
+
+            max_seen_id = int(since_id) if since_id else 0
+
+            for tweet in (response.data or []) if response else []:
+                author_id = getattr(tweet, "author_id", None)
+                if author_id == own_user_id:
+                    if tweet.id > max_seen_id:
+                        max_seen_id = tweet.id
+                    continue
+
+                author_info = user_lookup.get(author_id, {})
+                text = tweet.text or ""
+
+                candidate = {
+                    "tweet_id": str(tweet.id),
+                    "author_handle": author_info.get("username", ""),
+                    "author_name": author_info.get("name", ""),
+                    "text": text,
+                    "score": 7,  # Conversation replies get a baseline score
+                    "reasons": ["conversation_followup"],
+                    "target_handle": author_info.get("username", ""),
+                    "target_category": "community",
+                    "created_at": str(getattr(tweet, "created_at", "")),
+                    "thread_context": {
+                        "our_previous_text": event.get("text", ""),
+                        "original_tweet_id": event.get("tweet_id"),
+                    },
+                }
+
+                # Draft a contextual reply
+                candidate["draft"] = await self._draft_conversation_reply(candidate)
+
+                candidates.append(candidate)
+                if tweet.id > max_seen_id:
+                    max_seen_id = tweet.id
+
+            if max_seen_id > (int(since_id) if since_id else 0):
+                updated_checkpoints[response_id] = str(max_seen_id)
+
+            threads_checked += 1
+
+        # Save updated checkpoints (keep most recent 50)
+        if updated_checkpoints:
+            # Trim to 50 most recent entries
+            entries = list(updated_checkpoints.items())
+            if len(entries) > 50:
+                entries = entries[-50:]
+            await self.memory.remember_long(CONVERSATION_CHECKPOINTS_KEY, dict(entries))
+
+        # Track participation
+        participation = await self.memory.recall_long(THREAD_PARTICIPATION_KEY) or []
+        for event in our_tweets[:max_threads]:
+            rid = str(event["response_tweet_id"])
+            if not any(p.get("response_tweet_id") == rid for p in participation):
+                participation.append({
+                    "response_tweet_id": rid,
+                    "original_tweet_id": event.get("tweet_id"),
+                    "timestamp": event.get("timestamp", time.time()),
+                })
+        participation = participation[-50:]  # Cap at 50
+        await self.memory.remember_long(THREAD_PARTICIPATION_KEY, participation)
+
+        candidates.sort(key=lambda c: int(c.get("score", 0)), reverse=True)
+        return {"candidates": candidates, "threads_checked": threads_checked}
+
+    async def _draft_conversation_reply(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        """Draft a reply that continues a conversation we're already in."""
+        thread_ctx = candidate.get("thread_context", {})
+        system_prompt = (
+            "You are continuing a conversation as @purecortexai.\n"
+            "You previously replied in this thread. Now someone has responded.\n"
+            "Continue the conversation naturally: acknowledge their point, add value.\n"
+            "Do not repeat yourself. Do not be promotional or pushy.\n"
+            f"Use {OFFICIAL_TOKEN_TICKER} if the protocol token is mentioned; never use PRCX.\n\n"
+            "Respond ONLY in valid JSON with fields:\n"
+            "  'action': 'REPLY' | 'NONE',\n"
+            "  'message': the reply text or empty string,\n"
+            "  'rationale': short explanation."
+        )
+        user_prompt = (
+            f"YOUR PREVIOUS MESSAGE: {thread_ctx.get('our_previous_text', 'N/A')}\n"
+            f"THEIR REPLY: {candidate.get('text', '')}\n"
+            f"AUTHOR: @{candidate.get('author_handle', 'unknown')}\n\n"
+            "Reply only if you can meaningfully continue this conversation."
+        )
+
+        decision = await self.think(system_prompt, user_prompt, task_type="REPLY")
+        if not decision:
+            return {"action": "NONE", "message": "", "rationale": "Consensus unavailable"}
+
+        action = decision.get("action", "NONE")
+        message = self._normalize_token_terms(decision.get("message", ""))
+        if action != "REPLY" or not message:
+            return {
+                "action": "NONE",
+                "message": "",
+                "rationale": decision.get("rationale", "No useful follow-up"),
+            }
+
+        return {
+            "action": "REPLY",
+            "message": message[:280],
+            "rationale": decision.get("rationale", ""),
+        }
+
+    # ------------------------------------------------------------------
+    # Dynamic target discovery
+    # ------------------------------------------------------------------
+
+    async def discover_new_targets(
+        self,
+        candidates: list[dict[str, Any]],
+        *,
+        max_new_targets: int = 3,
+    ) -> list[dict[str, Any]]:
+        """Discover new accounts to add to the campaign target list.
+
+        Examines high-scoring engagement candidates and adds their authors
+        as campaign targets if they aren't already tracked.
+        """
+        targets = await self._ensure_campaign_targets()
+        if len(targets) >= MAX_CAMPAIGN_TARGETS:
+            return []
+
+        existing_handles = {t.get("handle", "").lower() for t in targets}
+        new_targets: list[dict[str, Any]] = []
+
+        for candidate in candidates:
+            if len(new_targets) >= max_new_targets:
+                break
+            if len(targets) + len(new_targets) >= MAX_CAMPAIGN_TARGETS:
+                break
+
+            score = int(candidate.get("score", 0))
+            if score < 8:
+                continue
+
+            handle = candidate.get("author_handle", "")
+            if not handle or handle.lower() in existing_handles:
+                continue
+
+            # Infer topics from scoring reasons
+            inferred_topics = []
+            for reason in candidate.get("reasons", []):
+                if reason.startswith("topic:"):
+                    inferred_topics.append(reason.split(":", 1)[1])
+            if not inferred_topics:
+                inferred_topics = ["ecosystem"]
+
+            new_target = {
+                "handle": handle,
+                "category": "discovered",
+                "priority": min(8, max(6, score - 2)),
+                "tag_worthy": False,
+                "relationship_stage": "discovered",
+                "engage_topics": inferred_topics[:4],
+                "rationale": f"Discovered via engagement scan (score {score})",
+                "discovered_at": time.time(),
+            }
+            new_targets.append(new_target)
+            existing_handles.add(handle.lower())
+
+        if new_targets:
+            targets.extend(new_targets)
+            await self.memory.remember_long(CAMPAIGN_TARGETS_KEY, targets)
+            for t in new_targets:
+                logger.info("[Social] Discovered new target: @%s (priority %d)", t["handle"], t["priority"])
+
+        return new_targets
 
     @staticmethod
     def _normalize_token_terms(text: str) -> str:
