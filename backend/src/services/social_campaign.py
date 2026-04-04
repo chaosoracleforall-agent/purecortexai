@@ -306,6 +306,18 @@ SEARCH_QUERIES: list[str] = [
     "AI agents on-chain -is:retweet",
     "#AlgorandAI -is:retweet",
     "Algorand ecosystem -is:retweet lang:en",
+    # Broader AI agent ecosystem
+    "AI agents crypto -is:retweet",
+    "autonomous agents blockchain -is:retweet",
+    "AI DeFi agents -is:retweet lang:en",
+    # Developer tools and builder content
+    "AlgoKit building -is:retweet",
+    "Puya smart contracts -is:retweet",
+    "AVM developers -is:retweet",
+    # Cross-chain AI agent positioning
+    "AI agent launchpad -is:retweet",
+    "onchain AI agents -is:retweet",
+    "MCP tools AI -is:retweet",
 ]
 
 # Number of core queries that are always included in every cycle

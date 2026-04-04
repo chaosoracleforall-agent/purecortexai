@@ -37,6 +37,7 @@ from src.services.social_campaign import (
 )
 from src.services.launch_campaign import get_launch_prompt_for_day
 from src.services.engagement_scheduler import (
+    CYCLE_MAX_FOLLOWER_ENGAGEMENTS,
     CYCLE_MAX_FOLLOWS,
     CYCLE_MAX_LIKES,
     CYCLE_MAX_MENTION_REPLIES,
@@ -62,6 +63,7 @@ CONTENT_TYPES = [
     "agent_ecosystem",
     "community_engagement",
     "metrics_report",
+    "community_shoutout",
     "thread",
 ]
 
@@ -74,24 +76,24 @@ CAMPAIGN_TARGETS_KEY = "campaign_targets"
 CAMPAIGN_HISTORY_KEY = "campaign_history"
 CAMPAIGN_CANDIDATES_KEY = "campaign_candidates"
 CAMPAIGN_LIMITS_KEY = "campaign_daily_limits"
-MAX_FOLLOWS_PER_DAY = 5
-MAX_REPLIES_PER_DAY = 8
+MAX_FOLLOWS_PER_DAY = 8
+MAX_REPLIES_PER_DAY = 15
 AUTO_CAMPAIGN_MAX_TARGETS = int(os.getenv("SOCIAL_CAMPAIGN_MAX_TARGETS", "8"))
 AUTO_CAMPAIGN_TWEETS_PER_TARGET = int(os.getenv("SOCIAL_CAMPAIGN_TWEETS_PER_TARGET", "5"))
 AUTO_CAMPAIGN_MAX_CANDIDATES = int(os.getenv("SOCIAL_CAMPAIGN_MAX_CANDIDATES", "8"))
-AUTO_REPLY_SCORE_THRESHOLD = int(os.getenv("SOCIAL_CAMPAIGN_REPLY_SCORE_THRESHOLD", "6"))
-AUTO_FOLLOW_PRIORITY_THRESHOLD = int(os.getenv("SOCIAL_CAMPAIGN_FOLLOW_PRIORITY_THRESHOLD", "9"))
+AUTO_REPLY_SCORE_THRESHOLD = int(os.getenv("SOCIAL_CAMPAIGN_REPLY_SCORE_THRESHOLD", "4"))
+AUTO_FOLLOW_PRIORITY_THRESHOLD = int(os.getenv("SOCIAL_CAMPAIGN_FOLLOW_PRIORITY_THRESHOLD", "7"))
 
 # Community engagement limits
-MAX_RETWEETS_PER_DAY = int(os.getenv("SOCIAL_MAX_RETWEETS_PER_DAY", "5"))
-MAX_LIKES_PER_DAY = int(os.getenv("SOCIAL_MAX_LIKES_PER_DAY", "10"))
-MAX_QUOTE_TWEETS_PER_DAY = int(os.getenv("SOCIAL_MAX_QUOTE_TWEETS_PER_DAY", "3"))
-MAX_MENTION_REPLIES_PER_DAY = int(os.getenv("SOCIAL_MAX_MENTION_REPLIES_PER_DAY", "5"))
+MAX_RETWEETS_PER_DAY = int(os.getenv("SOCIAL_MAX_RETWEETS_PER_DAY", "10"))
+MAX_LIKES_PER_DAY = int(os.getenv("SOCIAL_MAX_LIKES_PER_DAY", "25"))
+MAX_QUOTE_TWEETS_PER_DAY = int(os.getenv("SOCIAL_MAX_QUOTE_TWEETS_PER_DAY", "6"))
+MAX_MENTION_REPLIES_PER_DAY = int(os.getenv("SOCIAL_MAX_MENTION_REPLIES_PER_DAY", "10"))
 
 # Score thresholds for engagement decisions
-AUTO_RETWEET_SCORE_THRESHOLD = int(os.getenv("SOCIAL_RETWEET_SCORE_THRESHOLD", "7"))
-AUTO_LIKE_SCORE_THRESHOLD = int(os.getenv("SOCIAL_LIKE_SCORE_THRESHOLD", "5"))
-AUTO_QUOTE_TWEET_SCORE_THRESHOLD = int(os.getenv("SOCIAL_QUOTE_TWEET_SCORE_THRESHOLD", "8"))
+AUTO_RETWEET_SCORE_THRESHOLD = int(os.getenv("SOCIAL_RETWEET_SCORE_THRESHOLD", "5"))
+AUTO_LIKE_SCORE_THRESHOLD = int(os.getenv("SOCIAL_LIKE_SCORE_THRESHOLD", "3"))
+AUTO_QUOTE_TWEET_SCORE_THRESHOLD = int(os.getenv("SOCIAL_QUOTE_TWEET_SCORE_THRESHOLD", "6"))
 
 # Memory keys for engagement tracking
 ENGAGEMENT_HISTORY_KEY = "engagement_history"
@@ -100,26 +102,35 @@ COMMUNITY_CANDIDATES_KEY = "community_candidates"
 CONVERSATION_CHECKPOINTS_KEY = "conversation_checkpoints"
 THREAD_PARTICIPATION_KEY = "thread_participation"
 HOME_TIMELINE_CANDIDATES_KEY = "home_timeline_candidates"
+FOLLOWER_ENGAGED_KEY = "follower_engaged_ids"
+
+# Keywords that suggest an ecosystem-relevant account worth following back
+_ECOSYSTEM_BIO_KEYWORDS = {
+    "algorand", "algo", "avm", "algokit", "defi", "web3", "blockchain",
+    "crypto", "developer", "builder", "ai", "agent", "agents", "protocol",
+    "smart contract", "dao", "governance", "fintech", "token",
+}
 
 
 class SocialAgent(BaseAgent):
     """Social Media Intelligence for PURECORTEX (@purecortexai on X)."""
 
     SYSTEM_PROMPT = (
-        "You are the Social Media Intelligence of PURECORTEX (@purecortexai on X).\n"
-        "Your role is to build awareness, educate, and engage the community about PURECORTEX.\n\n"
-        "Brand voice: Authoritative but accessible. Technical but not jargon-heavy.\n"
-        "Focus on: sovereignty, AI agents, Algorand, tokenomics (buyback-burn), governance.\n"
+        "You are @purecortexai on X — a builder and genuine member of the Algorand community.\n"
+        "Write in a real, human voice — like a builder sharing what excites them.\n"
+        "Be curious, specific, and conversational. Avoid marketing-speak, buzzwords, and hollow hype.\n\n"
+        "Topics you care about: AI agents, sovereignty, Algorand tech, tokenomics (buyback-burn), governance.\n"
         f"Protocol facts: the official token is {CORTEX_NAME} with ticker {OFFICIAL_TOKEN_TICKER} "
         f"on Algorand (asset id {CORTEX_ASSET_ID}). Never refer to the token as PRCX or any other ticker.\n"
         "Never: make price predictions, financial advice, misleading claims, or hype.\n\n"
-        "Keep tweets concise, impactful, and informative. Use threads for complex topics.\n"
-        "Reference on-chain data when possible for credibility.\n\n"
+        "Keep tweets concise and genuine. Use threads for complex topics.\n"
+        "Reference on-chain data when possible for credibility.\n"
+        "Celebrate community wins. Ask questions. Share what you're learning.\n\n"
         "Respond ONLY in valid JSON with fields:\n"
         "  'action': 'POST',\n"
         "  'content_type': one of 'protocol_update' | 'tokenomics_education' | "
         "'governance_highlight' | 'agent_ecosystem' | 'community_engagement' | "
-        "'metrics_report' | 'thread',\n"
+        "'metrics_report' | 'community_shoutout' | 'thread',\n"
         "  'message': <the tweet text, max 280 chars>,\n"
         "  'thread': [<array of tweet texts>] or null (only if content_type is 'thread'),\n"
         "  'rationale': <why this content was chosen>"
@@ -455,11 +466,11 @@ class SocialAgent(BaseAgent):
     async def _draft_quote_comment(self, candidate: dict[str, Any]) -> dict[str, Any]:
         """Use tri-brain consensus to draft commentary for a quote tweet."""
         system_prompt = (
-            "You are drafting a quote-tweet comment for @purecortexai.\n"
-            "Add genuine value: a technical insight, ecosystem perspective, or thoughtful take.\n"
+            "You are @purecortexai sharing a thought on something interesting from the Algorand community.\n"
+            "Add a genuine take: agree and expand, ask a question, or highlight why this matters.\n"
+            "Write like you're talking to a friend at a meetup, not writing a press release.\n"
             f"Use {OFFICIAL_TOKEN_TICKER} if the protocol token is mentioned; never use PRCX.\n"
-            "Do not be spammy, self-promotional, or make partnership claims.\n"
-            "Keep commentary under 200 characters to leave room for the quoted tweet.\n\n"
+            "Keep commentary under 200 characters. Be real, not promotional.\n\n"
             "Respond ONLY in valid JSON with fields:\n"
             "  'action': one of 'QUOTE_TWEET' | 'NONE',\n"
             "  'message': the commentary text or empty string,\n"
@@ -657,6 +668,9 @@ class SocialAgent(BaseAgent):
 
             score, reasons = score_target_tweet(text, synthetic_target, getattr(tweet, "created_at", None))
 
+            # Classify mention intent for warmer responses
+            intent = self._classify_mention_intent(text)
+
             candidate = {
                 "tweet_id": tweet_id,
                 "author_handle": author_info.get("username", ""),
@@ -664,13 +678,21 @@ class SocialAgent(BaseAgent):
                 "text": text,
                 "score": score,
                 "reasons": reasons,
+                "intent": intent,
                 "target_handle": author_info.get("username", ""),
                 "target_category": "community",
                 "created_at": str(getattr(tweet, "created_at", "")),
             }
 
-            if score >= AUTO_REPLY_SCORE_THRESHOLD:
-                candidate["draft"] = await self._draft_reply(candidate)
+            # Boost score for direct mentions with clear intent
+            if intent in ("question", "positive_sentiment", "newcomer"):
+                candidate["score"] = max(score, AUTO_REPLY_SCORE_THRESHOLD)
+
+            if candidate["score"] >= AUTO_REPLY_SCORE_THRESHOLD:
+                if intent in ("question", "positive_sentiment", "newcomer"):
+                    candidate["draft"] = await self._draft_warm_mention_reply(candidate)
+                else:
+                    candidate["draft"] = await self._draft_reply(candidate)
 
             candidates.append(candidate)
             if tweet.id > max_seen_id:
@@ -724,15 +746,22 @@ class SocialAgent(BaseAgent):
             "recent_follow_events": history.get("follow_events", [])[-5:],
             "recent_engagement_events": engagement.get("events", [])[-5:],
             "recent_social_cycles": recent_posts[:5],
+            "follower_engagement": {
+                "enabled": self._env_enabled("SOCIAL_FOLLOWER_ENGAGEMENT_ENABLED", "1"),
+                "followers_engaged": len(await self.memory.recall_long(FOLLOWER_ENGAGED_KEY) or []),
+            },
         }
 
     async def _draft_reply(self, candidate: dict[str, Any]) -> dict[str, Any]:
         system_prompt = (
-            "You are drafting a reply for @purecortexai to an Algorand ecosystem post.\n"
-            "Reply only when PURECORTEX can add real value.\n"
+            "You are @purecortexai, a genuine member of the Algorand community.\n"
+            "Reply like a knowledgeable friend: curious, supportive, and real.\n"
+            "Ask follow-up questions. Share genuine perspective. Celebrate good work.\n"
+            "Be warm and conversational — not corporate or promotional.\n"
+            "It's OK to be brief. A thoughtful one-liner beats a hollow paragraph.\n"
+            "Only mention PURECORTEX if it's directly relevant to their post.\n"
             f"Use {OFFICIAL_TOKEN_TICKER} if the protocol token is mentioned; never use PRCX.\n"
-            "Do not sound spammy. Do not over-tag people. Do not make partnership claims or price claims.\n"
-            "Prefer concise, technical, high-signal replies.\n\n"
+            "Do not over-tag people. Do not make partnership claims or price claims.\n\n"
             "Respond ONLY in valid JSON with fields:\n"
             "  'action': one of 'REPLY' | 'NONE',\n"
             "  'message': the reply text or empty string,\n"
@@ -765,6 +794,67 @@ class SocialAgent(BaseAgent):
             "message": message[:280],
             "rationale": decision.get("rationale", ""),
         }
+
+    @staticmethod
+    def _classify_mention_intent(text: str) -> str:
+        """Classify the intent behind a mention for warmer responses."""
+        normalized = text.lower()
+
+        # Check positive sentiment first (stronger intent than question words)
+        positive_signals = ("love", "amazing", "great", "awesome", "thank", "congrats",
+                            "incredible", "excited", "bullish", "fire", "gem", "brilliant")
+        if any(s in normalized for s in positive_signals):
+            return "positive_sentiment"
+
+        newcomer_signals = ("just found", "discovered", "new to", "first time",
+                            "just learned", "checking out", "heard about")
+        if any(s in normalized for s in newcomer_signals):
+            return "newcomer"
+
+        question_signals = ("?", " how ", " what ", " why ", " can you", " could you", " is there", " does ")
+        if any(s in normalized for s in question_signals):
+            return "question"
+
+        return "general"
+
+    async def _draft_warm_mention_reply(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        """Draft a warm reply to a mention with clear intent (question, praise, newcomer)."""
+        intent = candidate.get("intent", "general")
+        intent_guidance = {
+            "question": "They asked a question — answer it genuinely and helpfully.",
+            "positive_sentiment": "They said something kind — thank them warmly and continue the conversation.",
+            "newcomer": "They're new or just discovering PURECORTEX — welcome them and offer to help.",
+        }
+        guidance = intent_guidance.get(intent, "Engage naturally with their message.")
+
+        system_prompt = (
+            "Someone mentioned @purecortexai on X.\n"
+            f"{guidance}\n"
+            "Be a real person, not a chatbot. One or two sentences is perfect.\n"
+            "Be warm, genuine, and conversational.\n"
+            f"Use {OFFICIAL_TOKEN_TICKER} only if directly relevant; never use PRCX.\n\n"
+            "Respond ONLY in valid JSON with fields:\n"
+            "  'action': 'REPLY' | 'NONE',\n"
+            "  'message': the reply text or empty string,\n"
+            "  'rationale': short explanation."
+        )
+        user_prompt = (
+            f"FROM: @{candidate.get('author_handle', 'unknown')}\n"
+            f"INTENT: {intent}\n"
+            f"THEIR MESSAGE:\n{candidate.get('text', '')}\n\n"
+            "Reply naturally and warmly."
+        )
+
+        decision = await self.think(system_prompt, user_prompt, task_type="REPLY")
+        if not decision:
+            return {"action": "NONE", "message": "", "rationale": "Consensus unavailable"}
+
+        action = decision.get("action", "NONE")
+        message = self._normalize_token_terms(decision.get("message", ""))
+        if action != "REPLY" or not message:
+            return {"action": "NONE", "message": "", "rationale": decision.get("rationale", "")}
+
+        return {"action": "REPLY", "message": message[:280], "rationale": decision.get("rationale", "")}
 
     async def discover_campaign_candidates(
         self,
@@ -884,209 +974,6 @@ class SocialAgent(BaseAgent):
         await self.memory.remember_short(CAMPAIGN_CANDIDATES_KEY, payload)
         return payload
 
-    async def _autonomous_campaign_cycle(self) -> dict[str, Any]:
-        if not self.twitter_client:
-            return {"enabled": False, "reason": "twitter_client_unavailable"}
-
-        if not self._env_enabled("SOCIAL_CAMPAIGN_ENABLED", "1"):
-            return {"enabled": False, "reason": "campaign_disabled"}
-
-        limits = await self._load_daily_limits()
-        payload = await self.discover_campaign_candidates(
-            max_targets=AUTO_CAMPAIGN_MAX_TARGETS,
-            tweets_per_target=AUTO_CAMPAIGN_TWEETS_PER_TARGET,
-            max_candidates=AUTO_CAMPAIGN_MAX_CANDIDATES,
-            include_reply_drafts=True,
-        )
-
-        result: dict[str, Any] = {
-            "enabled": True,
-            "candidates_scanned": len(payload.get("candidates", [])),
-            "reply_action": None,
-            "follow_action": None,
-            "daily_limits": limits,
-        }
-
-        if self._env_enabled("SOCIAL_CAMPAIGN_AUTO_FOLLOW", "1") and limits.get("follow_count", 0) < MAX_FOLLOWS_PER_DAY:
-            history = await self._load_campaign_history()
-            followed = {handle.lower() for handle in history.get("followed_handles", [])}
-            for candidate in payload.get("recommended_follows", []):
-                handle = candidate.get("handle")
-                if not handle or handle.lower() in followed:
-                    continue
-                if int(candidate.get("priority", 0)) < AUTO_FOLLOW_PRIORITY_THRESHOLD:
-                    continue
-                try:
-                    follow_result = await self.follow_account(handle=handle, dry_run=False)
-                    result["follow_action"] = follow_result
-                except RuntimeError as exc:
-                    result["follow_action"] = {"handle": handle, "error": str(exc)}
-                break
-
-        limits = await self._load_daily_limits()
-        if self._env_enabled("SOCIAL_CAMPAIGN_AUTO_REPLY", "1") and limits.get("reply_count", 0) < MAX_REPLIES_PER_DAY:
-            for candidate in payload.get("candidates", []):
-                draft = candidate.get("draft") or {}
-                if draft.get("action") != "REPLY":
-                    continue
-                if int(candidate.get("score", 0)) < AUTO_REPLY_SCORE_THRESHOLD:
-                    continue
-                try:
-                    reply_result = await self.reply_to_tweet(
-                        tweet_id=int(candidate["tweet_id"]),
-                        text=draft["message"],
-                        target_handle=candidate.get("target_handle"),
-                        dry_run=False,
-                    )
-                    result["reply_action"] = reply_result
-                except RuntimeError as exc:
-                    result["reply_action"] = {
-                        "tweet_id": candidate.get("tweet_id"),
-                        "target_handle": candidate.get("target_handle"),
-                        "error": str(exc),
-                    }
-                break
-
-        # ---- Community engagement: search discovery ----
-        community_payload: dict[str, Any] = {"candidates": []}
-        if self._env_enabled("SOCIAL_CAMPAIGN_SEARCH_DISCOVERY", "1"):
-            try:
-                community_payload = await self.discover_community_content(
-                    max_results_per_query=int(os.getenv("SOCIAL_SEARCH_MAX_RESULTS", "10")),
-                )
-                result["community_candidates_scanned"] = len(community_payload.get("candidates", []))
-            except Exception as exc:
-                logger.error("[Social] Community discovery failed: %s", exc)
-                result["community_discovery_error"] = str(exc)
-
-        # ---- Auto quote tweet (1 per cycle) ----
-        limits = await self._load_daily_limits()
-        if (
-            self._env_enabled("SOCIAL_CAMPAIGN_AUTO_QUOTE_TWEET", "1")
-            and limits.get("quote_tweet_count", 0) < MAX_QUOTE_TWEETS_PER_DAY
-        ):
-            for candidate in community_payload.get("candidates", []):
-                if candidate.get("recommended_action") != "quote_tweet":
-                    continue
-                draft = candidate.get("draft") or {}
-                if draft.get("action") != "QUOTE_TWEET":
-                    continue
-                if int(candidate.get("score", 0)) < AUTO_QUOTE_TWEET_SCORE_THRESHOLD:
-                    continue
-                try:
-                    qt_result = await self.quote_tweet(
-                        tweet_id=int(candidate["tweet_id"]),
-                        text=draft["message"],
-                        author_handle=candidate.get("author_handle"),
-                        dry_run=False,
-                    )
-                    result["quote_tweet_action"] = qt_result
-                except RuntimeError as exc:
-                    result["quote_tweet_action"] = {"error": str(exc)}
-                break
-
-        # ---- Auto retweet (1 per cycle) ----
-        limits = await self._load_daily_limits()
-        if (
-            self._env_enabled("SOCIAL_CAMPAIGN_AUTO_RETWEET", "1")
-            and limits.get("retweet_count", 0) < MAX_RETWEETS_PER_DAY
-        ):
-            for candidate in community_payload.get("candidates", []):
-                if candidate.get("recommended_action") != "retweet":
-                    continue
-                if int(candidate.get("score", 0)) < AUTO_RETWEET_SCORE_THRESHOLD:
-                    continue
-                try:
-                    rt_result = await self.retweet(
-                        tweet_id=int(candidate["tweet_id"]),
-                        author_handle=candidate.get("author_handle"),
-                        dry_run=False,
-                    )
-                    result["retweet_action"] = rt_result
-                except RuntimeError as exc:
-                    result["retweet_action"] = {"error": str(exc)}
-                break
-
-        # ---- Auto like (up to 3 per cycle) ----
-        limits = await self._load_daily_limits()
-        if (
-            self._env_enabled("SOCIAL_CAMPAIGN_AUTO_LIKE", "1")
-            and limits.get("like_count", 0) < MAX_LIKES_PER_DAY
-        ):
-            liked_this_cycle = 0
-            for candidate in community_payload.get("candidates", []):
-                if int(candidate.get("score", 0)) < AUTO_LIKE_SCORE_THRESHOLD:
-                    continue
-                try:
-                    like_result = await self.like_tweet(
-                        tweet_id=int(candidate["tweet_id"]),
-                        author_handle=candidate.get("author_handle"),
-                        dry_run=False,
-                    )
-                    result.setdefault("like_actions", []).append(like_result)
-                    liked_this_cycle += 1
-                    if liked_this_cycle >= 3:
-                        break
-                except RuntimeError:
-                    break
-
-        # ---- Mention monitoring and reply ----
-        if self._env_enabled("SOCIAL_CAMPAIGN_AUTO_MENTION_REPLY", "1"):
-            limits = await self._load_daily_limits()
-            if limits.get("mention_reply_count", 0) < MAX_MENTION_REPLIES_PER_DAY:
-                try:
-                    mentions = await self.check_mentions()
-                    result["mentions_checked"] = len(mentions.get("candidates", []))
-                    for mention in mentions.get("candidates", []):
-                        draft = mention.get("draft") or {}
-                        if draft.get("action") != "REPLY":
-                            continue
-                        try:
-                            mr_result = await self.reply_to_tweet(
-                                tweet_id=int(mention["tweet_id"]),
-                                text=draft["message"],
-                                target_handle=mention.get("author_handle"),
-                                dry_run=False,
-                            )
-                            await self._increment_daily_limit("mention_reply_count")
-                            await self._record_engagement_event(
-                                action_type="mention_reply",
-                                tweet_id=int(mention["tweet_id"]),
-                                author_handle=mention.get("author_handle"),
-                                text=draft["message"],
-                            )
-                            result["mention_reply_action"] = mr_result
-                        except RuntimeError as exc:
-                            result["mention_reply_action"] = {"error": str(exc)}
-                        break
-                except Exception as exc:
-                    result["mention_monitoring_error"] = str(exc)
-
-        # ---- Log cycle with all engagement results ----
-        actions_taken = sum(1 for key in (
-            "reply_action", "follow_action", "retweet_action",
-            "quote_tweet_action", "mention_reply_action",
-        ) if result.get(key) and not (isinstance(result[key], dict) and result[key].get("error")))
-        actions_taken += len([a for a in result.get("like_actions", []) if not a.get("error")])
-
-        await self.memory.log_episode(
-            action="CAMPAIGN",
-            context={
-                "auto_follow_enabled": self._env_enabled("SOCIAL_CAMPAIGN_AUTO_FOLLOW", "1"),
-                "auto_reply_enabled": self._env_enabled("SOCIAL_CAMPAIGN_AUTO_REPLY", "1"),
-                "auto_retweet_enabled": self._env_enabled("SOCIAL_CAMPAIGN_AUTO_RETWEET", "1"),
-                "auto_like_enabled": self._env_enabled("SOCIAL_CAMPAIGN_AUTO_LIKE", "1"),
-                "auto_quote_tweet_enabled": self._env_enabled("SOCIAL_CAMPAIGN_AUTO_QUOTE_TWEET", "1"),
-                "mention_reply_enabled": self._env_enabled("SOCIAL_CAMPAIGN_AUTO_MENTION_REPLY", "1"),
-                "search_discovery_enabled": self._env_enabled("SOCIAL_CAMPAIGN_SEARCH_DISCOVERY", "1"),
-                "candidates_scanned": result["candidates_scanned"],
-                "community_candidates_scanned": result.get("community_candidates_scanned", 0),
-            },
-            outcome=result,
-            score=1.0 if actions_taken >= 3 else (0.7 if actions_taken >= 1 else 0.2),
-        )
-
-        return result
 
     async def follow_account(self, handle: str, *, dry_run: bool = False) -> dict[str, Any]:
         if not self.twitter_client:
@@ -1379,7 +1266,17 @@ class SocialAgent(BaseAgent):
                 logger.error("[Social] Conversation follow-up failed: %s", exc)
                 result["conversation_error"] = str(exc)
 
-        # ---- 5. Campaign target scanning (every 4th cycle) ----
+        # ---- 5. Follower engagement (every 4th cycle) ----
+        if scheduler.should_run("follower_scan") and self._env_enabled("SOCIAL_FOLLOWER_ENGAGEMENT_ENABLED", "1"):
+            try:
+                follower_result = await self.scan_followers()
+                result["new_followers"] = follower_result.get("new_followers", 0)
+                result["follower_engagements"] = follower_result.get("engagement_count", 0)
+            except Exception as exc:
+                logger.error("[Social] Follower scan failed: %s", exc)
+                result["follower_error"] = str(exc)
+
+        # ---- 6. Campaign target scanning (every 4th cycle) ----
         if scheduler.should_run("campaign_targets"):
             try:
                 payload = await self.discover_campaign_candidates(
@@ -1401,7 +1298,7 @@ class SocialAgent(BaseAgent):
                 logger.error("[Social] Campaign target scan failed: %s", exc)
                 result["target_error"] = str(exc)
 
-        # ---- 6. Dynamic target discovery (every 8th cycle) ----
+        # ---- 7. Dynamic target discovery (every 8th cycle) ----
         if scheduler.should_run("dynamic_discovery") and self._env_enabled("SOCIAL_CAMPAIGN_DYNAMIC_DISCOVERY", "1"):
             try:
                 new_targets = await self.discover_new_targets(all_candidates)
@@ -1410,7 +1307,7 @@ class SocialAgent(BaseAgent):
                 logger.error("[Social] Dynamic discovery failed: %s", exc)
                 result["discovery_error"] = str(exc)
 
-        # ---- 7. Execute engagement actions from merged candidates ----
+        # ---- 8. Execute engagement actions from merged candidates ----
         # De-duplicate by tweet_id and sort by score descending
         seen_ids: set[str] = set()
         unique_candidates: list[dict[str, Any]] = []
@@ -1424,7 +1321,7 @@ class SocialAgent(BaseAgent):
         actions = await self._execute_engagement_actions(unique_candidates, result)
         result["actions_taken"] = actions
 
-        # ---- 8. Log engagement episode ----
+        # ---- 9. Log engagement episode ----
         await self.memory.log_episode(
             action="ENGAGE",
             context={
@@ -1848,10 +1745,11 @@ class SocialAgent(BaseAgent):
         """Draft a reply that continues a conversation we're already in."""
         thread_ctx = candidate.get("thread_context", {})
         system_prompt = (
-            "You are continuing a conversation as @purecortexai.\n"
-            "You previously replied in this thread. Now someone has responded.\n"
-            "Continue the conversation naturally: acknowledge their point, add value.\n"
-            "Do not repeat yourself. Do not be promotional or pushy.\n"
+            "You are @purecortexai continuing a real conversation.\n"
+            "Acknowledge what they said. Build on it naturally.\n"
+            "Be curious — ask questions if something interests you.\n"
+            "Don't repeat yourself. Don't force PURECORTEX into the conversation.\n"
+            "Write like you're chatting, not presenting.\n"
             f"Use {OFFICIAL_TOKEN_TICKER} if the protocol token is mentioned; never use PRCX.\n\n"
             "Respond ONLY in valid JSON with fields:\n"
             "  'action': 'REPLY' | 'NONE',\n"
@@ -1948,6 +1846,223 @@ class SocialAgent(BaseAgent):
                 logger.info("[Social] Discovered new target: @%s (priority %d)", t["handle"], t["priority"])
 
         return new_targets
+
+    # ------------------------------------------------------------------
+    # Follower engagement
+    # ------------------------------------------------------------------
+
+    async def scan_followers(
+        self,
+        *,
+        max_results: int = 50,
+        max_engagements: int = 3,
+    ) -> dict[str, Any]:
+        """Detect new followers and engage with their content.
+
+        For each new follower:
+        1. Like 1-2 of their relevant recent posts
+        2. Reply to their most relevant post with a warm welcome
+        3. Follow back if they look ecosystem-relevant
+        """
+        if not self.twitter_client:
+            raise RuntimeError("Twitter client is unavailable")
+
+        own_user_id = await self._get_own_user_id()
+
+        # Load previously engaged follower IDs
+        engaged_ids: list[str] = await self.memory.recall_long(FOLLOWER_ENGAGED_KEY) or []
+        engaged_set = set(engaged_ids)
+
+        try:
+            response = self.twitter_client.get_users_followers(
+                own_user_id,
+                max_results=max(10, min(100, max_results)),
+                user_fields=["username", "name", "description", "public_metrics", "created_at"],
+                user_auth=True,
+            )
+        except Exception as exc:
+            logger.warning("[Social] Follower scan failed: %s", exc)
+            return {"new_followers": 0, "error": str(exc)}
+
+        new_followers: list[dict[str, Any]] = []
+        for user in (response.data or []) if response else []:
+            user_id_str = str(user.id)
+            if user_id_str in engaged_set:
+                continue
+            new_followers.append({
+                "user_id": user_id_str,
+                "username": user.username,
+                "name": getattr(user, "name", user.username),
+                "description": getattr(user, "description", "") or "",
+                "public_metrics": getattr(user, "public_metrics", None) or {},
+            })
+
+        if not new_followers:
+            return {"new_followers": 0, "engagements": []}
+
+        engagements: list[dict[str, Any]] = []
+        engagement_count = 0
+        cap = min(max_engagements, CYCLE_MAX_FOLLOWER_ENGAGEMENTS)
+
+        for follower in new_followers:
+            if engagement_count >= cap:
+                break
+
+            username = follower["username"]
+            user_id = follower["user_id"]
+            description = follower["description"]
+
+            # Mark as engaged immediately to avoid re-processing
+            engaged_ids.append(user_id)
+
+            # Fetch their recent tweets
+            try:
+                tweet_response = self.twitter_client.get_users_tweets(
+                    int(user_id),
+                    max_results=10,
+                    tweet_fields=["created_at", "public_metrics"],
+                    exclude=["replies", "retweets"],
+                    user_auth=True,
+                )
+            except Exception as exc:
+                logger.warning("[Social] Could not fetch tweets for @%s: %s", username, exc)
+                engagements.append({"username": username, "action": "skip", "reason": str(exc)})
+                continue
+
+            # Score their tweets
+            best_candidate: dict[str, Any] | None = None
+            best_score = 0
+
+            for tweet in (tweet_response.data or []) if tweet_response else []:
+                text = tweet.text or ""
+                score, reasons, action = score_engagement_candidate(
+                    text, username,
+                    public_metrics=getattr(tweet, "public_metrics", None) or {},
+                    created_at=getattr(tweet, "created_at", None),
+                )
+                if score > best_score:
+                    best_score = score
+                    best_candidate = {
+                        "tweet_id": str(tweet.id),
+                        "text": text,
+                        "score": score,
+                        "reasons": reasons,
+                        "recommended_action": action,
+                    }
+
+            engagement_result: dict[str, Any] = {"username": username, "actions": []}
+
+            # Like their best post (if any relevant content)
+            if best_candidate and best_score >= AUTO_LIKE_SCORE_THRESHOLD:
+                try:
+                    await self.like_tweet(
+                        tweet_id=int(best_candidate["tweet_id"]),
+                        author_handle=username,
+                        dry_run=False,
+                    )
+                    engagement_result["actions"].append("liked")
+                except Exception as exc:
+                    logger.warning("[Social] Follower like failed for @%s: %s", username, exc)
+
+            # Draft a warm reply if score is good enough
+            if best_candidate and best_score >= AUTO_REPLY_SCORE_THRESHOLD:
+                if await self._check_write_budget():
+                    draft = await self._draft_follower_welcome(
+                        username=username,
+                        description=description,
+                        tweet_text=best_candidate["text"],
+                    )
+                    if draft.get("action") == "REPLY" and draft.get("message"):
+                        try:
+                            await self.reply_to_tweet(
+                                tweet_id=int(best_candidate["tweet_id"]),
+                                text=draft["message"],
+                                target_handle=username,
+                                dry_run=False,
+                            )
+                            await self._increment_write_count()
+                            engagement_result["actions"].append("replied")
+                        except Exception as exc:
+                            logger.warning("[Social] Follower reply failed for @%s: %s", username, exc)
+
+            # Follow back if they look ecosystem-relevant
+            if self._is_ecosystem_relevant(description):
+                try:
+                    followed_handles = set()
+                    history = await self._load_campaign_history()
+                    followed_handles = {h.lower() for h in history.get("followed_handles", [])}
+                    if username.lower() not in followed_handles:
+                        limits = await self._load_daily_limits()
+                        if limits.get("follow_count", 0) < MAX_FOLLOWS_PER_DAY:
+                            await self.follow_account(handle=username, dry_run=False)
+                            engagement_result["actions"].append("followed_back")
+                except Exception as exc:
+                    logger.warning("[Social] Follow-back failed for @%s: %s", username, exc)
+
+            if engagement_result["actions"]:
+                engagement_count += 1
+            engagements.append(engagement_result)
+            logger.info(
+                "[Social] Engaged new follower @%s: %s",
+                username, ", ".join(engagement_result["actions"]) or "no action",
+            )
+
+        # Persist updated engaged set (cap at 2000)
+        engaged_ids = engaged_ids[-2000:]
+        await self.memory.remember_long(FOLLOWER_ENGAGED_KEY, engaged_ids)
+
+        return {
+            "new_followers": len(new_followers),
+            "engagements": engagements,
+            "engagement_count": engagement_count,
+        }
+
+    async def _draft_follower_welcome(
+        self,
+        *,
+        username: str,
+        description: str,
+        tweet_text: str,
+    ) -> dict[str, Any]:
+        """Draft a warm reply to a new follower's post."""
+        system_prompt = (
+            "Someone just followed @purecortexai and you noticed one of their posts.\n"
+            "Write a warm, genuine reply that engages with what they wrote.\n"
+            "Don't say 'thanks for following' — just be a good community member.\n"
+            "Engage with their idea, ask a question, or share a related thought.\n"
+            "Be brief and real. One to two sentences max.\n"
+            f"Use {OFFICIAL_TOKEN_TICKER} only if directly relevant; never use PRCX.\n\n"
+            "Respond ONLY in valid JSON with fields:\n"
+            "  'action': 'REPLY' | 'NONE',\n"
+            "  'message': the reply text or empty string,\n"
+            "  'rationale': short explanation."
+        )
+        user_prompt = (
+            f"NEW FOLLOWER: @{username}\n"
+            f"THEIR BIO: {description[:200] if description else 'N/A'}\n"
+            f"THEIR POST:\n{tweet_text}\n\n"
+            "Reply naturally to their post if you have something genuine to say."
+        )
+
+        decision = await self.think(system_prompt, user_prompt, task_type="REPLY")
+        if not decision:
+            return {"action": "NONE", "message": "", "rationale": "Consensus unavailable"}
+
+        action = decision.get("action", "NONE")
+        message = self._normalize_token_terms(decision.get("message", ""))
+        if action != "REPLY" or not message:
+            return {"action": "NONE", "message": "", "rationale": decision.get("rationale", "")}
+
+        return {"action": "REPLY", "message": message[:280], "rationale": decision.get("rationale", "")}
+
+    @staticmethod
+    def _is_ecosystem_relevant(description: str) -> bool:
+        """Check if a user's bio suggests they're part of the broader ecosystem."""
+        if not description:
+            return False
+        normalized = description.lower()
+        matches = sum(1 for kw in _ECOSYSTEM_BIO_KEYWORDS if kw in normalized)
+        return matches >= 2
 
     @staticmethod
     def _normalize_token_terms(text: str) -> str:
@@ -2133,6 +2248,39 @@ class SocialAgent(BaseAgent):
                 )
         except Exception as exc:
             logger.warning("[Social] Launch campaign context failed: %s", exc)
+
+        # Community highlights for shoutout content
+        try:
+            engagement = await self._load_engagement_history()
+            recent_events = engagement.get("events", [])[-20:]
+            highlights: list[str] = []
+            seen_handles: set[str] = set()
+            for event in reversed(recent_events):
+                handle = event.get("author_handle", "")
+                action = event.get("action", "")
+                if handle and handle not in seen_handles and action in ("mention_reply", "quote_tweet"):
+                    highlights.append(f"@{handle} ({action})")
+                    seen_handles.add(handle)
+                    if len(highlights) >= 5:
+                        break
+
+            follower_engaged = await self.memory.recall_long(FOLLOWER_ENGAGED_KEY) or []
+            new_follower_count = len(follower_engaged)
+
+            if highlights or new_follower_count > 0:
+                ctx["community_highlights"] = {
+                    "recent_conversations": highlights,
+                    "followers_engaged": new_follower_count,
+                }
+
+            # Nudge toward community shoutout if we haven't done one recently
+            if "community_shoutout" not in recent_types and highlights:
+                ctx["content_suggestion"] = (
+                    "It's been a while since you highlighted the community. Consider a shoutout "
+                    "post celebrating a conversation, a builder, or an ecosystem milestone."
+                )
+        except Exception as exc:
+            logger.warning("[Social] Community highlights context failed: %s", exc)
 
         return ctx
 

@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.9.5 - 2026-04-04
+
+### Added -- Autonomous Conversational Engagement Overhaul
+- **Follower engagement system**: New `scan_followers()` method detects new followers every 4th engagement cycle, likes their relevant posts, drafts warm replies via tri-brain consensus, and follows back ecosystem-relevant accounts. Uses `_draft_follower_welcome()` for natural (not promotional) replies. New `_is_ecosystem_relevant()` checks user bios for 2+ matching keywords from a curated set (algorand, defi, ai, builder, etc.).
+- **Mention intent classification**: New `_classify_mention_intent()` categorizes incoming mentions as `question`, `positive_sentiment`, `newcomer`, or `general`. Mentions with clear intent get boosted scores and route through `_draft_warm_mention_reply()` with intent-specific prompts (answer questions helpfully, thank praise warmly, welcome newcomers genuinely).
+- **Community shoutout content type**: New `community_shoutout` content type in `act()` generates posts that celebrate community conversations and highlight ecosystem builders. `_gather_posting_context()` now includes community highlights from recent engagement history and nudges toward shoutouts when overdue.
+- **Expanded search coverage**: 9 new search queries added (19 total, up from 10) covering broader AI agent crypto discussions, AlgoKit/Puya developer content, and cross-chain AI agent positioning.
+
+### Changed
+- **Conversational tone overhaul**: All 5 content generation and reply prompts rewritten from corporate brand voice to genuine community member voice. Example: "Reply only when PURECORTEX can add real value" -> "Reply like a knowledgeable friend: curious, supportive, and real." Affects `SYSTEM_PROMPT`, `_draft_reply()`, `_draft_quote_comment()`, `_draft_conversation_reply()`.
+- **Lowered score thresholds**: Reply 6->4, retweet 7->5, like 5->3, quote tweet 8->6, follow priority 9->7. More posts now qualify for engagement, especially from smaller community accounts.
+- **Raised daily limits for launch period**: Total writes 15->30, likes 10->25, retweets 5->10, quote tweets 3->6, replies 8->15, mention replies 5->10, follows 5->8.
+- **Raised per-cycle caps**: Replies 2->3, retweets 2->3, likes 5->8, quote tweets 1->2, follows 1->2, mention replies 2->3.
+- **Follower engagement stats** added to `get_campaign_status()` output.
+
+### Removed
+- **Legacy `_autonomous_campaign_cycle()`**: Deleted ~200 lines of dead code superseded by `engage()` in v0.9.4. Had zero callers.
+
+### New Env Vars
+- `SOCIAL_FOLLOWER_ENGAGEMENT_ENABLED` (default: 1) -- enable/disable follower scanning
+- `SOCIAL_CYCLE_MAX_FOLLOWER_ENGAGEMENTS` (default: 3) -- max follower engagements per cycle
+- `SOCIAL_CAMPAIGN_REPLY_SCORE_THRESHOLD` (default: 4) -- minimum score for auto-reply
+- `SOCIAL_CAMPAIGN_FOLLOW_PRIORITY_THRESHOLD` (default: 7) -- minimum priority for auto-follow
+- `SOCIAL_RETWEET_SCORE_THRESHOLD` (default: 5) -- minimum score for auto-retweet
+- `SOCIAL_LIKE_SCORE_THRESHOLD` (default: 3) -- minimum score for auto-like
+- `SOCIAL_QUOTE_TWEET_SCORE_THRESHOLD` (default: 6) -- minimum score for auto-quote-tweet
+
+### Tests
+- 85/85 backend tests pass (6 new tests: intent classification, ecosystem relevance, follower scan scheduling).
+
 ## 0.9.4 - 2026-04-03
 
 ### Added — Autonomous Community Engagement System

@@ -1,4 +1,5 @@
 from src.services.engagement_scheduler import (
+    CYCLE_MAX_FOLLOWER_ENGAGEMENTS,
     CYCLE_MAX_FOLLOWS,
     CYCLE_MAX_LIKES,
     CYCLE_MAX_MENTION_REPLIES,
@@ -77,6 +78,7 @@ def test_get_cycle_caps_returns_expected_keys():
         "quote_tweets",
         "follows",
         "mention_replies",
+        "follower_engagements",
     }
 
 
@@ -88,11 +90,21 @@ def test_get_cycle_caps_values_match_module_constants():
     assert caps["quote_tweets"] == CYCLE_MAX_QUOTE_TWEETS
     assert caps["follows"] == CYCLE_MAX_FOLLOWS
     assert caps["mention_replies"] == CYCLE_MAX_MENTION_REPLIES
+    assert caps["follower_engagements"] == CYCLE_MAX_FOLLOWER_ENGAGEMENTS
 
 
 def test_operation_schedule_has_required_operations():
-    required = {"mentions", "search", "home_timeline", "conversation_threads", "campaign_targets", "dynamic_discovery"}
+    required = {"mentions", "search", "home_timeline", "conversation_threads", "follower_scan", "campaign_targets", "dynamic_discovery"}
     assert required.issubset(set(OPERATION_SCHEDULE.keys()))
+
+
+def test_should_run_follower_scan_every_fourth():
+    scheduler = EngagementScheduler()
+    results = []
+    for _ in range(8):
+        scheduler.advance_cycle()
+        results.append(scheduler.should_run("follower_scan"))
+    assert results == [False, False, False, True, False, False, False, True]
 
 
 def test_operation_schedule_mentions_runs_most_frequently():

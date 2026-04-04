@@ -298,6 +298,7 @@ Every file modified on the `mainnet-launch` branch must pass a structured code r
 | Claude Code (automated) | Backend + AI Agents | 2026-03-30 | PASS (56/56 tests, no secrets) |
 | Claude Code (automated) | Frontend + UX | 2026-03-30 | PASS (8/8 E2E, no leaks) |
 | Claude Code (automated) | Scripts + Infra | 2026-03-30 | PASS (all safety gates verified) |
+| Claude Code (automated) | Social Agent v0.9.5 | 2026-04-04 | PASS (85/85 tests, conversational engagement overhaul) |
 
 ---
 
@@ -428,6 +429,8 @@ If a full audit cannot complete before TGE:
 | Backend: Request IP | `backend/tests/test_request_ip.py` | X-Forwarded-For sanitization |
 | Backend: Signing Vault | `backend/tests/test_signing_vault_security.py` | Isolation, auth, key zeroing |
 | Backend: Signer Daemon | `backend/tests/test_signer_daemon.py` | Unix socket, token validation |
+| Backend: Engagement Scheduler | `backend/tests/test_engagement_scheduler.py` | Cycle rotation, caps, follower scan scheduling |
+| Backend: Social Engagement | `backend/tests/test_social_engagement.py` | Search queries, intent classification, ecosystem relevance |
 | Frontend E2E: Admin | `frontend/tests/e2e/admin.spec.ts` | Admin console flows |
 | Frontend E2E: Admin Live | `frontend/tests/e2e/admin.live.spec.ts` | Live admin with real backend |
 | Frontend E2E: Marketplace | `frontend/tests/e2e/marketplace.spec.ts` | Browse, buy, sell flows |
@@ -811,7 +814,11 @@ PURECORTEX_GCP_INSTANCE=purecortex-mainnet scripts/deploy_remote_vm.sh
 | File | Change |
 |------|--------|
 | `contracts/smart_contracts/agent_factory/contract.py` | Fixed UInt64 overflow in bonding curve math (calculate_buy_price, calculate_sell_price, check_graduation) |
-| `backend/src/agents/social_agent.py` | Integrated launch campaign prompts into content generation cycle |
+| `backend/src/agents/social_agent.py` | v0.9.5: Conversational engagement overhaul — follower scanning, intent-classified mentions, warm replies, community shoutouts, lowered thresholds, raised limits, removed legacy campaign cycle |
+| `backend/src/services/engagement_scheduler.py` | v0.9.5: Added follower_scan operation, raised per-cycle caps, added CYCLE_MAX_FOLLOWER_ENGAGEMENTS |
+| `backend/src/services/social_campaign.py` | v0.9.5: Expanded search queries from 10 to 19 (AI agent crypto, AlgoKit, Puya, cross-chain) |
+| `backend/tests/test_social_engagement.py` | v0.9.5: Added intent classification and ecosystem relevance tests |
+| `backend/tests/test_engagement_scheduler.py` | v0.9.5: Added follower scan scheduling test, updated caps assertions |
 | `frontend/src/app/(dashboard)/layout.tsx` | Added Airdrop to dashboard navigation |
 | `frontend/src/components/LandingPage.tsx` | Changed primary CTA to "Claim Genesis Airdrop" |
 | `generate_protocol_config.py` | Added mainnet/testnet environment switching via CLI arg or env var |

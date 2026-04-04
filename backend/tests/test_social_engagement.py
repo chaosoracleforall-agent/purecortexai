@@ -4,11 +4,12 @@ from src.services.social_campaign import (
     get_search_queries_for_cycle,
     _CORE_QUERY_COUNT,
 )
+from src.agents.social_agent import SocialAgent
 
 
 def test_search_queries_expanded():
-    """Verify the expanded query list has more than the original 5."""
-    assert len(SEARCH_QUERIES) >= 10
+    """Verify the expanded query list has more than the original 10."""
+    assert len(SEARCH_QUERIES) >= 19
 
 
 def test_search_queries_core_always_included():
@@ -55,3 +56,36 @@ def test_no_retweet_filter_in_all_queries():
     """All queries should filter out retweets."""
     for query in SEARCH_QUERIES:
         assert "-is:retweet" in query
+
+
+# --- Mention intent classification tests ---
+
+def test_classify_mention_intent_question():
+    assert SocialAgent._classify_mention_intent("What is PURECORTEX?") == "question"
+    assert SocialAgent._classify_mention_intent("@purecortexai how does governance work?") == "question"
+
+
+def test_classify_mention_intent_positive():
+    assert SocialAgent._classify_mention_intent("@purecortexai this is amazing!") == "positive_sentiment"
+    assert SocialAgent._classify_mention_intent("Love what you're building!") == "positive_sentiment"
+
+
+def test_classify_mention_intent_newcomer():
+    assert SocialAgent._classify_mention_intent("Just found @purecortexai, looks cool") == "newcomer"
+    assert SocialAgent._classify_mention_intent("I'm new to this project") == "newcomer"
+
+
+def test_classify_mention_intent_general():
+    assert SocialAgent._classify_mention_intent("@purecortexai launched on Algorand") == "general"
+
+
+# --- Ecosystem relevance tests ---
+
+def test_is_ecosystem_relevant_positive():
+    assert SocialAgent._is_ecosystem_relevant("Algorand developer building DeFi tools") is True
+    assert SocialAgent._is_ecosystem_relevant("AI agent researcher and blockchain builder") is True
+
+
+def test_is_ecosystem_relevant_negative():
+    assert SocialAgent._is_ecosystem_relevant("I like cooking and travel") is False
+    assert SocialAgent._is_ecosystem_relevant("") is False

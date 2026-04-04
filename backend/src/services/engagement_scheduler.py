@@ -21,15 +21,16 @@ import os
 # Per-cycle engagement caps
 # ---------------------------------------------------------------------------
 
-CYCLE_MAX_REPLIES: int = int(os.getenv("SOCIAL_CYCLE_MAX_REPLIES", "2"))
-CYCLE_MAX_RETWEETS: int = int(os.getenv("SOCIAL_CYCLE_MAX_RETWEETS", "2"))
-CYCLE_MAX_LIKES: int = int(os.getenv("SOCIAL_CYCLE_MAX_LIKES", "5"))
-CYCLE_MAX_QUOTE_TWEETS: int = int(os.getenv("SOCIAL_CYCLE_MAX_QUOTE_TWEETS", "1"))
-CYCLE_MAX_FOLLOWS: int = int(os.getenv("SOCIAL_CYCLE_MAX_FOLLOWS", "1"))
-CYCLE_MAX_MENTION_REPLIES: int = int(os.getenv("SOCIAL_CYCLE_MAX_MENTION_REPLIES", "2"))
+CYCLE_MAX_REPLIES: int = int(os.getenv("SOCIAL_CYCLE_MAX_REPLIES", "3"))
+CYCLE_MAX_RETWEETS: int = int(os.getenv("SOCIAL_CYCLE_MAX_RETWEETS", "3"))
+CYCLE_MAX_LIKES: int = int(os.getenv("SOCIAL_CYCLE_MAX_LIKES", "8"))
+CYCLE_MAX_QUOTE_TWEETS: int = int(os.getenv("SOCIAL_CYCLE_MAX_QUOTE_TWEETS", "2"))
+CYCLE_MAX_FOLLOWS: int = int(os.getenv("SOCIAL_CYCLE_MAX_FOLLOWS", "2"))
+CYCLE_MAX_MENTION_REPLIES: int = int(os.getenv("SOCIAL_CYCLE_MAX_MENTION_REPLIES", "3"))
+CYCLE_MAX_FOLLOWER_ENGAGEMENTS: int = int(os.getenv("SOCIAL_CYCLE_MAX_FOLLOWER_ENGAGEMENTS", "3"))
 
 # Aggregate daily write limit (posts + replies + quote tweets combined)
-MAX_TOTAL_WRITES_PER_DAY: int = int(os.getenv("SOCIAL_MAX_TOTAL_WRITES_PER_DAY", "15"))
+MAX_TOTAL_WRITES_PER_DAY: int = int(os.getenv("SOCIAL_MAX_TOTAL_WRITES_PER_DAY", "30"))
 
 # Dynamic target discovery
 MAX_CAMPAIGN_TARGETS: int = int(os.getenv("SOCIAL_MAX_CAMPAIGN_TARGETS", "30"))
@@ -45,6 +46,7 @@ OPERATION_SCHEDULE: dict[str, int] = {
     "search": 1,
     "home_timeline": 2,
     "conversation_threads": 3,
+    "follower_scan": 4,
     "campaign_targets": 4,
     "dynamic_discovery": 8,
 }
@@ -80,4 +82,5 @@ class EngagementScheduler:
             "quote_tweets": CYCLE_MAX_QUOTE_TWEETS,
             "follows": CYCLE_MAX_FOLLOWS,
             "mention_replies": CYCLE_MAX_MENTION_REPLIES,
+            "follower_engagements": CYCLE_MAX_FOLLOWER_ENGAGEMENTS,
         }
