@@ -299,6 +299,7 @@ Every file modified on the `mainnet-launch` branch must pass a structured code r
 | Claude Code (automated) | Frontend + UX | 2026-03-30 | PASS (8/8 E2E, no leaks) |
 | Claude Code (automated) | Scripts + Infra | 2026-03-30 | PASS (all safety gates verified) |
 | Claude Code (automated) | Social Agent v0.9.5 | 2026-04-04 | PASS (85/85 tests, conversational engagement overhaul) |
+| Claude Code (automated) | Frontend SSR + Docker v0.9.6 | 2026-04-08 | PASS (zero opacity:0 in SSR across 4 pages, frontend container hardened) |
 
 ---
 

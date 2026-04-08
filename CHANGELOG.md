@@ -2,13 +2,22 @@
 
 ## 0.9.6 - 2026-04-08
 
-### Fixed — Landing Page Hero Invisible on Production
-- **Root cause**: framer-motion `<motion.*>` elements set `opacity: 0` as inline styles during SSR. If client-side hydration was delayed or blocked (e.g. by CSP `script-src` not including `'unsafe-inline'`), the hero title, description, and CTA buttons remained permanently invisible. Dashboard pages were unaffected because they load via client-side navigation.
-- **Fix**: Replaced all 5 framer-motion `motion.*` wrappers in `LandingPage.tsx` with plain HTML elements using CSS `@keyframes` animations (`fadeInUp`, `fadeInLeft`, `fadeInScale`). CSS animations play without JavaScript, so the hero is now visible regardless of hydration state.
-- Verified: SSR output contains zero `opacity:0` inline styles; 5 CSS animation references present.
+### Fixed — SSR Invisible Content Bug Across All Public Pages
+- **Root cause**: framer-motion `<motion.*>` elements set `opacity: 0` as inline styles during SSR. If client-side hydration was delayed or blocked (e.g. by CSP `script-src` not including `'unsafe-inline'`), content remained permanently invisible. Dashboard pages appeared unaffected when reached via client-side navigation, but any direct page load (bookmark, shared link) triggered the bug.
+- **Landing page** (`/`): Hero title, description, and "Claim Genesis Airdrop" CTA were invisible. Replaced 5 `motion.*` wrappers with CSS `@keyframes` animations.
+- **Airdrop page** (`/airdrop`): Header, stats, countdown, tiers, timeline, and learn-more sections all invisible on direct load. Replaced 6 SSR-rendered `motion.*` wrappers; kept framer-motion for conditionally-rendered modals and tier expand/collapse.
+- **Transparency page** (`/transparency`): 3 stat cards (Total Supply, Burned, Circulating) invisible on direct load. Replaced with CSS animations.
+- **Governance page** (`/governance`): Tab content panels invisible on direct load. Replaced 3 tab `motion.div` wrappers; kept framer-motion for article expand/collapse inside constitution tab.
+- Verified: SSR output across all 4 pages contains zero `opacity:0` inline styles.
+
+### Security
+- `docker-compose.yml` — Added `security_opt: no-new-privileges:true` and `cap_drop: ALL` to the `frontend` container, matching the hardening already present on backend and signer containers.
 
 ### Changed
-- `frontend/src/components/LandingPage.tsx` — removed framer-motion dependency, replaced with CSS animations via inline `style` attributes referencing global keyframes.
+- `frontend/src/components/LandingPage.tsx` — removed framer-motion import, 5 `motion.*` → plain HTML + CSS animations.
+- `frontend/src/components/Airdrop.tsx` — 6 SSR-rendered `motion.*` → plain HTML + CSS animations. AnimatePresence kept for modals.
+- `frontend/src/app/(dashboard)/transparency/page.tsx` — 3 stat card `motion.div` → plain `div` + CSS animations. Width-animated bars kept as framer-motion.
+- `frontend/src/app/(dashboard)/governance/page.tsx` — 3 tab panel `motion.div` → plain `div` + CSS animations. Removed outer `AnimatePresence` wrapper.
 - `frontend/src/app/globals.css` — added `fadeInUp`, `fadeInLeft`, `fadeInScale` keyframe definitions.
 
 ## 0.9.5 - 2026-04-04

@@ -475,10 +475,9 @@ export default function GovernancePage() {
         })}
       </div>
 
-      <AnimatePresence mode="wait">
         {/* Constitution Tab */}
         {activeTab === 'constitution' && (
-          <motion.div key="constitution" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+          <div style={{ animation: 'fadeInUp 0.4s ease-out both' }} className="space-y-8">
             {/* Preamble */}
             <section className="bg-[#1A1A1A] border border-[#007AFF]/20 rounded-2xl p-8 space-y-6">
               <div className="flex items-center gap-3">
@@ -536,12 +535,12 @@ export default function GovernancePage() {
                 </button>
               ))}
             </section>
-          </motion.div>
+          </div>
         )}
 
         {/* Proposals Tab */}
         {activeTab === 'proposals' && (
-          <motion.div key="proposals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+          <div style={{ animation: 'fadeInUp 0.4s ease-out both' }} className="space-y-8">
             {/* Proposal Lifecycle */}
             <section className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-8 space-y-6">
               <h2 className="text-xl font-black uppercase tracking-tighter italic">Proposal Lifecycle</h2>
@@ -1022,12 +1021,12 @@ export default function GovernancePage() {
                 </p>
               </div>
             </section>
-          </motion.div>
+          </div>
         )}
 
         {/* AI Agents Tab */}
         {activeTab === 'agents' && (
-          <motion.div key="agents" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+          <div style={{ animation: 'fadeInUp 0.4s ease-out both' }} className="space-y-8">
             {/* Senator AI */}
             <section className="bg-[#1A1A1A] border border-[#007AFF]/20 rounded-2xl p-8 space-y-6">
               <div className="flex items-center gap-4">
@@ -1121,9 +1120,8 @@ export default function GovernancePage() {
                 </p>
               </div>
             </section>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 }

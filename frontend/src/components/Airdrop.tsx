@@ -312,9 +312,8 @@ export default function Airdrop() {
   return (
     <div className="space-y-8 sm:space-y-12 max-w-5xl mx-auto">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div
+        style={{ animation: 'fadeInUp 0.5s ease-out both' }}
         className="space-y-4"
       >
         <div className="flex items-center gap-3">
@@ -330,13 +329,11 @@ export default function Airdrop() {
             </p>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Stats Row */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+      <div
+        style={{ animation: 'fadeInUp 0.5s ease-out 0.1s both' }}
         className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
       >
         {[
@@ -351,13 +348,11 @@ export default function Airdrop() {
             <p className="text-[9px] sm:text-[10px] font-bold text-[#007AFF] uppercase tracking-wider">{stat.sub}</p>
           </div>
         ))}
-      </motion.div>
+      </div>
 
       {/* Countdown + Registration */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+      <div
+        style={{ animation: 'fadeInUp 0.5s ease-out 0.15s both' }}
         className="bg-[#1A1A1A] border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6"
       >
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -423,7 +418,7 @@ export default function Airdrop() {
             Registration does not guarantee allocation. Eligibility verified at snapshot.
           </p>
         </div>
-      </motion.div>
+      </div>
 
       {/* Claim Section — visible after claims open */}
       {claimsOpen && activeAccount && (
@@ -511,10 +506,8 @@ export default function Airdrop() {
       )}
 
       {/* Airdrop Tiers */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+      <div
+        style={{ animation: 'fadeInUp 0.5s ease-out 0.2s both' }}
         className="space-y-4"
       >
         <h2 className="text-lg sm:text-xl font-black tracking-tighter uppercase italic">
@@ -586,13 +579,11 @@ export default function Airdrop() {
             );
           })}
         </div>
-      </motion.div>
+      </div>
 
       {/* Timeline */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
+      <div
+        style={{ animation: 'fadeInUp 0.5s ease-out 0.25s both' }}
         className="bg-[#1A1A1A] border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6"
       >
         <h2 className="text-lg font-black tracking-tighter uppercase italic">Airdrop Timeline</h2>
@@ -621,13 +612,11 @@ export default function Airdrop() {
             </div>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {/* Learn More */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+      <div
+        style={{ animation: 'fadeInUp 0.5s ease-out 0.3s both' }}
         className="grid sm:grid-cols-2 gap-4"
       >
         <a
@@ -661,7 +650,7 @@ export default function Airdrop() {
           </div>
           <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#007AFF] transition-colors" />
         </Link>
-      </motion.div>
+      </div>
 
       {/* Wallet Connect Modal */}
       <AnimatePresence>
