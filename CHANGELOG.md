@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.6 - 2026-04-08
+
+### Fixed — Landing Page Hero Invisible on Production
+- **Root cause**: framer-motion `<motion.*>` elements set `opacity: 0` as inline styles during SSR. If client-side hydration was delayed or blocked (e.g. by CSP `script-src` not including `'unsafe-inline'`), the hero title, description, and CTA buttons remained permanently invisible. Dashboard pages were unaffected because they load via client-side navigation.
+- **Fix**: Replaced all 5 framer-motion `motion.*` wrappers in `LandingPage.tsx` with plain HTML elements using CSS `@keyframes` animations (`fadeInUp`, `fadeInLeft`, `fadeInScale`). CSS animations play without JavaScript, so the hero is now visible regardless of hydration state.
+- Verified: SSR output contains zero `opacity:0` inline styles; 5 CSS animation references present.
+
+### Changed
+- `frontend/src/components/LandingPage.tsx` — removed framer-motion dependency, replaced with CSS animations via inline `style` attributes referencing global keyframes.
+- `frontend/src/app/globals.css` — added `fadeInUp`, `fadeInLeft`, `fadeInScale` keyframe definitions.
+
 ## 0.9.5 - 2026-04-04
 
 ### Added -- Autonomous Conversational Engagement Overhaul

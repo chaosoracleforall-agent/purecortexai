@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { PureCortexLogo } from '@/components/Logo';
 import { CORTEX_ASSET_ID, FACTORY_APP_ID, PROTOCOL_NETWORK, REPO_URL, TGE_DATE_ISO } from '@/lib/protocolConfig';
-import { motion } from 'framer-motion';
 import { Shield, Cpu, Zap, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -52,38 +51,31 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-10 sm:pt-20 pb-24 sm:pb-32 xl:pb-20 grid xl:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)] gap-10 lg:gap-14 xl:gap-16 items-start">
         <div className="space-y-6 sm:space-y-10 min-w-0 max-w-3xl xl:max-w-none">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+          <div
+            style={{ animation: 'fadeInLeft 0.5s ease-out both' }}
             className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-[#007AFF]/10 border border-[#007AFF]/20 text-[9px] sm:text-[10px] font-bold text-[#007AFF] uppercase tracking-[0.2em] font-mono"
           >
             <Shield className="w-3 h-3" /> MODERN TECH STACK v1.0
-          </motion.div>
+          </div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+          <h1
+            style={{ animation: 'fadeInUp 0.5s ease-out 0.1s both' }}
             className="max-w-[8.5ch] xl:max-w-[10ch] text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter leading-[0.92] uppercase italic"
           >
             Point of <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#007AFF] to-blue-400">Emancipation</span>
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+          <p
+            style={{ animation: 'fadeInUp 0.5s ease-out 0.2s both' }}
             className="text-base sm:text-xl text-gray-400 max-w-xl font-medium leading-relaxed"
           >
             PURECORTEX is the premier infrastructure for autonomous agentic commerce.
             Powered by Algorand&apos;s finality and Tri-Brain cognitive consensus.
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+          <div
+            style={{ animation: 'fadeInUp 0.5s ease-out 0.3s both' }}
             className="flex flex-col sm:flex-row gap-3 sm:gap-4"
           >
             <Link href="/airdrop" className="bg-white text-black px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-black uppercase tracking-tighter text-sm flex items-center justify-center gap-3 hover:bg-gray-200 transition-all">
@@ -92,14 +84,12 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
             <button onClick={onEnter} className="px-6 sm:px-10 py-4 sm:py-5 rounded-2xl border border-white/10 font-black uppercase tracking-tighter text-sm hover:bg-white/5 transition-all text-center">
               Explore Marketplace
             </button>
-          </motion.div>
+          </div>
         </div>
 
         {/* Countdown / Stats Card */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 }}
+        <div
+          style={{ animation: 'fadeInScale 0.5s ease-out 0.4s both' }}
           className="min-w-0 w-full max-w-2xl xl:max-w-none xl:ml-auto bg-[#1A1A1A] border border-white/5 rounded-3xl sm:rounded-[40px] p-6 sm:p-10 lg:p-12 shadow-2xl relative group"
         >
           <div className="absolute -inset-1 bg-gradient-to-r from-[#007AFF] to-indigo-600 rounded-[calc(1.5rem+1px)] sm:rounded-[41px] blur opacity-10 group-hover:opacity-20 transition-all" />
@@ -180,7 +170,7 @@ export default function LandingPage({ onEnter }: { onEnter?: () => void }) {
                </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </main>
 
       <footer className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-[8px] font-black text-gray-700 uppercase tracking-[0.2em] sm:tracking-[0.4em]">
