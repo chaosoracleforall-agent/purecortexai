@@ -1,7 +1,10 @@
 """API key management for PURECORTEX."""
 import hashlib
+import hmac
 import logging
+import os
 import secrets
+from functools import lru_cache
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -21,8 +24,25 @@ TIERS = {
 }
 
 
+@lru_cache(maxsize=1)
+def _hmac_secret() -> str:
+    # Shared secret used for keyed API-key hashing.
+    # Fail fast if missing so key hashing is never done with a weak fallback.
+    secret = os.getenv("PURECORTEX_KEY_HMAC_SECRET", "").strip()
+    if not secret:
+        logger.error(
+            "PURECORTEX_KEY_HMAC_SECRET is required for API key hashing"
+        )
+        raise RuntimeError("PURECORTEX_KEY_HMAC_SECRET is required")
+    return secret
+
+
 def _hash_key(api_key: str) -> str:
-    return hashlib.sha256(api_key.encode()).hexdigest()
+    return hmac.new(
+        _hmac_secret().encode("utf-8"),
+        api_key.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def _decode_hash(data: dict) -> dict:

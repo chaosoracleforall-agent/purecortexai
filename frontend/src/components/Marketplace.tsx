@@ -22,6 +22,7 @@ import {
   type AgentData,
   type QuotePreview,
 } from '@/lib/marketplace';
+import { EXPLORER_BASE_URL } from '@/lib/protocolConfig';
 
 const MAX_MARKET_TRADE_AMOUNT = 100_000_000_000n;
 const MIN_BASE_PRICE = 1_000n;
@@ -401,7 +402,7 @@ export default function Marketplace() {
       return;
     }
     if (!tradingEnabled) {
-      setBuyError(maintenanceReason || 'Trading is temporarily disabled on this testnet deployment.');
+      setBuyError(maintenanceReason || 'Trading is temporarily disabled.');
       return;
     }
     if (!activeAccount || !transactionSigner || !activeWallet) {
@@ -414,7 +415,7 @@ export default function Marketplace() {
       return;
     }
     if (parsedBuyAmount > MAX_MARKET_TRADE_AMOUNT) {
-      setBuyError('Buy amount exceeds the current testnet per-transaction limit');
+      setBuyError('Buy amount exceeds the per-transaction limit');
       return;
     }
 
@@ -484,7 +485,7 @@ export default function Marketplace() {
       return;
     }
     if (!tradingEnabled) {
-      setSellError(maintenanceReason || 'Trading is temporarily disabled on this testnet deployment.');
+      setSellError(maintenanceReason || 'Trading is temporarily disabled.');
       return;
     }
     if (!activeAccount || !transactionSigner || !activeWallet) {
@@ -630,7 +631,7 @@ export default function Marketplace() {
       {loading && (
         <div className="flex flex-col items-center justify-center py-20 text-gray-500">
           <Loader2 className="w-8 h-8 animate-spin text-[#007AFF] mb-4" />
-          <p className="text-sm font-bold uppercase tracking-widest">Querying Algorand Testnet...</p>
+          <p className="text-sm font-bold uppercase tracking-widest">Querying Algorand...</p>
         </div>
       )}
 
@@ -838,7 +839,7 @@ export default function Marketplace() {
                 </button>
 
                 <p className="text-[9px] text-gray-600 text-center font-mono uppercase tracking-widest">
-                  Requires 100 CORTEX + ALGO for fees • Algorand Testnet
+                  Requires 100 CORTEX + ALGO for fees
                 </p>
               </div>
             </motion.div>
@@ -885,11 +886,11 @@ export default function Marketplace() {
                     </div>
                   </div>
                   <p className="text-sm text-gray-500 max-w-xl">
-                    Live testnet agent token discovered from the canonical PURECORTEX factory deployment.
+                    Live agent token discovered from the canonical PURECORTEX factory deployment.
                   </p>
                 </div>
                 <a
-                  href={`https://testnet.explorer.perawallet.app/asset/${liveSelectedAgent.assetId}`}
+                  href={`${EXPLORER_BASE_URL}/asset/${liveSelectedAgent.assetId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-[#007AFF] hover:underline"
@@ -959,7 +960,7 @@ export default function Marketplace() {
 
                 {!activeAccount && (
                   <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest text-center py-2">
-                    Connect your wallet to buy on testnet
+                    Connect your wallet to buy
                   </p>
                 )}
 
@@ -985,12 +986,12 @@ export default function Marketplace() {
                     ) : (
                       <>
                         <ShoppingCart className="w-4 h-4" />
-                        {tradingEnabled ? 'Buy on Testnet' : 'Trading Paused'}
+                        {tradingEnabled ? 'Buy' : 'Trading Paused'}
                       </>
                     )}
                   </button>
                   <a
-                    href={`https://testnet.explorer.perawallet.app/asset/${liveSelectedAgent.assetId}`}
+                    href={`${EXPLORER_BASE_URL}/asset/${liveSelectedAgent.assetId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 inline-flex items-center justify-center gap-2 border border-white/10 text-gray-300 py-4 rounded-2xl font-bold uppercase tracking-widest text-xs hover:text-white hover:border-[#007AFF]/40 transition-all"
@@ -1018,7 +1019,7 @@ export default function Marketplace() {
                     className="w-full bg-[#121217] border border-white/5 rounded-xl p-4 text-white outline-none focus:ring-2 focus:ring-red-400/40 transition-all font-medium"
                   />
                   <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
-                    Sell back into the live testnet bonding curve. Wallet balance is checked before submission.
+                    Sell back into the bonding curve. Wallet balance is checked before submission.
                   </p>
                   {activeAccount && (
                     <p className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
@@ -1040,7 +1041,7 @@ export default function Marketplace() {
 
                 {!activeAccount && (
                   <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest text-center py-2">
-                    Connect your wallet to sell on testnet
+                    Connect your wallet to sell
                   </p>
                 )}
 
@@ -1063,7 +1064,7 @@ export default function Marketplace() {
                       Selling...
                     </>
                   ) : (
-                    tradingEnabled ? 'Sell on Testnet' : 'Trading Paused'
+                    tradingEnabled ? 'Sell' : 'Trading Paused'
                   )}
                 </button>
               </div>
@@ -1151,7 +1152,7 @@ function AgentCard({ agent, onOpen }: { agent: AgentData; onOpen: (agent: AgentD
             Buy
           </button>
           <a
-            href={`https://testnet.explorer.perawallet.app/asset/${agent.assetId}`}
+            href={`${EXPLORER_BASE_URL}/asset/${agent.assetId}`}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}

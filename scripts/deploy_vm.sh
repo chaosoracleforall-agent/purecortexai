@@ -134,7 +134,7 @@ PY
 
   local attempt
   for attempt in $(seq 1 20); do
-    if "${COMPOSE[@]}" exec -T postgres pg_isready -U purecortex -d purecortex >/dev/null 2>&1; then
+    if "${COMPOSE[@]}" exec -T postgres pg_isready -U purecortex >/dev/null 2>&1; then
       log "Postgres health check passed."
       return 0
     fi
@@ -179,6 +179,8 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env"
+RUNTIME_DIR="${ROOT_DIR}/.runtime"
+PRELAUNCH_HTPASSWD_FILE="${RUNTIME_DIR}/prelaunch.htpasswd"
 
 require_cmd docker
 require_cmd git
@@ -197,6 +199,27 @@ cd "${ROOT_DIR}"
 
 require_cmd python3
 python3 scripts/sync_runtime_env.py
+
+mkdir -p "${RUNTIME_DIR}"
+touch "${PRELAUNCH_HTPASSWD_FILE}"
+
+ACTIVE_NGINX_CONF="$(read_env_key PURECORTEX_NGINX_CONF)"
+if [[ "${ACTIVE_NGINX_CONF}" == "nginx.prelaunch.conf" ]]; then
+  require_cmd openssl
+  PRELAUNCH_AUTH_USER="$(read_env_key PURECORTEX_PRELAUNCH_BASIC_AUTH_USER)"
+  PRELAUNCH_AUTH_PASSWORD="$(read_env_key PURECORTEX_PRELAUNCH_BASIC_AUTH_PASSWORD)"
+
+  if [[ -z "${PRELAUNCH_AUTH_USER}" || -z "${PRELAUNCH_AUTH_PASSWORD}" ]]; then
+    fail "nginx.prelaunch.conf requires PURECORTEX_PRELAUNCH_BASIC_AUTH_USER and PURECORTEX_PRELAUNCH_BASIC_AUTH_PASSWORD in .env"
+  fi
+
+  PRELAUNCH_AUTH_HASH="$(openssl passwd -apr1 "${PRELAUNCH_AUTH_PASSWORD}")"
+  printf '%s:%s\n' "${PRELAUNCH_AUTH_USER}" "${PRELAUNCH_AUTH_HASH}" > "${PRELAUNCH_HTPASSWD_FILE}"
+    # Nginx runs as a non-root user in the container, so the mounted
+    # credentials file must be world-readable.
+    chmod 644 "${PRELAUNCH_HTPASSWD_FILE}"
+  log "Rendered prelaunch basic-auth credentials."
+fi
 
 CLOUD_SQL_CONNECTION_NAME="$(read_env_key PURECORTEX_CLOUD_SQL_CONNECTION_NAME)"
 

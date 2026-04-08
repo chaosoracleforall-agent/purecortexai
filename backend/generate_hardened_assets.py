@@ -40,7 +40,7 @@ def generate_high_entropy_pfp():
     # 5. Apply subtle blur to soften edges (more natural)
     img = img.filter(ImageFilter.SMOOTH_MORE)
     
-    img.save('/Users/davidgarcia/PureCortex/backend/twitter_pfp_hardened.png')
+    img.save('./twitter_pfp_hardened.png')
     print("✅ HIGH-ENTROPY MODERN TECH PFP GENERATED.")
 
 if __name__ == "__main__":

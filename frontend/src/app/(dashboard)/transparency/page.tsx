@@ -81,27 +81,27 @@ export default function TransparencyPage() {
 
       {/* Supply Overview */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 space-y-3">
+        <div style={{ animation: 'fadeInUp 0.5s ease-out both' }} className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 space-y-3">
           <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total Supply</div>
           <div className="text-3xl font-black tracking-tighter italic">{formatNumber(TOTAL_SUPPLY)}</div>
           <div className="text-[10px] font-mono text-gray-600">10 quadrillion CORTEX</div>
-        </motion.div>
+        </div>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 space-y-3">
+        <div style={{ animation: 'fadeInUp 0.5s ease-out 0.1s both' }} className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 space-y-3">
           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
             <Flame className="w-3 h-3 text-orange-500" /> Burned
           </div>
           <div className="text-3xl font-black tracking-tighter italic text-orange-500">0</div>
           <div className="text-[10px] font-mono text-gray-600">{isPreTGE ? 'Burns begin after TGE' : 'Via Assistance Fund buyback-burn'}</div>
-        </motion.div>
+        </div>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 space-y-3">
+        <div style={{ animation: 'fadeInUp 0.5s ease-out 0.2s both' }} className="bg-[#1A1A1A] border border-white/5 rounded-2xl p-6 space-y-3">
           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
             <TrendingDown className="w-3 h-3 text-[#007AFF]" /> Circulating
           </div>
           <div className="text-3xl font-black tracking-tighter italic">{isPreTGE ? '—' : formatNumber(TOTAL_SUPPLY * 0.31)}</div>
           <div className="text-[10px] font-mono text-gray-600">{isPreTGE ? 'Launches at TGE' : '31% genesis airdrop at TGE'}</div>
-        </motion.div>
+        </div>
       </section>
 
       {/* Allocation Breakdown */}
@@ -210,7 +210,7 @@ export default function TransparencyPage() {
               </div>
               <div className="flex items-center gap-2">
                 <code className="text-[10px] font-mono text-[#007AFF] bg-[#007AFF]/10 px-2 py-1 rounded">
-                  {wallet.address || 'Pending testnet assignment'}
+                  {wallet.address || 'Pending assignment'}
                 </code>
                 {isAlgorandAddress(wallet.address) && (
                   <a href={`https://allo.info/account/${wallet.address}`} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-[#007AFF] transition-colors">

@@ -31,6 +31,7 @@ def reset_redis(url: str) -> None:
 def load_app(monkeypatch, *, redis_url: str, bootstrap_token: str | None = None):
     monkeypatch.setenv("ENABLE_AGENTS", "0")
     monkeypatch.setenv("REDIS_URL", redis_url)
+    monkeypatch.setenv("PURECORTEX_KEY_HMAC_SECRET", "pytest-hmac-secret")
     if bootstrap_token is not None:
         monkeypatch.setenv("PURECORTEX_BOOTSTRAP_TOKEN", bootstrap_token)
     else:

@@ -38,6 +38,7 @@ class AgentOrchestrationLoop:
     # Default intervals (seconds)
     SENATOR_INTERVAL = 14 * 24 * 3600   # 2 weeks
     SOCIAL_INTERVAL = 4 * 3600           # 4 hours
+    ENGAGEMENT_INTERVAL = 45 * 60        # 45 minutes
     CURATOR_SWEEP_INTERVAL = 60 * 60     # 1 hour (fallback sweep for un-reviewed proposals)
 
     def __init__(
@@ -48,6 +49,7 @@ class AgentOrchestrationLoop:
         *,
         senator_interval: Optional[int] = None,
         social_interval: Optional[int] = None,
+        engagement_interval: Optional[int] = None,
         curator_sweep_interval: Optional[int] = None,
     ):
         self.senator = senator
@@ -56,6 +58,7 @@ class AgentOrchestrationLoop:
 
         self._senator_interval = senator_interval or self.SENATOR_INTERVAL
         self._social_interval = social_interval or self.SOCIAL_INTERVAL
+        self._engagement_interval = engagement_interval or self.ENGAGEMENT_INTERVAL
         self._curator_sweep_interval = curator_sweep_interval or self.CURATOR_SWEEP_INTERVAL
 
         self._tasks: List[asyncio.Task] = []
@@ -88,13 +91,15 @@ class AgentOrchestrationLoop:
         self._tasks = [
             asyncio.create_task(self._senator_loop(), name="senator_loop"),
             asyncio.create_task(self._social_loop(), name="social_loop"),
+            asyncio.create_task(self._engagement_loop(), name="engagement_loop"),
             asyncio.create_task(self._curator_sweep_loop(), name="curator_sweep_loop"),
         ]
 
         logger.info(
-            "Agent loops started: senator (%ds), social (%ds), curator sweep (%ds).",
+            "Agent loops started: senator (%ds), social (%ds), engagement (%ds), curator sweep (%ds).",
             self._senator_interval,
             self._social_interval,
+            self._engagement_interval,
             self._curator_sweep_interval,
         )
 
@@ -207,6 +212,31 @@ class AgentOrchestrationLoop:
                 logger.error("[Loop] Social loop error: %s", exc, exc_info=True)
 
             await asyncio.sleep(self._social_interval)
+
+    async def _engagement_loop(self) -> None:
+        """Run Social agent community engagement on a high-frequency schedule.
+
+        Independent from the content-posting loop (_social_loop), this loop
+        scans timelines, searches for community content, monitors mentions,
+        follows up on conversations, and executes engagement actions (reply,
+        retweet, like, quote-tweet, follow).
+        """
+        while self._running:
+            try:
+                logger.info("[Loop] Engagement cycle starting.")
+                result = await self.social.engage()
+                if result:
+                    actions = result.get("actions_taken", 0)
+                    logger.info("[Loop] Engagement cycle: %d actions taken.", actions)
+                else:
+                    logger.info("[Loop] Engagement cycle complete — no actions taken.")
+
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                logger.error("[Loop] Engagement loop error: %s", exc, exc_info=True)
+
+            await asyncio.sleep(self._engagement_interval)
 
     async def _curator_sweep_loop(self) -> None:
         """Periodically sweep for un-reviewed proposals.

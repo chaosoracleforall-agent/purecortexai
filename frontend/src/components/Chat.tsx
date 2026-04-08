@@ -5,6 +5,7 @@ import { Send, Terminal, Shield, Cpu, Activity, KeyRound, RefreshCw, AlertTriang
 import { motion, AnimatePresence } from 'framer-motion';
 import { AtomicNeuron } from './Logo';
 import { fetchJson, getWsUrl } from '@/lib/api';
+import { CHAIN_NAME } from '@/lib/protocolConfig';
 
 const MAX_MESSAGES = 200;
 const MAX_RECONNECT_ATTEMPTS = 6;
@@ -532,7 +533,7 @@ export default function Chat() {
       <div className="px-3 sm:px-6 py-2 sm:py-3 bg-[#050505] border-t border-white/5 flex flex-wrap justify-between items-center text-[8px] sm:text-[9px] text-gray-600 font-mono uppercase tracking-wider sm:tracking-widest gap-1">
         <div className="flex items-center gap-3 sm:gap-4">
            <span className="flex items-center gap-1 text-[#007AFF]"><Shield className="w-3 h-3" /> Hardened Link</span>
-           <span className="hidden sm:flex items-center gap-1 text-[#10B981]"><Activity className="w-3 h-3" /> Algorand Testnet</span>
+           <span className="hidden sm:flex items-center gap-1 text-[#10B981]"><Activity className="w-3 h-3" /> {CHAIN_NAME}</span>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
           <span>{formatExpiry(sessionExpiresAt)}</span>

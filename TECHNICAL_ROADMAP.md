@@ -1,67 +1,83 @@
 # PURECORTEX: Technical Roadmap & Architecture
 
-This roadmap reflects the stack that is actually in the repository today, not the earlier planning-era GKE architecture.
+This roadmap reflects the stack deployed on Algorand MainNet as of April 2, 2026 (v0.9.3).
 
-## 1. Current Production-Style Testnet Architecture
+## 1. Current Production Architecture
 
 ### Infrastructure
 - **GCP project:** `purecortexai`
-- **Deployment target:** single VM, `purecortex-master`
-- **Runtime:** Docker Compose + Nginx
+- **Production VM:** `purecortex-mainnet` (e2-standard-4, us-central1-a)
+- **Testnet VM:** `purecortex-master` (same zone, fully isolated)
+- **Runtime:** Docker Compose (7 containers) + Nginx + Cloud SQL
 - **Public domain:** `https://purecortex.ai`
-- **Stateful dependencies:** Redis for API keys, rate limits, and chat sessions
+- **Stateful dependencies:** Redis (auth, cache, agent memory), PostgreSQL via Cloud SQL (governance, developer access, airdrop registrations)
 
 ### Application Stack
-- **Frontend:** Next.js 15
-- **Backend:** FastAPI
-- **Contracts:** Puya/Python smart contracts targeting Algorand Testnet
-- **Docs:** Mintlify docs site plus tracked markdown docs in the repo
+- **Frontend:** Next.js 16 (Turbopack)
+- **Backend:** FastAPI (Python 3.12)
+- **Contracts:** 6 Puya/algopy smart contracts on Algorand MainNet
+- **Token:** $CORTEX (ASA 3501164627, 10 quadrillion supply, 6 decimals)
+- **DEX:** Tinyman V2 + Pact (1.5T CORTEX + 11,000 ALGO)
 
-### Tri-Brain
-- **Claude:** Opus 4.6
-- **Gemini:** 2.5 Pro
+### Tri-Brain Consensus
+- **Claude:** Opus 4.6 (primary)
+- **Gemini:** 2.5 Pro (secondary)
 - **OpenAI:** GPT-5 with GPT-4.1 fallback
-- **High-risk policy:** 2-of-3 majority
-- **Low-risk policy:** soft consensus when one valid response is enough
+- **High-risk policy:** 2-of-3 majority, fail-closed
+- **Input sanitization:** 8KB cap, control char stripping, prompt injection detection
 
-## 2. What Has Already Been Hardened
-- Canonical testnet deployment manifest and generated protocol config modules
+### Security Posture
+- **Signer:** Isolated container (no network, read-only FS, Unix socket)
+- **Auth:** API key HMAC + oauth2-proxy SSO + reCAPTCHA Enterprise
+- **Treasury:** 2-of-3 multisig for operations fund
+- **TLS:** HSTS + TLS 1.2+ with OCSP stapling
+- **Docker:** `no-new-privileges`, `cap_drop: ALL`, resource limits
+
+## 2. What Has Been Hardened (v0.7.0 → v0.9.3)
+
+- 6 smart contracts deployed to MainNet with overflow-safe bonding curve math
+- Enterprise security audit: no CRITICAL findings, LOW risk rating
+- All 19 admin methods verified for sender authorization
+- CEI pattern compliance across all contracts
+- Centralized LLM input sanitization with injection detection
 - Fail-closed API auth on Redis outage
-- First-admin bootstrap path and API key lifecycle support
-- Authenticated WebSocket chat bootstrap via short-lived session tokens
-- Backend-driven governance UI in place of premature on-chain assumptions
-- Testnet smoke harness for create/buy/sell/vote validation
-- Backend pytest, contract tests, and Playwright E2E coverage
+- Governance write-through to PostgreSQL (survives Redis restart)
+- Airdrop Merkle-proof claims with SHA-256 integrity verification
+- Social agent with 12 campaign targets and tri-brain content generation
+- 127+ tests (51 contracts + 56 backend + 8 E2E + 12 campaign)
 
-## 3. Near-Term Roadmap
+## 3. Roadmap
 
-### Phase A: Operational Readiness
-1. Improve VM deployment observability and post-deploy verification.
-2. Keep tracked docs aligned with the active testnet deployment.
-3. Continue cleaning up old planning-era references and speculative architecture docs.
+### Phase A: External Security (April 2026)
+1. Engage external audit firm (Halborn or Runtime Verification) — drafts ready.
+2. Publish Immunefi bug bounty program ($500-$25,000 rewards).
+3. Complete penetration testing checklist (24 tests across contracts, backend, infra).
 
-### Phase B: Developer Access Control Plane
-1. Introduce managed PostgreSQL as the source of truth for developer access requests, issued keys, allowlists, and audit logs.
-2. Add Google SSO-protected owner admin access for `chaosoracleforall@gmail.com` using an edge auth boundary compatible with the current VM stack.
-3. Replace the current coarse Redis-only API key model with enterprise-grade key lifecycle management, one-time reveal, scopes, and IP allowlist enforcement.
-4. Keep public reads public while unifying API, CLI, and SDK access under one key model.
-5. Treat hosted MCP auth as a later transport phase rather than overloading the current local stdio MCP server.
+### Phase B: Governance Maturity (April-May 2026)
+1. Phase 2 voting: replace CORTEX-transfer voting with veCORTEX-weighted voting to eliminate flash-vote vulnerability.
+2. On-chain Constitution ratification (Proposal 0 in voting).
+3. Enable Senator Agent weekly protocol health reports.
+4. Open governance proposal creation to community (currently admin-only).
 
-### Phase C: Product Depth
-1. Expand marketplace detail flows and test coverage around live assets.
-2. Mature governance from API-backed workflows toward fully on-chain behavior when the contracts and UX are ready.
-3. Clarify MCP transport strategy and publish a stable integration story if remote access becomes supported.
+### Phase C: Airdrop & Community Growth (April-July 2026)
+1. Fix governor/developer airdrop tiers (paginated indexer queries).
+2. Open airdrop claims (April 21).
+3. Algorand Foundation ecosystem listing + grant application.
+4. Partnership integrations: Vestige analytics, NFD co-promotion, ASA Stats metadata.
+5. Community task completion tracking for airdrop tier.
 
-### Phase D: Infrastructure Evolution
-1. Decide whether to stay on the VM deployment model long term or intentionally redesign for another hosting target.
-2. Introduce stronger operational monitoring and rollback procedures around the canonical testnet stack.
-3. Evaluate KMS-backed signing where it materially improves the current deployment without overcomplicating testnet operations.
+### Phase D: Product Expansion (Q2-Q3 2026)
+1. Agent SDK: Python + TypeScript packages for building on PURECORTEX.
+2. MCP server: remote transport for AI tool marketplace.
+3. Agent graduation: bonding curve → DEX migration flow.
+4. Cross-chain agent operations via Algorand state proofs.
+5. Advanced marketplace: agent discovery, reputation scoring, revenue analytics.
 
-## 4. Strategic Tools
-- `get_tri_brain_consensus`
-- `get_alpha_score`
-- `audit_contract_bytecode`
-- Additional governance and market-intelligence tools as the MCP surface matures
+### Phase E: Infrastructure Evolution (Q3 2026)
+1. Evaluate managed Kubernetes vs current VM model for scaling.
+2. Multi-region deployment for latency reduction.
+3. Advanced monitoring: Grafana dashboards, alerting for unusual on-chain activity.
+4. KMS-backed signing as alternative to GPG-based signer daemon.
 
 ---
-*PURECORTEX: Keep the roadmap grounded in the codebase that exists today.*
+*PURECORTEX: Sovereign intelligence infrastructure on Algorand MainNet.*

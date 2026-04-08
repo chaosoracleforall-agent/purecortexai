@@ -2,8 +2,10 @@
 
 import { useWallet } from '@txnlab/use-wallet-react';
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Wallet, LogOut, ChevronDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PROTOCOL_NETWORK } from '@/lib/protocolConfig';
 
 export default function WalletButton() {
   const { wallets, activeWallet, activeAccount } = useWallet();
@@ -45,7 +47,11 @@ export default function WalletButton() {
 
   async function handleDisconnect() {
     if (activeWallet) {
-      await activeWallet.disconnect();
+      try {
+        await activeWallet.disconnect();
+      } catch {
+        // Disconnect failed silently — wallet provider may be unreachable
+      }
     }
   }
 
@@ -126,9 +132,12 @@ export default function WalletButton() {
                     >
                       <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {iconUrl ? (
-                          <img
+                          <Image
                             src={iconUrl}
                             alt={walletName}
+                            width={28}
+                            height={28}
+                            unoptimized
                             className="w-6 h-6 sm:w-7 sm:h-7 object-contain"
                           />
                         ) : (
@@ -152,7 +161,7 @@ export default function WalletButton() {
               </div>
 
               <p className="text-[9px] text-gray-600 text-center mt-5 sm:mt-6 font-mono uppercase tracking-widest">
-                Powered by Algorand • Testnet
+                Powered by Algorand{(PROTOCOL_NETWORK as string) === "testnet" ? " • Testnet" : ""}
               </p>
             </motion.div>
           </div>

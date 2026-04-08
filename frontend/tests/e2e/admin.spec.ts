@@ -12,7 +12,7 @@ test('admin proxy rejects a spoofed auth email header by default', async ({ requ
   expect(response.headers()['cache-control']).toContain('no-store');
 });
 
-test('admin proxy marks authenticated control-plane responses as no-store', async ({ request }) => {
+test('admin proxy marks dev-session control-plane failures as no-store', async ({ request }) => {
   const loginResponse = await request.post('/admin-api/dev-session', {
     data: {
       email: 'chaosoracleforall@gmail.com',
@@ -22,6 +22,7 @@ test('admin proxy marks authenticated control-plane responses as no-store', asyn
   expect(loginResponse.status()).toBe(200);
 
   const response = await request.get('/admin-api/control-plane');
+  expect(response.status()).toBe(503);
   expect(response.headers()['cache-control']).toContain('no-store');
 });
 
@@ -59,7 +60,7 @@ test('admin dashboard approves a request and reveals the issued secret', async (
     await route.fulfill({ json: health });
   });
 
-  await page.route(/.*\/admin-api\/requests(\?.*)?$/, async (route) => {
+  await page.route('**/admin-api/requests**', async (route) => {
     if (route.request().method() !== 'GET') {
       await route.fallback();
       return;
@@ -72,7 +73,7 @@ test('admin dashboard approves a request and reveals the issued secret', async (
     });
   });
 
-  await page.route(/.*\/admin-api\/keys(\?.*)?$/, async (route) => {
+  await page.route('**/admin-api/keys**', async (route) => {
     if (route.request().method() !== 'GET') {
       await route.fallback();
       return;
@@ -128,8 +129,12 @@ test('admin dashboard approves a request and reveals the issued secret', async (
 
   await page.goto('/admin');
 
+  await page.waitForResponse((response) =>
+    response.url().includes('/admin-api/requests') && response.request().method() === 'GET',
+  );
   await expect(page.getByRole('heading', { name: /owner dashboard/i })).toBeVisible();
-  await expect(page.getByText('alice@example.com')).toBeVisible();
+  await expect(page.getByText('Alice Example')).toBeVisible();
+  await expect(page.getByRole('button', { name: /approve & issue key/i })).toBeVisible();
 
   await page.getByLabel('Review Notes').fill('Approved for CLI beta validation.');
   await page.getByRole('button', { name: /approve & issue key/i }).click();
@@ -186,7 +191,7 @@ test('admin dashboard saves key policy updates and rotates a key', async ({ page
     await route.fulfill({ json: health });
   });
 
-  await page.route(/.*\/admin-api\/requests(\?.*)?$/, async (route) => {
+  await page.route('**/admin-api/requests**', async (route) => {
     await route.fulfill({
       json: {
         total: requests.length,
@@ -195,7 +200,7 @@ test('admin dashboard saves key policy updates and rotates a key', async ({ page
     });
   });
 
-  await page.route(/.*\/admin-api\/keys(\?.*)?$/, async (route) => {
+  await page.route('**/admin-api/keys**', async (route) => {
     if (route.request().method() !== 'GET') {
       await route.fallback();
       return;

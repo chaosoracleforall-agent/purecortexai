@@ -23,10 +23,33 @@ services:
       - PURECORTEX_GOOGLE_OAUTH_CLIENT_ID=${PURECORTEX_GOOGLE_OAUTH_CLIENT_ID}
       - PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET=${PURECORTEX_GOOGLE_OAUTH_CLIENT_SECRET}
       - PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET=${PURECORTEX_OAUTH2_PROXY_COOKIE_SECRET}
-      - PURECORTEX_RECAPTCHA_SITE_KEY=${PURECORTEX_RECAPTCHA_SITE_KEY}
+      - PURECORTEX_RECAPTCHA_SITE_KEY=${PURECORTEX_RECAPTCHA_SITE_KEY:-}
       - PURECORTEX_RECAPTCHA_PROJECT_ID=${PURECORTEX_RECAPTCHA_PROJECT_ID}
       - PURECORTEX_RECAPTCHA_MIN_SCORE=${PURECORTEX_RECAPTCHA_MIN_SCORE}
       - PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS=${PURECORTEX_DEVELOPER_ACCESS_COOLDOWN_SECONDS}
+      - PURECORTEX_TGE_DATE=${PURECORTEX_TGE_DATE}
+      - PURECORTEX_BOOTSTRAP_TOKEN=${PURECORTEX_BOOTSTRAP_TOKEN:-}
+      - SOCIAL_CAMPAIGN_ENABLED=${SOCIAL_CAMPAIGN_ENABLED}
+      - SOCIAL_CAMPAIGN_AUTO_FOLLOW=${SOCIAL_CAMPAIGN_AUTO_FOLLOW}
+      - SOCIAL_CAMPAIGN_AUTO_REPLY=${SOCIAL_CAMPAIGN_AUTO_REPLY}
+      - SOCIAL_CAMPAIGN_AUTO_RETWEET=${SOCIAL_CAMPAIGN_AUTO_RETWEET:-1}
+      - SOCIAL_CAMPAIGN_AUTO_LIKE=${SOCIAL_CAMPAIGN_AUTO_LIKE:-1}
+      - SOCIAL_CAMPAIGN_AUTO_QUOTE_TWEET=${SOCIAL_CAMPAIGN_AUTO_QUOTE_TWEET:-1}
+      - SOCIAL_CAMPAIGN_AUTO_MENTION_REPLY=${SOCIAL_CAMPAIGN_AUTO_MENTION_REPLY:-1}
+      - SOCIAL_CAMPAIGN_SEARCH_DISCOVERY=${SOCIAL_CAMPAIGN_SEARCH_DISCOVERY:-1}
+      - SOCIAL_ENGAGEMENT_ENABLED=${SOCIAL_ENGAGEMENT_ENABLED:-1}
+      - SOCIAL_ENGAGEMENT_INTERVAL=${SOCIAL_ENGAGEMENT_INTERVAL:-2700}
+      - SOCIAL_CYCLE_MAX_REPLIES=${SOCIAL_CYCLE_MAX_REPLIES:-2}
+      - SOCIAL_CYCLE_MAX_RETWEETS=${SOCIAL_CYCLE_MAX_RETWEETS:-2}
+      - SOCIAL_CYCLE_MAX_LIKES=${SOCIAL_CYCLE_MAX_LIKES:-5}
+      - SOCIAL_CYCLE_MAX_QUOTE_TWEETS=${SOCIAL_CYCLE_MAX_QUOTE_TWEETS:-1}
+      - SOCIAL_CYCLE_MAX_FOLLOWS=${SOCIAL_CYCLE_MAX_FOLLOWS:-1}
+      - SOCIAL_CYCLE_MAX_MENTION_REPLIES=${SOCIAL_CYCLE_MAX_MENTION_REPLIES:-2}
+      - SOCIAL_MAX_TOTAL_WRITES_PER_DAY=${SOCIAL_MAX_TOTAL_WRITES_PER_DAY:-15}
+      - SOCIAL_CAMPAIGN_DYNAMIC_DISCOVERY=${SOCIAL_CAMPAIGN_DYNAMIC_DISCOVERY:-1}
+      - SOCIAL_MAX_CAMPAIGN_TARGETS=${SOCIAL_MAX_CAMPAIGN_TARGETS:-30}
+      - SOCIAL_HOME_TIMELINE_ENABLED=${SOCIAL_HOME_TIMELINE_ENABLED:-1}
+      - SOCIAL_CONVERSATION_FOLLOWUP_ENABLED=${SOCIAL_CONVERSATION_FOLLOWUP_ENABLED:-1}
       - CLAUDE_API_KEY=${CLAUDE_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -89,9 +112,9 @@ services:
     environment:
       - PURECORTEX_SECRET_DIR=/run/purecortex/secrets
       - PURECORTEX_SIGNER_SOCKET_PATH=/run/purecortex/socket/signer.sock
-      - PURECORTEX_SIGNER_SOCKET_MODE=666
+      - PURECORTEX_SIGNER_SOCKET_MODE=660
       - PURECORTEX_SIGNER_SHARED_TOKEN=${PURECORTEX_SIGNER_SHARED_TOKEN}
-      - PURECORTEX_SIGNER_ALLOWED_IDENTITIES=agent,senator,curator,social,vm
+      - PURECORTEX_SIGNER_ALLOWED_IDENTITIES=agent,senator,curator,social,vm,liquidityPool
       - PURECORTEX_SIGNER_REQUEST_TIMEOUT_SECONDS=30
     volumes:
       - signer_socket:/run/purecortex/socket
@@ -121,17 +144,22 @@ services:
     build: ./frontend
     expose:
       - "3000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
-      - NEXT_PUBLIC_API_URL=https://purecortex.ai
-      - NEXT_PUBLIC_WS_URL=wss://purecortex.ai/ws/chat
+      - NEXT_PUBLIC_API_URL=https://${PURECORTEX_PUBLIC_DOMAIN:-purecortex.ai}
+      - NEXT_PUBLIC_WS_URL=wss://${PURECORTEX_PUBLIC_DOMAIN:-purecortex.ai}/ws/chat
       - PURECORTEX_INTERNAL_ADMIN_TOKEN=${PURECORTEX_INTERNAL_ADMIN_TOKEN}
       - PURECORTEX_INTERNAL_BACKEND_URL=${PURECORTEX_INTERNAL_BACKEND_URL}
       - PURECORTEX_ADMIN_ALLOWED_EMAILS=${PURECORTEX_ADMIN_ALLOWED_EMAILS}
+      - PURECORTEX_TRUST_ADMIN_EMAIL_HEADER=${PURECORTEX_TRUST_ADMIN_EMAIL_HEADER:-}
     depends_on:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -215,12 +243,12 @@ services:
     expose:
       - "5432"
     environment:
-      - POSTGRES_DB=purecortex
+      - POSTGRES_DB=${PURECORTEX_POSTGRES_DB:-purecortex}
       - POSTGRES_USER=purecortex
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U purecortex -d purecortex"]
+      test: ["CMD-SHELL", "pg_isready -U purecortex -d ${PURECORTEX_POSTGRES_DB:-purecortex}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -249,7 +277,7 @@ services:
     environment:
       - OAUTH2_PROXY_PROVIDER=google
       - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
-      - OAUTH2_PROXY_REDIRECT_URL=https://purecortex.ai/oauth2/callback
+      - OAUTH2_PROXY_REDIRECT_URL=https://${PURECORTEX_PUBLIC_DOMAIN:-purecortex.ai}/oauth2/callback
       - OAUTH2_PROXY_UPSTREAMS=static://202
       - OAUTH2_PROXY_REVERSE_PROXY=true
       - OAUTH2_PROXY_SET_XAUTHREQUEST=true
@@ -282,7 +310,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./${PURECORTEX_NGINX_CONF:-nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./.runtime/prelaunch.htpasswd:/etc/nginx/prelaunch.htpasswd:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - frontend

@@ -2,8 +2,9 @@
 Governance API for PURECORTEX.
 
 Serves the PURECORTEX Constitution (Preamble + Articles) and provides
-the canonical backend-governed proposal, review, and voting flow for testnet.
-Proposal storage lives in Redis while vote weight is derived from the live
+the canonical backend-governed proposal, review, and voting flow.
+Proposals are persisted to PostgreSQL for durability (BE-002) with Redis
+as the fast-path read cache.  Vote weight is derived from the live
 staking/delegation contract state.
 """
 
@@ -19,10 +20,14 @@ from typing import Any, Dict, List, Optional
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
+from src.db import get_database_manager
+from src.models.governance import GovernanceProposal
 from src.services.cache import get_cache_service, cache_with_ttl, TTL_GOVERNANCE
 from src.services.algorand import GOVERNANCE_APP_ID, get_algorand_service
 from src.services.governance_voting import (
+    SIGNED_VOTE_MAX_AGE,
     calculate_live_tally,
     calculate_voter_power,
     normalize_proposal,
@@ -49,6 +54,7 @@ ARTICLES_PATH = os.path.join(_CONSTITUTION_DIR, "ARTICLES.md")
 PROPOSAL_PREFIX = "governance:proposal"
 PROPOSAL_COUNTER_KEY = "governance:proposal_counter"
 PROPOSAL_INDEX_KEY = "governance:proposal_ids"
+SIGNED_VOTE_NONCE_PREFIX = "governance:signed_vote_nonce"
 
 # Proposal TTL — 90 days (seconds)
 PROPOSAL_TTL = 90 * 24 * 3600
@@ -260,6 +266,30 @@ async def _redis_smembers(key: str) -> set:
         return set()
 
 
+async def _claim_signed_vote_nonce(*, proposal_id: int, voter: str, nonce: str) -> bool:
+    """
+    Claim a signed-vote nonce exactly once to block replay attacks.
+    Returns False when nonce is already used.
+    """
+    cache = get_cache_service()
+    if not cache._redis:
+        raise HTTPException(
+            status_code=503,
+            detail="Redis unavailable — signed vote replay protection offline.",
+        )
+    key = f"{SIGNED_VOTE_NONCE_PREFIX}:{proposal_id}:{voter}:{nonce}"
+    ttl_seconds = int(SIGNED_VOTE_MAX_AGE.total_seconds()) + 60
+    try:
+        claimed = await cache._redis.set(key, "1", ex=ttl_seconds, nx=True)
+    except Exception as exc:
+        logger.error("Redis nonce claim failed for %s: %s", key, exc)
+        raise HTTPException(
+            status_code=503,
+            detail="Redis unavailable — signed vote replay protection offline.",
+        ) from exc
+    return bool(claimed)
+
+
 async def _get_proposal(proposal_id: int) -> Optional[Dict[str, Any]]:
     """Load a proposal from Redis by ID."""
     raw = await _redis_get(f"{PROPOSAL_PREFIX}:{proposal_id}")
@@ -273,25 +303,77 @@ async def _get_proposal(proposal_id: int) -> Optional[Dict[str, Any]]:
 
 
 async def _save_proposal(proposal: Dict[str, Any]) -> None:
-    """Save a proposal dict to Redis."""
+    """Save a proposal to Redis (cache) and PostgreSQL (durable storage)."""
     proposal_id = proposal["id"]
-    await _redis_set(f"{PROPOSAL_PREFIX}:{proposal_id}", json.dumps(proposal, default=str))
-    # Also track this ID in the index set
+    proposal_json = json.dumps(proposal, default=str)
+    await _redis_set(f"{PROPOSAL_PREFIX}:{proposal_id}", proposal_json)
     await _redis_sadd(PROPOSAL_INDEX_KEY, str(proposal_id))
+
+    # Write-through to PostgreSQL for durability (BE-002)
+    manager = get_database_manager()
+    if manager:
+        try:
+            async with manager.session() as session:
+                existing = await session.get(GovernanceProposal, proposal_id)
+                if existing:
+                    existing.status = proposal.get("status", existing.status)
+                    existing.data_json = proposal_json
+                else:
+                    session.add(GovernanceProposal(
+                        id=proposal_id,
+                        title=proposal.get("title", ""),
+                        description=proposal.get("description", ""),
+                        proposal_type=proposal.get("type", "general"),
+                        status=proposal.get("status", "active"),
+                        proposer=proposal.get("proposer", ""),
+                        data_json=proposal_json,
+                    ))
+                await session.commit()
+        except Exception as exc:
+            logger.warning("PostgreSQL write-through failed for proposal %d: %s", proposal_id, exc)
 
 
 async def _get_all_proposals() -> List[Dict[str, Any]]:
-    """Load all proposals from Redis."""
+    """Load all proposals from Redis, falling back to PostgreSQL if empty."""
     proposal_ids = await _redis_smembers(PROPOSAL_INDEX_KEY)
-    if not proposal_ids:
+    if proposal_ids:
+        proposals = []
+        for pid_str in sorted(proposal_ids, key=lambda x: int(x)):
+            p = await _get_proposal(int(pid_str))
+            if p:
+                proposals.append(p)
+        return proposals
+
+    # Redis empty — hydrate from PostgreSQL (BE-002)
+    manager = get_database_manager()
+    if not manager:
         return []
 
-    proposals = []
-    for pid_str in sorted(proposal_ids, key=lambda x: int(x)):
-        p = await _get_proposal(int(pid_str))
-        if p:
-            proposals.append(p)
-    return proposals
+    try:
+        async with manager.session() as session:
+            result = await session.execute(
+                select(GovernanceProposal).order_by(GovernanceProposal.id)
+            )
+            rows = result.scalars().all()
+            proposals = []
+            for row in rows:
+                try:
+                    proposal = json.loads(row.data_json)
+                    proposals.append(proposal)
+                    # Re-populate Redis cache
+                    await _redis_set(
+                        f"{PROPOSAL_PREFIX}:{row.id}",
+                        row.data_json,
+                    )
+                    await _redis_sadd(PROPOSAL_INDEX_KEY, str(row.id))
+                except json.JSONDecodeError:
+                    logger.warning("Corrupt proposal %d in PostgreSQL", row.id)
+            if proposals:
+                logger.info("Hydrated %d proposals from PostgreSQL into Redis", len(proposals))
+            return proposals
+    except Exception as exc:
+        logger.warning("PostgreSQL fallback failed: %s", exc)
+        return []
 
 
 async def _invalidate_governance_cache() -> None:
@@ -571,8 +653,26 @@ async def get_proposal_vote_power(proposal_id: int, address: str):
 async def create_proposal(body: ProposalCreateRequest, request: Request):
     """Create a new governance proposal in the canonical governance API."""
     _require_governance_write_access(request)
-    # Generate next ID
+    # Generate next ID — check Redis first, fall back to PostgreSQL max ID
+    # to prevent collisions after Redis restart (BE-002).
     proposal_id = await _redis_incr(PROPOSAL_COUNTER_KEY)
+    if proposal_id == 1:
+        # Redis counter was empty — check PostgreSQL for existing proposals
+        manager = get_database_manager()
+        if manager:
+            try:
+                from sqlalchemy import func
+                async with manager.session() as session:
+                    max_id = await session.scalar(
+                        select(func.max(GovernanceProposal.id))
+                    )
+                    if max_id and max_id >= proposal_id:
+                        # Re-seed Redis counter past the max PostgreSQL ID
+                        new_id = max_id + 1
+                        await _redis_set_no_ttl(PROPOSAL_COUNTER_KEY, str(new_id))
+                        proposal_id = new_id
+            except Exception as exc:
+                logger.warning("Failed to seed proposal counter from PostgreSQL: %s", exc)
 
     now = datetime.now(timezone.utc).isoformat()
 
@@ -693,6 +793,13 @@ async def vote_on_proposal_signed(proposal_id: int, body: SignedVoteRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    if not await _claim_signed_vote_nonce(
+        proposal_id=proposal_id,
+        voter=body.voter,
+        nonce=body.nonce,
+    ):
+        raise HTTPException(status_code=409, detail="Vote nonce has already been used.")
+
     proposal, power_summary = await _record_vote(
         proposal_id,
         voter=body.voter,
@@ -727,7 +834,13 @@ async def vote_on_proposal_signed(proposal_id: int, body: SignedVoteRequest):
 # ──────────────────────────────────────────────
 # On-chain governance reads
 # ──────────────────────────────────────────────
-ALGOD_URL = "https://testnet-api.algonode.cloud"
+from src.services.protocol_config import NETWORK as _GOVERNANCE_NETWORK
+
+ALGOD_URL = (
+    "https://mainnet-api.algonode.cloud"
+    if _GOVERNANCE_NETWORK == "mainnet"
+    else "https://testnet-api.algonode.cloud"
+)
 
 STATUS_NAMES = {0: "Discussion", 1: "Voting", 2: "Passed", 3: "Rejected", 4: "Executed", 5: "Cancelled"}
 TYPE_NAMES_ONCHAIN = {0: "Parameter Change", 1: "Treasury Action", 2: "Protocol Upgrade", 3: "Emergency Action"}

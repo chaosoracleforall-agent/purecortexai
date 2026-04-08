@@ -10,8 +10,8 @@ def get_secret(name):
 
 def setup_twitter():
     # Paths to assets
-    pfp_path = '/Users/davidgarcia/PureCortex/backend/twitter_pfp_hardened.png'
-    banner_path = '/Users/davidgarcia/PureCortex/backend/twitter_cover.png'
+    pfp_path = './twitter_pfp_hardened.png'
+    banner_path = './twitter_cover.png'
 
     # 1. Fetch Hardened Credentials
     try:

@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 
 test('chat gate requires an API key', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.clear();
+  });
+
   await page.goto('/chat');
 
   await expect(page.getByText(/unlock neural link/i)).toBeVisible();

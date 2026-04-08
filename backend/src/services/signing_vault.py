@@ -628,16 +628,10 @@ class SigningVault:
                 await proc.wait()
             return {"error": "Vault signing timed out"}
         finally:
-            os.unlink(script_path)
-            # Clean up any orphaned vault temp dirs (PEN-007)
-            import glob as _glob
-            for d in _glob.glob(os.path.join(tempfile.gettempdir(), "pcx_vault_*")):
-                if os.path.isdir(d):
-                    try:
-                        import shutil
-                        shutil.rmtree(d, ignore_errors=True)
-                    except Exception:
-                        pass
+            try:
+                os.unlink(script_path)
+            except OSError:
+                pass
 
 
 # ------------------------------------------------------------------ #

@@ -1,3 +1,4 @@
+import pytest
 from algopy import Bytes, UInt64
 from algopy_testing import algopy_testing_context
 from algosdk import encoding
@@ -23,6 +24,23 @@ def _proposal_bytes(
         + no_votes.to_bytes(8, "big")
         + status.to_bytes(8, "big")
         + total_voters.to_bytes(8, "big")
+    )
+
+
+def _proposal_params_bytes(
+    *,
+    discussion_period: int,
+    voting_period: int,
+    timelock_period: int,
+    quorum_bps: int,
+    supermajority_bps: int,
+) -> Bytes:
+    return Bytes(
+        discussion_period.to_bytes(8, "big")
+        + voting_period.to_bytes(8, "big")
+        + timelock_period.to_bytes(8, "big")
+        + quorum_bps.to_bytes(8, "big")
+        + supermajority_bps.to_bytes(8, "big")
     )
 
 
@@ -73,3 +91,64 @@ def test_has_voted_uses_composite_vote_box_key():
 
         assert contract.has_voted(proposal_id, voter) is True
         assert contract.has_voted(UInt64(4), voter) is False
+
+
+def test_finalize_uses_snapshot_quorum_bps():
+    with algopy_testing_context() as ctx:
+        contract = GovernanceContract()
+        proposal_id = UInt64(7)
+        proposer = str(ctx.any.account())
+        proposal_data = _proposal_bytes(
+            proposer,
+            created_round=1,
+            proposal_type=0,
+            yes_votes=24,
+            no_votes=0,
+            status=1,  # voting
+            total_voters=1,
+        )
+        # 25 bps of baseline 1_000_000_000_000 = 2_500_000_000, so this should fail.
+        params = _proposal_params_bytes(
+            discussion_period=0,
+            voting_period=0,
+            timelock_period=0,
+            quorum_bps=25,
+            supermajority_bps=6700,
+        )
+        contract.proposals[proposal_id] = proposal_data
+        contract.proposal_params[proposal_id] = params
+
+        ctx.ledger.patch_global_fields(round=2)
+        with pytest.raises(AssertionError):
+            contract.finalize_proposal(proposal_id)
+
+
+def test_finalize_supermajority_large_vote_path():
+    with algopy_testing_context() as ctx:
+        contract = GovernanceContract()
+        proposal_id = UInt64(8)
+        proposer = str(ctx.any.account())
+        large_yes = 1_900_000_000_000_000
+        proposal_data = _proposal_bytes(
+            proposer,
+            created_round=1,
+            proposal_type=0,
+            yes_votes=large_yes,
+            no_votes=0,
+            status=1,  # voting
+            total_voters=1,
+        )
+        # Keep quorum permissive so we specifically exercise supermajority branch.
+        params = _proposal_params_bytes(
+            discussion_period=0,
+            voting_period=0,
+            timelock_period=0,
+            quorum_bps=1,
+            supermajority_bps=6700,
+        )
+        contract.proposals[proposal_id] = proposal_data
+        contract.proposal_params[proposal_id] = params
+
+        ctx.ledger.patch_global_fields(round=2)
+        contract.finalize_proposal(proposal_id)
+        assert contract.get_proposal_status(proposal_id) == UInt64(2)

@@ -179,9 +179,12 @@ class SignerDaemon:
                     }
                 else:
                     raise ValueError(f"Unsupported signer action: {action or 'unknown'}")
+        except PermissionError as exc:
+            logger.error("Signer auth failure: %s", exc)
+            response = {"error": str(exc)}
         except Exception as exc:
             logger.error("Signer request failed: %s", exc)
-            response = {"error": str(exc)}
+            response = {"error": "Signing operation failed"}
         finally:
             writer.write(json.dumps(response).encode("utf-8") + b"\n")
             try:

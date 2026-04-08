@@ -16,7 +16,7 @@ const walletManager = new WalletManager({
     WalletId.LUTE,
     WalletId.KIBISIS,
   ],
-  defaultNetwork: NetworkId.TESTNET,
+  defaultNetwork: NetworkId.MAINNET,
 });
 
 export default function Providers({ children }: { children: ReactNode }) {

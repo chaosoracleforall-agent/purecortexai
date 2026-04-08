@@ -153,7 +153,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
           <Link href="/marketplace" className="hover:text-white transition-colors">
             Back to PURECORTEX
           </Link>
-          <span>v0.7.0</span>
+          <span>v1.0.0</span>
         </div>
       </footer>
     </div>

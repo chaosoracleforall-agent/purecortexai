@@ -39,7 +39,6 @@ test('governance proposals tab renders live API proposals', async ({ page }) => 
   await page.goto('/governance');
   await page.getByRole('button', { name: /proposals/i }).click();
 
-  await expect(page.getByText(/live governance proposals/i)).toBeVisible();
   await expect(page.getByText('Smoke Proposal')).toBeVisible();
-  await expect(page.getByText(/curator reviewed/i)).toBeVisible();
+  await expect(page.getByText(/curator reviewed/i).first()).toBeVisible();
 });

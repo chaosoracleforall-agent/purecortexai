@@ -28,8 +28,11 @@ PUBLIC_PREFIXES = (
     "/api/marketplace",
     "/api/governance/onchain",
     "/api/developer-access",
-    "/internal/admin",
 )
+# NOTE: /internal/admin intentionally NOT listed here.
+# Admin endpoints are protected by oauth2-proxy + their own token checks.
+# Listing them in PUBLIC_PREFIXES would let any new endpoint added without
+# its own guard bypass authentication entirely (BE-003).
 
 # GET endpoints that are explicitly public (PEN-019: no blanket GET passthrough)
 PUBLIC_GET_PREFIXES = (
@@ -45,6 +48,7 @@ PUBLIC_GET_PREFIXES = (
 
 PUBLIC_POST_PATTERNS = (
     re.compile(r"^/api/governance/proposals/\d+/vote-signed$"),
+    re.compile(r"^/api/airdrop/register$"),
 )
 
 
@@ -90,6 +94,16 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         # Allow public paths (any method)
         if path in PUBLIC_PATHS or any(path.startswith(p) for p in PUBLIC_PREFIXES):
             return await call_next(request)
+
+        # Internal admin endpoints: only accessible behind oauth2-proxy which
+        # sets x-purecortex-auth-email. Reject if the header is missing.
+        if path.startswith("/internal/admin"):
+            if request.headers.get("x-purecortex-auth-email"):
+                return await call_next(request)
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Admin authentication required"},
+            )
 
         # Allow specific public GET endpoints
         if request.method == "GET" and any(path.startswith(p) for p in PUBLIC_GET_PREFIXES):

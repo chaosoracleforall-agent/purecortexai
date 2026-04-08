@@ -28,6 +28,7 @@ from src.api.admin import router as admin_router, set_api_key_manager
 from src.api.developer_access import router as developer_access_router
 from src.api.internal_admin import router as internal_admin_router
 from src.api.marketplace import router as marketplace_router
+from src.api.airdrop import router as airdrop_router
 
 # Auth
 from src.api.auth import APIKeyMiddleware
@@ -182,8 +183,18 @@ async def rate_limit_middleware(request: Request, call_next):
             if count > RATE_LIMIT_MAX:
                 return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Try again later."})
         except Exception:
-            # If Redis is down, allow the request through rather than blocking
-            pass
+            # Fail closed when shared rate-limiter storage is unavailable.
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Rate limiting service unavailable. Try again later."},
+            )
+    elif request.url.path not in ("/health", "/health/") and os.getenv("PURECORTEX_NETWORK", "").lower() == "mainnet":
+        # Fail closed on mainnet: if Redis never connected, reject non-health requests.
+        logger.warning("Rate limiter unavailable (Redis not connected); rejecting %s", request.url.path)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Rate limiting service unavailable. Try again later."},
+        )
     response = await call_next(request)
     return response
 
@@ -206,6 +217,7 @@ app.include_router(admin_router)
 app.include_router(developer_access_router)
 app.include_router(internal_admin_router)
 app.include_router(marketplace_router)
+app.include_router(airdrop_router)
 
 # ── Security Proxy ──
 proxy = PermissionProxy(PermissionTier.READ_ONLY)
@@ -264,6 +276,11 @@ async def websocket_chat(websocket: WebSocket):
     api_key_mgr = getattr(websocket.app.state, "api_key_manager", None)
     chat_session_mgr = getattr(websocket.app.state, "chat_session_manager", None)
 
+    # Fail closed: never accept websocket sessions when auth backends are unavailable.
+    if not api_key_mgr and not chat_session_mgr:
+        await websocket.close(code=4003, reason="Authentication service unavailable")
+        return
+
     if chat_session_mgr and session_token:
         key_data = await chat_session_mgr.validate_session(session_token)
         if not key_data:
@@ -320,4 +337,11 @@ async def websocket_chat(websocket: WebSocket):
 
             await manager.send_personal_message(response_text, websocket)
     except WebSocketDisconnect:
+        pass
+    finally:
         manager.disconnect(websocket)
+        if chat_session_mgr and session_token:
+            try:
+                await chat_session_mgr.revoke_session(session_token)
+            except Exception as exc:
+                logger.warning("Failed to revoke chat session token: %s", exc)

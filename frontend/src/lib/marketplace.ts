@@ -1,11 +1,17 @@
 import { apiUrl } from './api';
 import {
+  ALGOD_URL,
   CORTEX_ASSET_ID,
   FACTORY_APP_ID,
   calculateCurrentPrice,
   calculateCurveProgress,
   type CurveParams,
 } from './algorand';
+import { PROTOCOL_NETWORK } from './protocolConfig';
+
+const INDEXER_URL = PROTOCOL_NETWORK === 'mainnet'
+  ? 'https://mainnet-idx.algonode.cloud'
+  : 'https://testnet-idx.algonode.cloud';
 
 export interface AgentData {
   id: number;
@@ -74,7 +80,7 @@ function encodeFactorySupplyBoxName(assetId: number): string {
 async function fetchAgentSupply(assetId: number): Promise<bigint> {
   const boxName = encodeFactorySupplyBoxName(assetId);
   const resp = await fetch(
-    `https://testnet-api.algonode.cloud/v2/applications/${FACTORY_APP_ID}/box?name=b64:${encodeURIComponent(boxName)}`,
+    `${ALGOD_URL}/v2/applications/${FACTORY_APP_ID}/box?name=b64:${encodeURIComponent(boxName)}`,
     { headers: { Accept: 'application/json' } },
   );
   if (!resp.ok) {
@@ -110,7 +116,7 @@ function encodeFactoryConfigBoxName(assetId: number): string {
 async function fetchAgentConfig(assetId: number): Promise<CurveParams | null> {
   const boxName = encodeFactoryConfigBoxName(assetId);
   const resp = await fetch(
-    `https://testnet-api.algonode.cloud/v2/applications/${FACTORY_APP_ID}/box?name=b64:${encodeURIComponent(boxName)}`,
+    `${ALGOD_URL}/v2/applications/${FACTORY_APP_ID}/box?name=b64:${encodeURIComponent(boxName)}`,
     { headers: { Accept: 'application/json' } },
   );
   if (!resp.ok) {
@@ -136,7 +142,7 @@ async function fetchAgentConfig(assetId: number): Promise<CurveParams | null> {
 }
 
 /**
- * Fetch agent tokens created by the AgentFactory on testnet.
+ * Fetch agent tokens created by the AgentFactory.
  * Uses the Algorand indexer REST API directly to avoid algosdk type issues.
  */
 export async function fetchAgents(): Promise<AgentData[]> {
@@ -145,7 +151,7 @@ export async function fetchAgents(): Promise<AgentData[]> {
   try {
     // Query the indexer REST API directly for factory app transactions
     const resp = await fetch(
-      `https://testnet-idx.algonode.cloud/v2/transactions?application-id=${FACTORY_APP_ID}&tx-type=appl&limit=50`,
+      `${INDEXER_URL}/v2/transactions?application-id=${FACTORY_APP_ID}&tx-type=appl&limit=50`,
       { headers: { Accept: 'application/json' } },
     );
     if (!resp.ok) throw new Error(`Indexer returned ${resp.status}`);
@@ -187,7 +193,7 @@ export async function fetchAgents(): Promise<AgentData[]> {
 
       try {
         const balResp = await fetch(
-          `https://testnet-idx.algonode.cloud/v2/assets/${agent.id}/balances?currency-greater-than=0&limit=100`,
+          `${INDEXER_URL}/v2/assets/${agent.id}/balances?currency-greater-than=0&limit=100`,
           { headers: { Accept: 'application/json' } },
         );
         if (balResp.ok) {

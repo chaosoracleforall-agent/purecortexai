@@ -1,14 +1,22 @@
 # PURECORTEX Deployment
 
 ## Supported Model
-PURECORTEX currently deploys to a single GCP VM, `purecortex-master`, using the root `docker-compose.yml` stack plus `nginx.conf` for TLS termination and request routing.
+PURECORTEX deploys to dedicated GCP VMs in `us-central1-a` (project: `purecortexai`):
 
-The supported secure topology now includes:
-- a dedicated `signer` container connected only by a shared Unix socket,
+| VM | Purpose | Nginx Config | Database |
+|----|---------|-------------|----------|
+| `purecortex-mainnet` | **Production** (Algorand MainNet) | `nginx.mainnet.conf` | Cloud SQL (`purecortex_mainnet`) |
+| `purecortex-master` | Testnet / staging | `nginx.conf` | Cloud SQL (`purecortex`) |
+
+Both VMs are fully isolated — no shared state, database, or secrets.
+
+The supported secure topology includes:
+- a dedicated `signer` container connected only by a shared Unix socket (no network, read-only FS),
 - an `oauth2-proxy` sidecar for Google SSO on `/admin`,
-- and a dual database mode where the VM can run against local fallback Postgres or a managed Cloud SQL instance through the Cloud SQL Auth Proxy.
+- reCAPTCHA Enterprise on the developer access form,
+- and Cloud SQL via the Cloud SQL Auth Proxy (or local fallback Postgres for development).
 
-Cloud Run is not the supported production path in this repository right now. The repo, scripts, and runbooks should assume the VM deployment model until the infrastructure is intentionally redesigned.
+Cloud Run is not the supported production path. The repo, scripts, and runbooks assume the VM deployment model.
 
 ## Deployment Assets
 - `docker-compose.yml`: backend, signer, frontend, redis, nginx, `oauth2-proxy`, and database proxy/fallback services.
@@ -24,9 +32,9 @@ On the VM:
 - Either `docker compose` or `docker-compose` installed.
 - Git installed.
 - `gcloud` installed and available to the VM host so deploy-time secret sync can read Secret Manager.
-- Repo checked out at `/home/davidgarcia/PureCortex`.
+- Repo checked out at `/home/$USER/PureCortex`.
 - Root `.env` populated from `.env.example`.
-- Signer secret files staged under `/home/davidgarcia/PureCortex/.signer-secrets/` with filenames matching the secret names expected by the signer.
+- Signer secret files staged under `/home/$USER/PureCortex/.signer-secrets/` with filenames matching the secret names expected by the signer.
 - Let's Encrypt certificates mounted at `/etc/letsencrypt`.
 
 On the workstation:
@@ -72,7 +80,7 @@ bash scripts/deploy_remote_vm.sh --pull --tail-logs
 SSH to the VM with the managed GCP path, then run:
 
 ```bash
-cd /home/davidgarcia/PureCortex
+cd /home/$USER/PureCortex
 bash scripts/deploy_vm.sh --pull
 ```
 

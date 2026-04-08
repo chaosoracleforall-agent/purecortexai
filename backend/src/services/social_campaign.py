@@ -287,3 +287,192 @@ def score_target_tweet(text: str, target: dict[str, Any], created_at: Any = None
         return 0, ["weak_fit"]
 
     return score, reasons[:5]
+
+
+# ---------------------------------------------------------------------------
+#  Search-based community discovery
+# ---------------------------------------------------------------------------
+
+SEARCH_QUERIES: list[str] = [
+    # Core queries (always included in rotation)
+    "#Algorand AI -is:retweet",
+    "#AlgoFam -is:retweet",
+    "Algorand DeFi -is:retweet",
+    # Rotating queries (distributed across cycles)
+    "AI agents blockchain Algorand -is:retweet",
+    "Algorand governance -is:retweet",
+    "Algorand developers building -is:retweet",
+    "CORTEX Algorand -is:retweet",
+    "AI agents on-chain -is:retweet",
+    "#AlgorandAI -is:retweet",
+    "Algorand ecosystem -is:retweet lang:en",
+    # Broader AI agent ecosystem
+    "AI agents crypto -is:retweet",
+    "autonomous agents blockchain -is:retweet",
+    "AI DeFi agents -is:retweet lang:en",
+    # Developer tools and builder content
+    "AlgoKit building -is:retweet",
+    "Puya smart contracts -is:retweet",
+    "AVM developers -is:retweet",
+    # Cross-chain AI agent positioning
+    "AI agent launchpad -is:retweet",
+    "onchain AI agents -is:retweet",
+    "MCP tools AI -is:retweet",
+]
+
+# Number of core queries that are always included in every cycle
+_CORE_QUERY_COUNT = 3
+
+# Cycle counter for query rotation (module-level state)
+_rotation_counter: int = 0
+
+
+def get_search_queries_for_cycle(max_queries: int = 6) -> list[str]:
+    """Return a rotating subset of search queries for this engagement cycle.
+
+    The first ``_CORE_QUERY_COUNT`` queries are always included.  The
+    remaining queries rotate across cycles so that each cycle uses a
+    different subset, distributing API usage across all queries over time.
+    """
+    global _rotation_counter
+    _rotation_counter += 1
+
+    core = SEARCH_QUERIES[:_CORE_QUERY_COUNT]
+    rotating = SEARCH_QUERIES[_CORE_QUERY_COUNT:]
+    if not rotating:
+        return core[:max_queries]
+
+    slots = max_queries - len(core)
+    offset = (_rotation_counter * 2) % len(rotating)
+    selected = rotating[offset:offset + slots]
+    if len(selected) < slots:
+        selected += rotating[:slots - len(selected)]
+
+    return core + selected
+
+
+# Keywords that indicate discussion-style content suitable for quote tweeting
+# (as opposed to simple announcements better suited for plain retweets).
+_DISCUSSION_KEYWORDS = {
+    "?",
+    "thoughts",
+    "opinion",
+    "debate",
+    "compare",
+    "why",
+    "how",
+    "interesting",
+    "thread",
+    "deep dive",
+    "unpopular opinion",
+    "hot take",
+    "breakdown",
+    "explained",
+    "tutorial",
+    "guide",
+    "build",
+    "building",
+    "shipped",
+    "launched",
+    "announcing",
+}
+
+
+def get_search_queries() -> list[str]:
+    """Return search queries for discovering Algorand community content."""
+    return list(SEARCH_QUERIES)
+
+
+def score_engagement_candidate(
+    text: str,
+    author_handle: str,
+    public_metrics: dict[str, Any] | None = None,
+    created_at: Any = None,
+) -> tuple[int, list[str], str]:
+    """Score a discovered tweet for engagement (retweet/like/quote tweet).
+
+    Returns ``(score, reasons, recommended_action)`` where
+    *recommended_action* is one of ``"retweet"``, ``"quote_tweet"``,
+    ``"like"``, or ``"none"``.
+    """
+    normalized = (text or "").lower()
+    reasons: list[str] = []
+
+    if not normalized:
+        return 0, reasons, "none"
+
+    # --- safety filters (same as score_target_tweet) ---
+    published_at = _coerce_datetime(created_at)
+    if published_at and datetime.now(timezone.utc) - published_at > MAX_CANDIDATE_AGE:
+        return 0, ["stale_post"], "none"
+
+    if any(sensitive in normalized for sensitive in SENSITIVE_TOPIC_KEYWORDS):
+        return 0, ["sensitive_topic"], "none"
+
+    if any(unsafe in normalized for unsafe in UNSAFE_REPLY_KEYWORDS):
+        return 0, ["unsafe_topic"], "none"
+
+    if any(low_signal in normalized for low_signal in LOW_SIGNAL_KEYWORDS):
+        return 0, ["low_signal"], "none"
+
+    score = 0
+
+    # --- ecosystem relevance ---
+    if any(keyword in normalized for keyword in GLOBAL_KEYWORDS):
+        score += 2
+        reasons.append("ecosystem_relevance")
+
+    # --- topic matching (across ALL topics, not target-specific) ---
+    matched_topics = 0
+    for topic, keywords in TOPIC_KEYWORDS.items():
+        if keywords and any(keyword in normalized for keyword in keywords):
+            matched_topics += 1
+            score += 2
+            reasons.append(f"topic:{topic}")
+            if matched_topics >= 3:
+                break  # cap to prevent runaway scoring
+
+    # --- conversation hook ---
+    if "?" in (text or ""):
+        score += 1
+        reasons.append("conversation_hook")
+
+    # --- AI/agent adjacency ---
+    if any(token in normalized for token in ("ai", "agent", "agents", "automation", "autonomous")):
+        score += 2
+        reasons.append("agent_adjacency")
+
+    # --- engagement signals from existing metrics ---
+    metrics = public_metrics or {}
+    if metrics.get("like_count", 0) >= 10:
+        score += 1
+        reasons.append("high_likes")
+    if metrics.get("retweet_count", 0) >= 5:
+        score += 1
+        reasons.append("high_retweets")
+    if metrics.get("reply_count", 0) >= 3:
+        score += 1
+        reasons.append("active_discussion")
+
+    # --- multi-topic overlap bonus ---
+    if matched_topics >= 2:
+        score += 1
+        reasons.append("multi_topic_overlap")
+
+    # --- weak fit filter ---
+    if matched_topics == 0 and score < 4:
+        return 0, ["weak_fit"], "none"
+
+    # --- determine recommended action ---
+    is_discussion = any(kw in normalized for kw in _DISCUSSION_KEYWORDS)
+
+    if score >= 8 and is_discussion:
+        action = "quote_tweet"
+    elif score >= 7:
+        action = "retweet"
+    elif score >= 5:
+        action = "like"
+    else:
+        action = "none"
+
+    return score, reasons[:6], action

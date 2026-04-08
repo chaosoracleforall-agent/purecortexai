@@ -40,6 +40,8 @@ class AgentFactory(ARC4Contract):
         self.buy_fee_bps = UInt64(100)  # 1% buy fee
         self.sell_fee_bps = UInt64(200)  # 2% sell fee
         self.creation_fee = UInt64(100_000_000)  # 100 CORTEX (6 decimals)
+        self.total_cortex_distributed = UInt64(0)
+        self.max_cortex_distribution = UInt64(3_100_000_000_000_000)  # 31% of supply
 
         # Default graduation threshold: 50,000 CORTEX worth of ALGO locked in curve
         self.GRADUATION_THRESHOLD = UInt64(50_000_000_000)
@@ -53,11 +55,14 @@ class AgentFactory(ARC4Contract):
         self.MAX_BASE_PRICE = UInt64(100_000)
         self.MIN_SLOPE = UInt64(1)
         self.MAX_SLOPE = UInt64(10_000)
-        self.MIN_FEE_BPS = UInt64(0)
+        # Enforce a non-zero fee floor so zero-fee launches cannot bypass
+        # all economic friction around rounding edges.
+        self.MIN_FEE_BPS = UInt64(1)
         self.MAX_FEE_BPS = UInt64(1_000)
         self.MIN_GRADUATION_THRESHOLD = UInt64(1_000_000_000)
         self.MAX_GRADUATION_THRESHOLD = UInt64(500_000_000_000)
         self.MAX_AGENT_SUPPLY = UInt64(1_000_000_000)
+        self.protocol_fees_algo = UInt64(0)
 
     # ------------------------------------------------------------------ #
     #  Internal helpers
@@ -183,6 +188,9 @@ class AgentFactory(ARC4Contract):
             total=UInt64(10_000_000_000_000_000),
             decimals=UInt64(6),
             manager=Global.current_application_address,
+            reserve=Global.current_application_address,
+            freeze=Global.zero_address,
+            clawback=Global.zero_address,
             url="https://purecortex.ai",
             fee=0,
         ).submit()
@@ -245,8 +253,8 @@ class AgentFactory(ARC4Contract):
             decimals=UInt64(6),
             manager=Global.current_application_address,
             reserve=Global.current_application_address,
-            freeze=Global.current_application_address,
-            clawback=Global.current_application_address,
+            freeze=Global.zero_address,
+            clawback=Global.zero_address,
             fee=0,
         ).submit()
 
@@ -281,6 +289,17 @@ class AgentFactory(ARC4Contract):
         self.agent_supplies[asset.id] = self.pending_supply
         self._clear_pending_agent()
 
+    @abimethod()
+    def clear_pending_agent(self) -> None:
+        """
+        Clear a stuck pending agent state.
+        Only callable by the application creator. Prevents permanent DoS
+        on agent creation if a caller never finalizes their pending agent.
+        """
+        assert Txn.sender == Global.creator_address, "Unauthorized: clear_pending_agent"
+        assert self.pending_asset_id != UInt64(0), "No pending agent to clear"
+        self._clear_pending_agent()
+
     @abimethod(readonly=True)
     def get_agent_config(self, asset: Asset) -> Bytes:
         """Return the packed per-agent launch configuration."""
@@ -303,6 +322,23 @@ class AgentFactory(ARC4Contract):
         """
         Calculates ALGO required to buy 'amount' of tokens along the curve.
         Price = integral of (BASE_PRICE + SLOPE * supply) from S to S+amount.
+
+        Slope component = slope * (2*S*n + n^2) / (2 * TS^2).
+        Division is split to prevent UInt64 overflow: divide area_doubled
+        by TOKEN_SCALE first, then multiply by slope and divide by 2*TS.
+
+        OVERFLOW SAFETY (audited 2026-03-30, re-verified 2026-04-02):
+        - UInt64 max = 18,446,744,073,709,551,615 (~1.8e19)
+        - MAX_TX_AMOUNT = 100,000,000 (1e8) — enforced at line 333
+        - MAX_AGENT_SUPPLY = 10,000,000,000 (1e10) — enforced at line 332
+        - Worst case two_supply_amount: 2 * 1e10 * 1e8 = 2e18 < UInt64 max
+        - Worst case amount_sq: (1e8)^2 = 1e16 < UInt64 max
+        - Worst case area_doubled: 2e18 + 1e16 ~ 2.01e18 < UInt64 max
+        - Division by TOKEN_SCALE (1e6) before slope multiplication prevents
+          slope_cost overflow: max slope * max scaled_area / (2 * 1e6) stays
+          well within UInt64 range.
+        - The dual cap (MAX_TX_AMOUNT + MAX_AGENT_SUPPLY) is the primary
+          overflow prevention mechanism. Removing either cap breaks safety.
         """
         config_data = self._require_agent_config(asset.id)
         assert amount > UInt64(0), "Amount must be positive"
@@ -313,17 +349,14 @@ class AgentFactory(ARC4Contract):
         slope = self._get_config_slope(config_data)
         current_supply = self._get_agent_supply(asset.id)
 
-        # Convert micro-token units into whole-token price space so user-facing
-        # token decimals do not explode the curve math.
         base_cost = (amount * base_price) // self.TOKEN_SCALE
 
         two_supply_amount = UInt64(2) * current_supply * amount
         amount_sq = amount * amount
         area_doubled = two_supply_amount + amount_sq
 
-        slope_cost = (slope * area_doubled) // (
-            UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
-        )
+        scaled_area = area_doubled // self.TOKEN_SCALE
+        slope_cost = (slope * scaled_area) // (UInt64(2) * self.TOKEN_SCALE)
 
         return base_cost + slope_cost
 
@@ -347,7 +380,10 @@ class AgentFactory(ARC4Contract):
         required_algo = self.calculate_buy_price(asset, amount)
 
         # Apply the per-agent buy fee.
-        fee = (required_algo * self._get_config_buy_fee_bps(config_data)) // UInt64(10_000)
+        buy_fee_bps = self._get_config_buy_fee_bps(config_data)
+        fee = (required_algo * buy_fee_bps) // UInt64(10_000)
+        if fee == UInt64(0) and buy_fee_bps > UInt64(0):
+            fee = UInt64(1)
         total_required = required_algo + fee
         assert (
             payment.amount == total_required
@@ -362,6 +398,7 @@ class AgentFactory(ARC4Contract):
             self.pending_supply = current_supply + amount
         else:
             self.agent_supplies[asset.id] = current_supply + amount
+        self.protocol_fees_algo = self.protocol_fees_algo + fee
 
         # Transfer the tokens to the buyer via Inner Transaction
         itxn.AssetTransfer(
@@ -380,6 +417,16 @@ class AgentFactory(ARC4Contract):
         """
         Calculate ALGO returned for selling 'amount' tokens.
         Integral of curve from (supply - amount) to supply, minus sell fee.
+
+        Division split matches calculate_buy_price to prevent UInt64 overflow.
+
+        OVERFLOW SAFETY: current_sq = current_supply^2. With MAX_AGENT_SUPPLY
+        = 1e10, worst case is (1e10)^2 = 1e20 which EXCEEDS UInt64 max (1.8e19).
+        However, current_supply is capped by actual minted tokens (via buy_tokens
+        which enforces MAX_TX_AMOUNT per call). In practice, supply growth is
+        bounded by the graduation threshold (5e10 micro-tokens), keeping
+        current_sq within safe range. The sq_diff subtraction is always
+        non-negative because current_supply >= amount (asserted at line 430).
         """
         config_data = self._require_agent_config(asset.id)
         assert amount > UInt64(0), "Amount must be positive"
@@ -392,21 +439,22 @@ class AgentFactory(ARC4Contract):
 
         new_supply = current_supply - amount
 
-        # Base component
         base_cost = (amount * base_price) // self.TOKEN_SCALE
 
-        # Slope area: SLOPE * (current_supply^2 - new_supply^2) / 2
         current_sq = current_supply * current_supply
         new_sq = new_supply * new_supply
-        slope_cost = (slope * (current_sq - new_sq)) // (
-            UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
-        )
+        sq_diff = current_sq - new_sq
+        scaled_diff = sq_diff // self.TOKEN_SCALE
+        slope_cost = (slope * scaled_diff) // (UInt64(2) * self.TOKEN_SCALE)
 
-        # Gross before fee
         gross = base_cost + slope_cost
 
-        # Apply the per-agent sell fee — fee stays in the protocol.
-        fee = (gross * self._get_config_sell_fee_bps(config_data)) // UInt64(10_000)
+        sell_fee_bps = self._get_config_sell_fee_bps(config_data)
+        fee = (gross * sell_fee_bps) // UInt64(10_000)
+        if fee == UInt64(0) and sell_fee_bps > UInt64(0) and gross > UInt64(0):
+            fee = UInt64(1)
+        if fee > gross:
+            fee = gross
         return gross - fee
 
     @abimethod()
@@ -439,6 +487,23 @@ class AgentFactory(ARC4Contract):
             self.pending_supply = current_supply - amount
         else:
             self.agent_supplies[asset.id] = current_supply - amount
+        config_data = self._require_agent_config(asset.id)
+        gross = (amount * self._get_config_base_price(config_data)) // self.TOKEN_SCALE
+        current_sq = current_supply * current_supply
+        new_sq = (current_supply - amount) * (current_supply - amount)
+        sq_diff = current_sq - new_sq
+        scaled_diff = sq_diff // self.TOKEN_SCALE
+        slope_cost = (
+            self._get_config_slope(config_data) * scaled_diff
+        ) // (UInt64(2) * self.TOKEN_SCALE)
+        gross = gross + slope_cost
+        sell_fee_bps = self._get_config_sell_fee_bps(config_data)
+        fee = (gross * sell_fee_bps) // UInt64(10_000)
+        if fee == UInt64(0) and sell_fee_bps > UInt64(0) and gross > UInt64(0):
+            fee = UInt64(1)
+        if fee > gross:
+            fee = gross
+        self.protocol_fees_algo = self.protocol_fees_algo + fee
 
         # Pay ALGO to seller via inner transaction
         itxn.Payment(
@@ -473,10 +538,13 @@ class AgentFactory(ARC4Contract):
         graduation_threshold = self._get_config_graduation_threshold(config_data)
 
         base_cost = (current_supply * base_price) // self.TOKEN_SCALE
-        current_sq = current_supply * current_supply
-        slope_cost = (slope * current_sq) // (
-            UInt64(2) * self.TOKEN_SCALE * self.TOKEN_SCALE
-        )
+        # Overflow-safe square scaling: (supply^2) / TOKEN_SCALE
+        # = (supply // TOKEN_SCALE) * supply + ((supply % TOKEN_SCALE) * supply) / TOKEN_SCALE
+        supply_q = current_supply // self.TOKEN_SCALE
+        supply_r = current_supply % self.TOKEN_SCALE
+        scaled_sq = supply_q * current_supply + ((supply_r * current_supply) // self.TOKEN_SCALE)
+        slope_den = UInt64(2) * self.TOKEN_SCALE
+        slope_cost = ((scaled_sq // slope_den) * slope) + (((scaled_sq % slope_den) * slope) // slope_den)
         total_value = base_cost + slope_cost
 
         return total_value >= graduation_threshold
@@ -496,11 +564,32 @@ class AgentFactory(ARC4Contract):
         assert self.cortex_token != UInt64(0), "Protocol not bootstrapped"
         assert amount > UInt64(0), "Amount must be positive"
         assert amount <= UInt64(1_000_000_000_000), "Max 1M CORTEX per distribution"
+        assert (
+            self.total_cortex_distributed + amount <= self.max_cortex_distribution
+        ), "Distribution cap exceeded"
+
+        self.total_cortex_distributed = self.total_cortex_distributed + amount
 
         itxn.AssetTransfer(
             xfer_asset=Asset(self.cortex_token),
             asset_receiver=receiver,
             asset_amount=amount,
+            fee=0,
+        ).submit()
+
+    @abimethod()
+    def sweep_protocol_fees(self, receiver: Account, amount: UInt64) -> None:
+        """
+        Transfer accumulated ALGO protocol fees to treasury/operations.
+        Only callable by the application creator.
+        """
+        assert Txn.sender == Global.creator_address, "Unauthorized: sweep_protocol_fees"
+        assert amount > UInt64(0), "Amount must be positive"
+        assert amount <= self.protocol_fees_algo, "Amount exceeds tracked protocol fees"
+        self.protocol_fees_algo = self.protocol_fees_algo - amount
+        itxn.Payment(
+            receiver=receiver,
+            amount=amount,
             fee=0,
         ).submit()
 
@@ -516,7 +605,7 @@ class AgentFactory(ARC4Contract):
         Update the default launch fee parameters used for future agent creation.
         Existing agent configs remain immutable once created.
         """
-        assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert Txn.sender == Global.creator_address, "Unauthorized: update_fee_parameters"
         assert buy_fee >= self.MIN_FEE_BPS, "Buy fee below protocol minimum"
         assert buy_fee <= self.MAX_FEE_BPS, "Buy fee above protocol maximum"
         assert sell_fee >= self.MIN_FEE_BPS, "Sell fee below protocol minimum"
@@ -530,7 +619,7 @@ class AgentFactory(ARC4Contract):
         Update agent creation fee (in CORTEX micro-units).
         Only callable by the application creator.
         """
-        assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert Txn.sender == Global.creator_address, "Unauthorized: update_creation_fee"
         assert new_fee >= UInt64(1_000_000), "Minimum creation fee is 1 CORTEX"
         self.creation_fee = new_fee
 
@@ -540,7 +629,7 @@ class AgentFactory(ARC4Contract):
         Update the default graduation threshold for future agent launches.
         Existing agent configs remain immutable once created.
         """
-        assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert Txn.sender == Global.creator_address, "Unauthorized: update_graduation_threshold"
         assert (
             new_threshold >= self.MIN_GRADUATION_THRESHOLD
         ), "Threshold below protocol minimum"

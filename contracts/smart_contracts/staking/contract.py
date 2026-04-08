@@ -31,6 +31,7 @@ class VeCortexStaking(ARC4Contract):
     def __init__(self) -> None:
         self.cortex_token = UInt64(0)
         self.total_staked = UInt64(0)
+        self.total_ve_power = UInt64(0)
         self.reward_pool = UInt64(0)
 
         # Stakes: account_bytes -> encoded stake data
@@ -89,6 +90,7 @@ class VeCortexStaking(ARC4Contract):
         boost multiplier (1x at 7 days, up to 2.5x at 4 years).
         """
         assert self.cortex_token != UInt64(0), "Not initialized"
+        assert cortex_transfer.sender == Txn.sender, "Transfer sender must match caller"
         assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
         assert lock_days >= self.MIN_LOCK_DAYS, "Lock too short"
         assert lock_days <= self.MAX_LOCK_DAYS, "Lock too long"
@@ -114,7 +116,8 @@ class VeCortexStaking(ARC4Contract):
             boost = self.MAX_BOOST
 
         # veCORTEX power = amount * boost / 1000
-        ve_power = (amount * boost) // UInt64(1000)
+        # Divide first to prevent UInt64 overflow for large stakes (loses at most 999 micro-units)
+        ve_power = (amount // UInt64(1000)) * boost
 
         # Store stake info: amount(8) + unlock_round(8) + ve_power(8) + boost(8)
         stake_data = (
@@ -126,6 +129,7 @@ class VeCortexStaking(ARC4Contract):
         self.stakes[stake_key] = stake_data
 
         self.total_staked = self.total_staked + amount
+        self.total_ve_power = self.total_ve_power + ve_power
 
     # ------------------------------------------------------------------ #
     #  Unstaking
@@ -147,22 +151,25 @@ class VeCortexStaking(ARC4Contract):
 
         assert Global.round >= unlock_round, "Lock period not expired"
 
-        # Return CORTEX via inner transaction
+        # Read ve_power before deletion for total_ve_power tracking
+        ve_power = op.btoi(op.extract(stake_data, 16, 8))
+
+        # State cleanup BEFORE external interaction (checks-effects-interactions)
+        del self.stakes[stake_key]
+
+        if op.Box.get(b"d" + stake_key)[1]:
+            del self.delegations[stake_key]
+
+        self.total_staked = self.total_staked - amount
+        self.total_ve_power = self.total_ve_power - ve_power
+
+        # Return CORTEX via inner transaction (after state cleanup)
         itxn.AssetTransfer(
             xfer_asset=Asset(self.cortex_token),
             asset_receiver=Txn.sender,
             asset_amount=amount,
             fee=0,
         ).submit()
-
-        # Remove stake record
-        del self.stakes[stake_key]
-
-        # Remove delegation if one exists (check with "d" prefix for delegations BoxMap)
-        if op.Box.get(b"d" + stake_key)[1]:
-            del self.delegations[stake_key]
-
-        self.total_staked = self.total_staked - amount
 
     # ------------------------------------------------------------------ #
     #  Delegation
@@ -201,6 +208,9 @@ class VeCortexStaking(ARC4Contract):
         if not op.Box.get(b"s" + stake_key)[1]:
             return UInt64(0)
         stake_data = self.stakes[stake_key]
+        unlock_round = op.btoi(op.extract(stake_data, 8, 8))
+        if Global.round >= unlock_round:
+            return UInt64(0)
         return op.btoi(op.extract(stake_data, 16, 8))
 
     @abimethod(readonly=True)
@@ -231,6 +241,16 @@ class VeCortexStaking(ARC4Contract):
         """Get the total CORTEX currently staked across all users."""
         return self.total_staked
 
+    @abimethod(readonly=True)
+    def get_total_ve_power(self) -> UInt64:
+        """Get the aggregate veCORTEX voting power for governance quorum checks."""
+        return self.total_ve_power
+
+    @abimethod(readonly=True)
+    def get_reward_pool(self) -> UInt64:
+        """Get the remaining CORTEX reward pool balance tracked by this contract."""
+        return self.reward_pool
+
     # ------------------------------------------------------------------ #
     #  Reward pool management
     # ------------------------------------------------------------------ #
@@ -244,11 +264,34 @@ class VeCortexStaking(ARC4Contract):
         Typically called by the protocol to distribute the 24% emission allocation.
         """
         assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert cortex_transfer.sender == Txn.sender, "Transfer sender must match caller"
         assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
         assert (
             cortex_transfer.asset_receiver == Global.current_application_address
         ), "Must send to contract"
         self.reward_pool = self.reward_pool + cortex_transfer.asset_amount
+
+    @abimethod()
+    def distribute_reward(self, staker: Account, amount: UInt64) -> None:
+        """
+        Distribute reward-pool CORTEX to an active staker.
+        Only callable by the application creator.
+        """
+        assert Txn.sender == Global.creator_address, "Unauthorized"
+        assert self.cortex_token != UInt64(0), "Not initialized"
+        assert amount > UInt64(0), "Amount must be positive"
+        assert amount <= self.reward_pool, "Exceeds reward pool"
+        assert op.Box.get(b"s" + staker.bytes)[1], "Staker not found"
+
+        # Deduct before interaction (checks-effects-interactions).
+        self.reward_pool = self.reward_pool - amount
+
+        itxn.AssetTransfer(
+            xfer_asset=Asset(self.cortex_token),
+            asset_receiver=staker,
+            asset_amount=amount,
+            fee=0,
+        ).submit()
 
     # ------------------------------------------------------------------ #
     #  Admin

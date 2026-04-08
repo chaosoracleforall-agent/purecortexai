@@ -6,18 +6,28 @@ from pprint import pformat
 
 
 ROOT = Path(__file__).resolve().parent
-MANIFEST_PATH = ROOT / "deployment.testnet.json"
 BACKEND_OUTPUT = ROOT / "backend" / "src" / "services" / "protocol_config.py"
 FRONTEND_OUTPUT = ROOT / "frontend" / "src" / "lib" / "protocolConfig.ts"
 
 
-def load_manifest() -> dict:
-    return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+def _resolve_manifest_path(env: str | None = None) -> Path:
+    if env is None:
+        import os
+        env = os.getenv("PURECORTEX_NETWORK", "testnet")
+    path = ROOT / f"deployment.{env}.json"
+    if not path.exists():
+        raise FileNotFoundError(f"No deployment manifest found at {path}")
+    return path
+
+
+def load_manifest(env: str | None = None) -> dict:
+    return json.loads(_resolve_manifest_path(env).read_text(encoding="utf-8"))
 
 
 def render_backend(manifest: dict) -> str:
+    env = manifest.get("environment", "testnet")
     return f'''"""
-Generated from `deployment.testnet.json` by `generate_protocol_config.py`.
+Generated from `deployment.{env}.json` by `generate_protocol_config.py`.
 Do not edit by hand.
 """
 
@@ -66,8 +76,9 @@ LEGACY_DEPLOYMENTS: Final = PROTOCOL_CONFIG["legacyDeployments"]
 
 
 def render_frontend(manifest: dict) -> str:
+    env = manifest.get("environment", "testnet")
     json_blob = json.dumps(manifest, indent=2)
-    return f"""// Generated from `deployment.testnet.json` by `generate_protocol_config.py`.
+    return f"""// Generated from `deployment.{env}.json` by `generate_protocol_config.py`.
 // Do not edit by hand.
 
 export const protocolConfig = {json_blob} as const;
@@ -93,6 +104,9 @@ export const GOVERNANCE_APP_ID = protocolConfig.contracts.governance.appId;
 export const STAKING_APP_ID = protocolConfig.contracts.staking.appId;
 export const TREASURY_APP_ID = protocolConfig.contracts.treasury.appId;
 
+export const AIRDROP_CONTRACT_ID = protocolConfig.airdrop.distributionContract;
+export const AIRDROP_CLAIM_DEADLINE = protocolConfig.airdrop.claimDeadline;
+
 export const TOTAL_SUPPLY = protocolConfig.tokenomics.totalSupply;
 export const TOKEN_DECIMALS = protocolConfig.tokenomics.decimals;
 export const BASE_PRICE = protocolConfig.tokenomics.basePrice;
@@ -108,15 +122,23 @@ export const OPERATIONS_ADDRESS = protocolConfig.wallets.operations;
 export const CREATOR_VESTING_ADDRESS = protocolConfig.wallets.creatorVesting;
 
 export const LEGACY_DEPLOYMENTS = protocolConfig.legacyDeployments;
+
+export const EXPLORER_BASE_URL = protocolConfig.network === 'mainnet'
+  ? 'https://explorer.perawallet.app'
+  : 'https://testnet.explorer.perawallet.app';
 """
 
 
 def main() -> None:
-    manifest = load_manifest()
+    import sys
+    env = sys.argv[1] if len(sys.argv) > 1 else None
+    manifest = load_manifest(env)
+    resolved_env = manifest.get("environment", "unknown")
+
     BACKEND_OUTPUT.write_text(render_backend(manifest), encoding="utf-8")
     FRONTEND_OUTPUT.write_text(render_frontend(manifest), encoding="utf-8")
-    print(f"Wrote {BACKEND_OUTPUT.relative_to(ROOT)}")
-    print(f"Wrote {FRONTEND_OUTPUT.relative_to(ROOT)}")
+    print(f"[{resolved_env}] Wrote {BACKEND_OUTPUT.relative_to(ROOT)}")
+    print(f"[{resolved_env}] Wrote {FRONTEND_OUTPUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

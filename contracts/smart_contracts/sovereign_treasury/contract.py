@@ -79,6 +79,10 @@ class SovereignTreasury(ARC4Contract):
         (which would swap on a DEX in production).
         """
         assert Txn.sender == Global.creator_address, "Only creator can process revenue"
+        assert payment.sender == Txn.sender, "Payment sender must match caller"
+        assert (
+            payment.group_index + UInt64(1) == Txn.group_index
+        ), "Payment must immediately precede app call"
         assert (
             payment.receiver == Global.current_application_address
         ), "Must pay treasury"
@@ -117,6 +121,10 @@ class SovereignTreasury(ARC4Contract):
         group transaction. The contract then forwards them to the zero
         address, permanently removing them from circulation.
         """
+        assert cortex_transfer.sender == Txn.sender, "Transfer sender must match caller"
+        assert (
+            cortex_transfer.group_index + UInt64(1) == Txn.group_index
+        ), "Transfer must immediately precede app call"
         assert cortex_transfer.xfer_asset.id == self.cortex_token, "Wrong token"
         assert (
             cortex_transfer.asset_receiver == Global.current_application_address
@@ -125,6 +133,9 @@ class SovereignTreasury(ARC4Contract):
         burn_amount = cortex_transfer.asset_amount
         assert burn_amount > UInt64(0), "Nothing to burn"
 
+        # State update BEFORE inner transaction (checks-effects-interactions)
+        self.total_burned = self.total_burned + burn_amount
+
         # Send to Algorand zero address (permanent burn)
         itxn.AssetTransfer(
             xfer_asset=Asset(self.cortex_token),
@@ -132,8 +143,6 @@ class SovereignTreasury(ARC4Contract):
             asset_amount=burn_amount,
             fee=0,
         ).submit()
-
-        self.total_burned = self.total_burned + burn_amount
 
     @abimethod()
     def withdraw_buyback_algo(self, amount: UInt64) -> None:
@@ -151,13 +160,14 @@ class SovereignTreasury(ARC4Contract):
         assert amount <= self.buyback_balance, "Exceeds buyback balance"
         assert amount > UInt64(0), "Zero withdrawal"
 
+        # State update BEFORE inner transaction (checks-effects-interactions)
+        self.buyback_balance = self.buyback_balance - amount
+
         itxn.Payment(
             receiver=Txn.sender,
             amount=amount,
             fee=0,
         ).submit()
-
-        self.buyback_balance = self.buyback_balance - amount
 
     # ------------------------------------------------------------------ #
     #  Read-only queries

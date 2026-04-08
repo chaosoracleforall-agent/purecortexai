@@ -36,3 +36,23 @@ build/
 # Branding artifacts
 branding/png/
 *.html
+
+# Build/deploy bundles
+*.tar.gz
+
+# GCP temp
+.gcloud-tmp/
+
+# Test artifacts
+test-results/
+frontend/test-results/
+
+# Cache
+.npm-cache/
+frontend/.npm-cache/
+
+# Airdrop snapshots (generated, contain wallet data)
+snapshots/
+
+# Cursor
+.cursorrules

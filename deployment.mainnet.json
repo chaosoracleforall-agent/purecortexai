@@ -1,0 +1,164 @@
+{
+  "name": "PURECORTEX",
+  "environment": "mainnet",
+  "network": "mainnet",
+  "chainName": "Algorand MainNet",
+  "publicAppUrl": "https://purecortex.ai",
+  "publicApiUrl": "https://purecortex.ai",
+  "publicWsUrl": "wss://purecortex.ai/ws/chat",
+  "repoUrl": "https://github.com/chaosoracleforall-agent/purecortexai",
+  "tgeDate": "2026-03-31T00:00:00Z",
+  "contracts": {
+    "agentFactory": {
+      "appId": 3501164435,
+      "address": "WJ44A3NA4ZNKHFKSAI4G2Z5AJTFPZGANXF5EHPPHPZHYAOXR25A22LU2IQ",
+      "status": "active"
+    },
+    "cortexToken": {
+      "assetId": 3501164627,
+      "name": "PureCortex",
+      "unitName": "CORTEX",
+      "creatorAddress": "WJ44A3NA4ZNKHFKSAI4G2Z5AJTFPZGANXF5EHPPHPZHYAOXR25A22LU2IQ"
+    },
+    "governance": {
+      "appId": 3501164276,
+      "status": "active"
+    },
+    "staking": {
+      "appId": 3501164346,
+      "status": "active"
+    },
+    "treasury": {
+      "appId": 3501164386,
+      "status": "active"
+    },
+    "creatorVesting": {
+      "appId": 3501164479,
+      "status": "active"
+    },
+    "airdropClaim": {
+      "appId": 3502246857,
+      "status": "active"
+    }
+  },
+  "tokenomics": {
+    "totalSupply": 10000000000000000,
+    "decimals": 6,
+    "basePrice": 10000,
+    "slope": 1000,
+    "creationFee": 100000000,
+    "buyFeeBps": 100,
+    "sellFeeBps": 200,
+    "graduationThreshold": 50000000000
+  },
+  "allocation": {
+    "creator": {
+      "percentage": 10,
+      "amount": 1000000000000000,
+      "vestingTgePct": 10,
+      "vestingDays": 180,
+      "wallet": "SOJXXJA43JYXRDTBHXVLS6KDBERTT77QAWRBKQOCGPEOS6ESGLDWGU474Y"
+    },
+    "genesisDistribution": {
+      "percentage": 31,
+      "amount": 3100000000000000,
+      "wallet": "A4KRU2NOBMONKMTG4XZJAZRBU3LO6PIYPUBL2IFHOGNYCVRORZVNTX46UA"
+    },
+    "futureEmissions": {
+      "percentage": 24,
+      "amount": 2400000000000000,
+      "halvingSchedule": [
+        0.4,
+        0.3,
+        0.2,
+        0.1
+      ],
+      "wallet": "W5ONM6QB5MNJFIWSPUZDCFYYDSMJUIFFMD7CZZYO7TGURLPNRW36SV6VCA"
+    },
+    "liquidity": {
+      "percentage": 15,
+      "amount": 1500000000000000,
+      "lockYears": 10,
+      "wallet": "LGW2PDZURDLAU2XENZEQDR4PUHSTJ6YKATRR6D4PSKEEH55X6IAOILCSMI"
+    },
+    "agentIncentives": {
+      "percentage": 15,
+      "amount": 1500000000000000,
+      "wallet": "34JHCXPGM7HKN6YCKEEP3324CEXMCZ4SHQCFD3EQCTB3RN4UUCRYJO7QMQ"
+    },
+    "assistanceFund": {
+      "percentage": 5,
+      "amount": 500000000000000,
+      "wallet": "6HC22ISVTPSR6MHGRCXKEZFZI3YXEEBEHKCIC7RW77CF4RP2JHFMXZ3S2Y"
+    }
+  },
+  "marketplace": {
+    "tradingEnabled": true,
+    "launchEnabled": true,
+    "maintenanceReason": "",
+    "notes": [
+      "MainNet launched 2026-03-31. Trading and agent creation enabled."
+    ]
+  },
+  "wallets": {
+    "agentFactoryEscrow": "WJ44A3NA4ZNKHFKSAI4G2Z5AJTFPZGANXF5EHPPHPZHYAOXR25A22LU2IQ",
+    "assistanceFund": "6HC22ISVTPSR6MHGRCXKEZFZI3YXEEBEHKCIC7RW77CF4RP2JHFMXZ3S2Y",
+    "operations": "PBOHX6V6PEV4BBPJVZ77BUS2LHQ2YRT4T7WRFQRZFHZI3ZEADXVMZGSFZE",
+    "creatorVesting": "MZF2WXA6E2ZLEQOYWIPPMVHOPYNY4OHDCEN3S6KNWWEEH726X3ZXP6TMBQ",
+    "liquidityPool": "CM4FNHTBOUEFH44IFHLQBZKV5WLYVGCDREB5JUEKHRKKS5T6MHJCTMNZYU"
+  },
+  "dex": {
+    "tinyman": {
+      "poolAddress": "HMLZPDAKN2XO4F47KR656U3SMTMGKLSLS5HO6NHFT2JGFGT7JP6UCK66XE",
+      "poolTokenAsaId": 3502697927,
+      "pair": "CORTEX/ALGO",
+      "algoAmount": 6600000000,
+      "cortexAmount": 900000000000000,
+      "status": "active"
+    },
+    "pact": {
+      "poolAppId": 3502703728,
+      "poolTokenAsaId": 3502703733,
+      "pair": "CORTEX/ALGO",
+      "algoAmount": 4400000000,
+      "cortexAmount": 600000000000000,
+      "status": "active"
+    }
+  },
+  "airdrop": {
+    "snapshotBlock": 1775059909,
+    "merkleRoot": "94a51571c1a21541256768d83e6a7082f9ccfa81807f8c4a7733b59e86db52c2",
+    "distributionContract": 3502246857,
+    "claimDeadline": "2026-07-01T00:00:00Z",
+    "tiers": {
+      "testnetPioneers": {
+        "allocationPct": 5,
+        "minWalletAge": null
+      },
+      "algorandDefiUsers": {
+        "allocationPct": 30,
+        "snapshotProtocols": [
+          "tinyman",
+          "pact",
+          "folks_finance"
+        ]
+      },
+      "nfdHolders": {
+        "allocationPct": 10
+      },
+      "algorandGovernors": {
+        "allocationPct": 20
+      },
+      "developerBuilders": {
+        "allocationPct": 10
+      },
+      "socialCampaign": {
+        "allocationPct": 15
+      },
+      "communityTasks": {
+        "allocationPct": 10
+      }
+    }
+  },
+  "legacyDeployments": []
+}

@@ -1,5 +1,307 @@
 # Changelog
 
+## 0.9.6 - 2026-04-08
+
+### Fixed — SSR Invisible Content Bug Across All Public Pages
+- **Root cause**: framer-motion `<motion.*>` elements set `opacity: 0` as inline styles during SSR. If client-side hydration was delayed or blocked (e.g. by CSP `script-src` not including `'unsafe-inline'`), content remained permanently invisible. Dashboard pages appeared unaffected when reached via client-side navigation, but any direct page load (bookmark, shared link) triggered the bug.
+- **Landing page** (`/`): Hero title, description, and "Claim Genesis Airdrop" CTA were invisible. Replaced 5 `motion.*` wrappers with CSS `@keyframes` animations.
+- **Airdrop page** (`/airdrop`): Header, stats, countdown, tiers, timeline, and learn-more sections all invisible on direct load. Replaced 6 SSR-rendered `motion.*` wrappers; kept framer-motion for conditionally-rendered modals and tier expand/collapse.
+- **Transparency page** (`/transparency`): 3 stat cards (Total Supply, Burned, Circulating) invisible on direct load. Replaced with CSS animations.
+- **Governance page** (`/governance`): Tab content panels invisible on direct load. Replaced 3 tab `motion.div` wrappers; kept framer-motion for article expand/collapse inside constitution tab.
+- Verified: SSR output across all 4 pages contains zero `opacity:0` inline styles.
+
+### Security
+- `docker-compose.yml` — Added `security_opt: no-new-privileges:true` and `cap_drop: ALL` to the `frontend` container, matching the hardening already present on backend and signer containers.
+
+### Changed
+- `frontend/src/components/LandingPage.tsx` — removed framer-motion import, 5 `motion.*` → plain HTML + CSS animations.
+- `frontend/src/components/Airdrop.tsx` — 6 SSR-rendered `motion.*` → plain HTML + CSS animations. AnimatePresence kept for modals.
+- `frontend/src/app/(dashboard)/transparency/page.tsx` — 3 stat card `motion.div` → plain `div` + CSS animations. Width-animated bars kept as framer-motion.
+- `frontend/src/app/(dashboard)/governance/page.tsx` — 3 tab panel `motion.div` → plain `div` + CSS animations. Removed outer `AnimatePresence` wrapper.
+- `frontend/src/app/globals.css` — added `fadeInUp`, `fadeInLeft`, `fadeInScale` keyframe definitions.
+
+## 0.9.5 - 2026-04-04
+
+### Added -- Autonomous Conversational Engagement Overhaul
+- **Follower engagement system**: New `scan_followers()` method detects new followers every 4th engagement cycle, likes their relevant posts, drafts warm replies via tri-brain consensus, and follows back ecosystem-relevant accounts. Uses `_draft_follower_welcome()` for natural (not promotional) replies. New `_is_ecosystem_relevant()` checks user bios for 2+ matching keywords from a curated set (algorand, defi, ai, builder, etc.).
+- **Mention intent classification**: New `_classify_mention_intent()` categorizes incoming mentions as `question`, `positive_sentiment`, `newcomer`, or `general`. Mentions with clear intent get boosted scores and route through `_draft_warm_mention_reply()` with intent-specific prompts (answer questions helpfully, thank praise warmly, welcome newcomers genuinely).
+- **Community shoutout content type**: New `community_shoutout` content type in `act()` generates posts that celebrate community conversations and highlight ecosystem builders. `_gather_posting_context()` now includes community highlights from recent engagement history and nudges toward shoutouts when overdue.
+- **Expanded search coverage**: 9 new search queries added (19 total, up from 10) covering broader AI agent crypto discussions, AlgoKit/Puya developer content, and cross-chain AI agent positioning.
+
+### Changed
+- **Conversational tone overhaul**: All 5 content generation and reply prompts rewritten from corporate brand voice to genuine community member voice. Example: "Reply only when PURECORTEX can add real value" -> "Reply like a knowledgeable friend: curious, supportive, and real." Affects `SYSTEM_PROMPT`, `_draft_reply()`, `_draft_quote_comment()`, `_draft_conversation_reply()`.
+- **Lowered score thresholds**: Reply 6->4, retweet 7->5, like 5->3, quote tweet 8->6, follow priority 9->7. More posts now qualify for engagement, especially from smaller community accounts.
+- **Raised daily limits for launch period**: Total writes 15->30, likes 10->25, retweets 5->10, quote tweets 3->6, replies 8->15, mention replies 5->10, follows 5->8.
+- **Raised per-cycle caps**: Replies 2->3, retweets 2->3, likes 5->8, quote tweets 1->2, follows 1->2, mention replies 2->3.
+- **Follower engagement stats** added to `get_campaign_status()` output.
+
+### Removed
+- **Legacy `_autonomous_campaign_cycle()`**: Deleted ~200 lines of dead code superseded by `engage()` in v0.9.4. Had zero callers.
+
+### New Env Vars
+- `SOCIAL_FOLLOWER_ENGAGEMENT_ENABLED` (default: 1) -- enable/disable follower scanning
+- `SOCIAL_CYCLE_MAX_FOLLOWER_ENGAGEMENTS` (default: 3) -- max follower engagements per cycle
+- `SOCIAL_CAMPAIGN_REPLY_SCORE_THRESHOLD` (default: 4) -- minimum score for auto-reply
+- `SOCIAL_CAMPAIGN_FOLLOW_PRIORITY_THRESHOLD` (default: 7) -- minimum priority for auto-follow
+- `SOCIAL_RETWEET_SCORE_THRESHOLD` (default: 5) -- minimum score for auto-retweet
+- `SOCIAL_LIKE_SCORE_THRESHOLD` (default: 3) -- minimum score for auto-like
+- `SOCIAL_QUOTE_TWEET_SCORE_THRESHOLD` (default: 6) -- minimum score for auto-quote-tweet
+
+### Tests
+- 85/85 backend tests pass (6 new tests: intent classification, ecosystem relevance, follower scan scheduling).
+
+## 0.9.4 - 2026-04-03
+
+### Added — Autonomous Community Engagement System
+- **Independent engagement loop**: New `_engagement_loop()` in `orchestrator_loop.py` runs every 45 minutes, completely decoupled from the 4-hour content posting cycle. The Social Agent now scans, discovers, and interacts with the Algorand community on its own schedule.
+- **`engage()` method**: Top-level engagement entry point on `SocialAgent` that orchestrates all community interaction per cycle — mention monitoring, search discovery, home timeline browsing, conversation follow-up, campaign target scanning, and dynamic target discovery.
+- **Home timeline browsing**: New `browse_home_timeline()` scans the agent's home feed for organic engagement opportunities from followed accounts (runs every 2nd cycle).
+- **Conversation continuity**: New `check_conversation_threads()` tracks conversations the agent has participated in and checks for new replies, enabling natural follow-up. Uses `_draft_conversation_reply()` with conversation context (our previous message) for contextual replies.
+- **Dynamic target discovery**: New `discover_new_targets()` organically expands the campaign target list by promoting high-scoring community accounts (score >= 8) to tracked targets. Cap at 30 targets total.
+- **Multi-action execution**: New `_execute_engagement_actions()` uses per-cycle caps (2 replies, 2 retweets, 5 likes, 1 quote tweet, 1 follow, 2 mention replies) instead of break-on-first-match, dramatically increasing engagement throughput.
+- **Aggregate daily write limit**: `MAX_TOTAL_WRITES_PER_DAY = 15` caps all posts + replies + quote tweets combined across both `act()` and `engage()` to stay within Twitter API limits.
+- **Engagement scheduler**: New `engagement_scheduler.py` module with `EngagementScheduler` class managing operation rotation across cycles to distribute API usage within rate limits.
+- **Expanded search queries**: Extended from 5 to 10 queries covering broader topics (developers, ecosystem, AI agents on-chain). New `get_search_queries_for_cycle()` rotates query subsets across cycles.
+- **New env vars**: `SOCIAL_ENGAGEMENT_INTERVAL`, `SOCIAL_ENGAGEMENT_ENABLED`, `SOCIAL_CYCLE_MAX_*` caps, `SOCIAL_MAX_TOTAL_WRITES_PER_DAY`, `SOCIAL_CAMPAIGN_DYNAMIC_DISCOVERY`, `SOCIAL_MAX_CAMPAIGN_TARGETS`, `SOCIAL_HOME_TIMELINE_ENABLED`, `SOCIAL_CONVERSATION_FOLLOWUP_ENABLED`.
+
+### Changed
+- **`act()` decoupled**: Removed `_autonomous_campaign_cycle()` call from `act()` — posting is now purely content generation. Engagement runs independently via `engage()`.
+- **`discover_community_content()`**: Added `use_rotation` parameter to opt into rotating query subsets from the engagement loop.
+
+### New Files
+- `backend/src/services/engagement_scheduler.py` — Cycle rotation scheduler with per-cycle caps
+- `backend/tests/test_engagement_scheduler.py` — 11 unit tests for scheduler logic
+- `backend/tests/test_social_engagement.py` — 7 unit tests for expanded search queries and rotation
+
+### Tests
+- 78/78 backend tests pass (18 new tests added).
+
+## 0.9.3 - 2026-04-02
+
+### Operations — Mainnet Deployment
+- **Full mainnet VM deployment**: Backend, frontend, signer, Redis, nginx, Cloud SQL proxy, and oauth2-proxy all running and healthy on `purecortex-mainnet` VM.
+- **Frontend health check fix**: Changed Docker healthcheck from `localhost:3000` to `127.0.0.1:3000` to avoid IPv6 `::1` resolution on Alpine Linux where Next.js binds only IPv4. Frontend was showing `unhealthy` for 25+ streaks despite serving correctly.
+- **Docker Compose env warnings**: Added default empty values (`:-`) for `PURECORTEX_RECAPTCHA_SITE_KEY` and `PURECORTEX_TRUST_ADMIN_EMAIL_HEADER` to suppress compose warnings on every command.
+- **Bootstrap token passthrough**: Added `PURECORTEX_BOOTSTRAP_TOKEN` to backend environment in `docker-compose.yml`.
+- **VM domain cutover**: Updated `PURECORTEX_PUBLIC_DOMAIN` from `mainnet.purecortex.ai` to `purecortex.ai` in VM `.env`.
+- **Nginx TLS paths**: Updated `nginx.mainnet.conf` cert paths from `mainnet.purecortex.ai` to `purecortex.ai` (post DNS cutover).
+- **Signer identity**: Added `liquidityPool` to `PURECORTEX_SIGNER_ALLOWED_IDENTITIES`.
+
+### Operations — Treasury Multisig
+- **2-of-3 Algorand multisig**: Created 3 treasury wallets (deployer, cold, hardware) and configured 2-of-3 multisig at address `PBOHX6V6PEV4BBPJVZ77BUS2LHQ2YRT4T7WRFQRZFHZI3ZEADXVMZGSFZE`.
+- All mnemonics stored in GCP Secret Manager (`MAINNET_TREASURY_MULTISIG_WALLETS`).
+- `deployment.mainnet.json` updated with multisig as operations wallet.
+- New script `scripts/setup_treasury_multisig.py` for multisig address creation with `--update-manifest` and `--dry-run` support.
+
+### Operations — Governance
+- **Proposal 0 submitted**: "Ratify the PURECORTEX Constitution On-Chain" — ceremonial first governance proposal created via bootstrapped admin API key.
+- Admin API key bootstrapped on mainnet backend.
+
+### Operations — reCAPTCHA Enterprise
+- Enabled `recaptchaenterprise.googleapis.com` API on GCP project `purecortexai`.
+- Created score-based reCAPTCHA key (`6LeYQ6Ms...`) for domains `purecortex.ai` and `mainnet.purecortex.ai`.
+- Configured in VM `.env` — developer access form now protected.
+
+### Operations — Social Agent
+- **X bio corrected**: Changed "Dual-Brain consensus" to "Tri-Brain consensus" via Twitter API v1.1.
+- Social agent confirmed posting: 6-tweet launch thread posted, catch-up logic detecting 4 missed campaign days.
+- Verified @purecortexai account live: 508 posts, 25 following, 8 followers, blue verified checkmark.
+
+### Operations — TEAL Recompilation
+- All 6 contract TEAL artifacts recompiled on VM with puyapy 5.7.1 (Python 3.12): AgentFactory, Governance, VeCortexStaking, SovereignTreasury, CreatorVesting, AirdropClaim.
+
+### Operations — GCP IAM Verified
+- Service account `purecortex-mainnet-vm` confirmed with 4 least-privilege roles: `secretmanager.secretAccessor`, `cloudsql.client`, `logging.logWriter`, `storage.objectViewer`.
+
+### Added
+- `scripts/setup_treasury_multisig.py` — 2-of-3 Algorand multisig creation tool.
+- `docs/OUTREACH.md` — Draft outreach for audit firms (Halborn, Runtime Verification), Algorand Foundation grant/listing, partnerships (Tinyman, Pact, Vestige, NFD), and Immunefi bug bounty publication checklist.
+
+## 0.9.2 - 2026-04-02
+
+### Security Hardening
+- **Orchestrator input sanitization**: Replaced `html.escape(quote=False)` with centralized `_sanitize_user_input()` method across all three LLM brains (Claude, Gemini, GPT). Now applies 8KB length cap, control character stripping, HTML escaping with quotes, and prompt injection pattern detection with logging.
+- **Bonding curve overflow documentation**: Added detailed overflow safety analysis to `calculate_buy_price` and `calculate_sell_price` docstrings, documenting the dual-cap mechanism (MAX_TX_AMOUNT + MAX_AGENT_SUPPLY) and worst-case UInt64 arithmetic bounds.
+- **Nginx CSP update**: Added mainnet Nodely indexer endpoints (`mainnet-api.4160.nodely.dev`, `mainnet-idx.4160.nodely.dev`) to `connect-src` directive.
+
+### Fixed — Airdrop Snapshot
+- **Governor detection**: Replaced unreliable `GOVERRR` escrow prefix with Algorand governance reward app IDs (1006299344, 1159626498) and broader `gov` note prefix scanning. Previously returned 0 wallets.
+- **Developer detection**: Fixed `on-completion` field comparison to handle both string `"noop"` and integer `0` formats from the Algorand Indexer. Also checks `application-id == 0` as creation indicator. Previously returned 0 wallets.
+- **Database tier warnings**: Social campaign and community tasks tiers now log explicit warnings when `DATABASE_URL` is not set, with guidance on how to fix.
+
+### Added — Post-Launch Campaign Content
+- Extended launch campaign from Day +1 to Day +7 with 6 new content prompts: liquidity announcement, buyback-burn explainer, governance activation, airdrop countdown, agent tutorial, and Week 1 metrics report.
+- **Catch-up logic**: `get_launch_prompt_for_day()` now falls back to the latest undelivered post-TGE prompt when an exact day match isn't found, enabling the social agent to recover from missed posts.
+- **`get_missed_prompts()`**: New function that returns campaign prompts that should have been posted but weren't, based on Redis-tracked offsets.
+- Social agent now tracks posted campaign day offsets in long-term memory and logs warnings when missed posts are detected.
+
+### Tests
+- Updated `test_launch_campaign.py`: 12 tests passing (was 8). Added tests for catch-up behavior, `get_missed_prompts()` edge cases.
+
+## 0.9.1 - 2026-04-01
+
+### Security Fixes — Smart Contracts
+- **SEV-001 (HIGH):** Fixed governance flash-vote attack — added 7-day `VOTE_LOCK_PERIOD` preventing CORTEX reclaim until cooldown after voting ends. Vote lock period is snapshotted per-proposal (immutable).
+- **SEV-002 (MEDIUM):** Fixed `AirdropClaim.reclaim_unclaimed` — now sets `total_claimed = total_allocated` before inner transfer, preventing repeated calls from draining excess balance.
+- **SEV-003 (MEDIUM):** Added `total_claimed + amount <= total_allocated` ceiling check in `AirdropClaim.claim` to enforce the invariant on-chain regardless of Merkle tree correctness.
+- **SEV-004 (MEDIUM):** Added `clear_pending_agent` creator-only method to `AgentFactory` to prevent permanent DoS on agent creation from abandoned pending agents.
+- **SEV-005 (LOW):** Explicitly set `freeze=Global.zero_address` and `clawback=Global.zero_address` in `bootstrap_protocol` CORTEX ASA creation for defense-in-depth.
+- **SEV-008 (LOW):** Added `cortex_transfer.sender == Txn.sender` check in `VeCortexStaking.fund_reward_pool` for consistency with other transfer-accepting methods.
+
+### Security Fixes — Backend
+- **BE-001 (HIGH):** Airdrop snapshot files are now verified via SHA-256 companion hash on load. Snapshot script generates `.sha256` integrity file. Tampered snapshots are rejected with a CRITICAL log.
+- **BE-002 (HIGH):** Governance proposals are now write-through persisted to PostgreSQL. Redis remains fast-path cache; proposals survive Redis restarts. Counter re-seeds from PostgreSQL max ID to prevent ID collisions.
+- **BE-003 (HIGH):** Removed `/internal/admin` from `PUBLIC_PREFIXES`. Admin endpoints now require `x-purecortex-auth-email` header (set by oauth2-proxy) to pass the API key middleware gate.
+
+### Added
+- `GovernanceProposal` SQLAlchemy model + Alembic migration `20260401_0003`.
+- Updated admin endpoint tests to cover the new middleware gate.
+
+## 0.9.0 - 2026-04-01
+
+### Added — Social Agent Community Engagement
+- **Retweet**: Social agent can now retweet relevant Algorand ecosystem content (5/day limit, score >= 7).
+- **Quote Tweet**: Tri-brain-powered commentary on ecosystem tweets (3/day limit, score >= 8).
+- **Like**: Lightweight engagement signal on quality community posts (10/day limit, score >= 5).
+- **Mention Monitoring**: Detects @purecortexai mentions and auto-replies to high-scoring ones (5/day limit).
+- **Search Discovery**: Searches for Algorand community conversations using hashtags/keywords (#Algorand, #AlgoFam, AI agents, etc.).
+- New scoring function `score_engagement_candidate()` in `social_campaign.py` for retweet/like/quote decisions.
+- All features independently toggleable via env vars: `SOCIAL_CAMPAIGN_AUTO_RETWEET`, `SOCIAL_CAMPAIGN_AUTO_LIKE`, `SOCIAL_CAMPAIGN_AUTO_QUOTE_TWEET`, `SOCIAL_CAMPAIGN_AUTO_MENTION_REPLY`, `SOCIAL_CAMPAIGN_SEARCH_DISCOVERY`.
+- Engagement history persisted in Redis with deduplication to prevent double-actions.
+- Registered `QUOTE_TWEET`, `RETWEET`, `LIKE` actions in sandboxing permission tier.
+
+### Added — Non-Custodial Airdrop Claim Contract
+- New `AirdropClaim` smart contract (`contracts/smart_contracts/airdrop_claim/contract.py`): users claim CORTEX by submitting Merkle proofs on-chain. Fully non-custodial — user pays all fees.
+- On-chain Merkle proof verification using SHA256 with domain separation (0x00 leaf, 0x01 internal).
+- Box storage for double-claim prevention. Claim deadline enforcement. Creator-only `reclaim_unclaimed()` after deadline.
+- Updated `wallet_leaf()` encoding in `airdrop_snapshot.py` to use raw bytes matching AVM contract.
+- Added `pack_proof_for_avm()` for binary proof format (33-byte packed steps).
+
+### Added — Complete Airdrop Snapshot Tiers
+- Implemented all 7 tiers in `airdrop_snapshot.py`: testnet pioneers, DeFi users, governors, NFD holders, developers, social campaign, community tasks.
+- Previously only 2 of 7 tiers were implemented; now all tiers produce eligibility data.
+- Snapshot output now includes per-wallet Merkle proofs (JSON + packed hex for AVM).
+
+### Added — Airdrop Backend Endpoints
+- `GET /api/airdrop/eligibility/{address}` — check wallet eligibility, allocation, and qualified tiers.
+- `GET /api/airdrop/proof/{address}` — return Merkle proof for on-chain claim submission.
+- Endpoints load from the most recent snapshot file in `/snapshots/`.
+
+### Added — Frontend Claim Flow
+- New claim section in Airdrop page: eligibility check, allocation display, and on-chain claim button.
+- Uses `AtomicTransactionComposer` to build ABI method calls to the AirdropClaim contract.
+- User signs with their connected wallet (Pera/Defly/Lute/etc.) — fully non-custodial.
+- Shows transaction explorer link after successful claim.
+- Gracefully handles: contract not yet deployed, claims not yet open, ineligible wallets.
+
+## 0.8.3 - 2026-03-30
+
+### Fixed
+- Fixed checks-effects-interactions (CEI) ordering violation in `contracts/smart_contracts/sovereign_treasury/contract.py`: `execute_burn` and `withdraw_buyback_algo` now update state BEFORE inner transactions, matching the pattern used across all other contracts.
+
+### Security
+- Completed Code Review Gate (Gate 7) — all checklist items reviewed and signed off.
+- Fixed all npm dependency vulnerabilities in frontend (picomatch high, brace-expansion moderate).
+- Backend Python dependencies audited clean (pip-audit: 0 vulnerabilities).
+- Updated `.gitignore` to exclude build bundles, GCP temp, test artifacts, and cache directories.
+
+### Verified
+- Full test suite green:
+  - Contracts: 51/51 passed
+  - Backend: 56/56 passed
+  - Frontend E2E: 8/8 passed (1 skipped — live admin requires running instance)
+  - Airdrop Merkle: 14/14 passed
+- Smart contract review: all 5 contracts audited for overflow safety, auth checks, CEI pattern, assert uniqueness.
+- No hardcoded secrets found across backend, frontend, or scripts (grep + pip-audit verified).
+- `deployment.mainnet.json` verified: 5 app IDs non-zero, airdrop tiers sum to 100%.
+- Signer daemon network isolation confirmed (`network_mode: "none"`, read-only filesystem).
+
+### Fixed (Frontend)
+- Replaced all hardcoded testnet explorer URLs (`testnet.explorer.perawallet.app`) with network-aware `EXPLORER_BASE_URL` derived from `protocolConfig.network` in Marketplace, Governance, and WalletButton components.
+- Replaced hardcoded testnet Algod/Indexer API URLs in `marketplace.ts` with imports from `algorand.ts` (already network-aware).
+- Removed all user-facing "testnet" text labels from Marketplace, Governance, Chat, and WalletButton components.
+- Added try/catch to `WalletButton.handleDisconnect()` to handle wallet provider errors gracefully.
+- Updated E2E marketplace test route patterns to match any network (mainnet or testnet).
+
+### Fixed (Backend)
+- Rate limiter now fails closed on mainnet when Redis is unavailable at startup (`main.py`) — prevents unlimited requests bypassing IP-based rate limiting.
+- Airdrop registration (`POST /api/airdrop/register`) added to public POST patterns in auth middleware — end users no longer need an API key to register wallets for the genesis airdrop.
+
+### User Action
+- Recompile Treasury TEAL artifact after CEI fix: `poetry run python -m smart_contracts build`
+- Remaining launch blockers: fund disposable wallet, provision DEPLOYER_MNEMONIC, run live testnet smoke.
+- Populate wallet addresses in `deployment.mainnet.json` (all currently empty).
+- Set `tradingEnabled: true` and `launchEnabled: true` in deployment manifest when ready.
+
+## 0.8.2 - 2026-03-25
+
+### Fixed
+- Hardened `contracts/smart_contracts/agent_factory/contract.py` by enforcing a non-zero protocol fee floor (`MIN_FEE_BPS=1`) and added regression coverage to prevent rounding-driven zero-fee buy/sell edge exploitation.
+- Hardened `contracts/smart_contracts/sovereign_treasury/contract.py` by binding referenced payment/asset-transfer transactions to the caller and enforcing strict adjacent group-index semantics in `process_revenue` and `execute_burn`.
+- Hardened `contracts/smart_contracts/staking/contract.py` by adding creator-gated reward distribution (`distribute_reward`), exposing reward pool reads (`get_reward_pool`), and expiring `ve_power` once locks are past unlock round.
+
+### Updated
+- Recompiled smart contracts and regenerated canonical artifact outputs (`TEAL`, `ARC56`, typed clients) via `poetry run python -m smart_contracts build`.
+- Refreshed launch security documentation to include this follow-up pass and current contract evidence:
+  - `SECURITY_AUDIT.md`
+  - `SECURITY_AUDIT_REPORT.md`
+  - `docs/MAINNET_GO_NO_GO_PACKET_2026-03-25.md`
+- Verified current contract evidence after rebuild:
+  - `PYTHONPATH=. poetry run pytest tests/ -v` -> `51 passed`
+  - `PYTHONPATH=. poetry run pytest tests/test_agent_factory.py tests/test_sovereign_treasury.py tests/test_staking_contract.py -q` -> `31 passed`
+
+### Root Cause
+- Follow-up triage from external-audit control mapping identified unresolved contract-level integrity controls (fee-floor precision symmetry, treasury replay/caller binding, staking reward operability, ve-power expiry) that needed implementation plus artifact/doc re-baselining.
+
+### User Action
+- Redeploy contract-dependent environments using the refreshed artifacts and rerun environment smoke checks before final mainnet go/no-go sign-off.
+
+## 0.8.1 - 2026-03-25
+
+### Updated
+- Updated launch documentation status to mark the Playwright runtime blocker as resolved in this environment across:
+  - `docs/MAINNET_GO_NO_GO_PACKET_2026-03-25.md`
+  - `SECURITY_AUDIT.md`
+  - `SECURITY_AUDIT_REPORT.md`
+- Recorded current frontend E2E evidence in those docs:
+  - `npm run test:e2e:admin:smoke` -> `4 passed`
+  - `npx playwright test` -> `8 passed, 1 skipped`
+
+### Root Cause
+- Launch status documentation still reflected an earlier runtime/browser mismatch even after Playwright configuration hardening and E2E stabilization.
+
+### User Action
+- No action required for this docs-only update; continue with remaining launch blockers (`live_testnet_verify.py smoke` prerequisites).
+
+## 0.8.0 - 2026-03-25
+
+### Fixed
+- Hardened `contracts/smart_contracts/agent_factory/contract.py` sell-fee handling to prevent underflow when gross sell value is extremely small by clamping fee application (`fee <= gross`) and only applying minimum fee when gross value is non-zero.
+- Reworked graduation valuation arithmetic in `contracts/smart_contracts/agent_factory/contract.py` to an overflow-safe split-scaling path, eliminating square/multiply overflow risk at high supply values.
+
+### Updated
+- Added benchmark and traceability audit artifacts:
+  - `docs/ALGOLAND_AUDIT_BENCHMARK_MATRIX.md`
+  - `docs/PURECORTEX_CONTROL_TRACEABILITY.md`
+  - `docs/MAINNET_GO_NO_GO_PACKET_2026-03-25.md`
+- Added contract security regression coverage in:
+  - `contracts/tests/test_agent_factory.py`
+  - `contracts/tests/test_governance_contract.py`
+  - `contracts/tests/test_creator_vesting.py`
+- Added backend security regression coverage in:
+  - `backend/tests/test_orchestrator_security.py`
+  - `backend/tests/test_auth_middleware_security.py`
+  - `backend/tests/test_websocket_auth_security.py`
+- Added Merkle proof generation/verification tests in `scripts/test_airdrop_snapshot.py`.
+- Updated `SECURITY_AUDIT.md` and `SECURITY_AUDIT_REPORT.md` with 2026-03-25 internal audit sprint addendum and current validation status.
+
+### Root Cause
+- Internal-audit benchmark mapping surfaced missing adversarial test coverage for consensus/auth/ws and uncovered two edge-case arithmetic defects in AgentFactory that were not exercised by existing regression tests.
+
+### User Action
+- Use `PYTHONPATH=. poetry run pytest tests/ -v` in `contracts`, `venv/bin/python -m pytest tests/ -v` in `backend`, and `venv/bin/python -m pytest scripts/test_airdrop_snapshot.py -v` from repo root to reproduce this audit sprint’s passing suites.
+- Complete environment prerequisites for final launch gating: resolve Playwright runtime browser path mismatch and run `contracts/tests/live_testnet_verify.py smoke` after funding disposable wallets and exporting `DEPLOYER_MNEMONIC`.
+
 ## 0.7.9 - 2026-03-17
 
 ### Fixed
